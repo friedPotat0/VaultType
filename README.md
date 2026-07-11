@@ -28,7 +28,8 @@ that is built to **never** persist your secrets.
 > [!IMPORTANT]
 > VaultType is an independent, unofficial project. It is **not affiliated with, endorsed by, or
 > sponsored by Bitwarden Inc.** "Bitwarden" and "Vaultwarden" are trademarks of their respective
-> owners. VaultType only talks to the official Bitwarden CLI and to your own server.
+> owners. VaultType only drives the official Bitwarden CLI, which connects to whichever server you
+> configure - your self-hosted Vaultwarden or bitwarden.com.
 
 ---
 
