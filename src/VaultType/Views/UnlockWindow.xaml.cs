@@ -79,7 +79,7 @@ public partial class UnlockWindow : Window
             if (ClientIdBox.Text.Trim().Length == 0) { ShowError(Loc.T("unlock.errClientId")); return; }
             if (ClientSecretBox.SecurePassword.Length == 0) { ShowError(Loc.T("unlock.errClientSecret")); return; }
         }
-        else if (_loginMode && ClientIdBox is not null && EmailBox.Text.Trim().Length == 0)
+        else if (_loginMode && EmailBox.Text.Trim().Length == 0)
         {
             ShowError(Loc.T("unlock.errEmail")); return;
         }
