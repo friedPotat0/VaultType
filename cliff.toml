@@ -1,0 +1,50 @@
+# git-cliff configuration - https://git-cliff.org
+# Changelog is generated from Conventional Commits (feat:, fix:, perf: ...).
+
+[changelog]
+header = """
+# Changelog
+
+All notable changes to this project are documented here.
+"""
+body = """
+{% if version %}\
+    ## [{{ version | trim_start_matches(pat="v") }}] - {{ timestamp | date(format="%Y-%m-%d") }}
+{% else %}\
+    ## [unreleased]
+{% endif %}\
+{% for group, commits in commits | group_by(attribute="group") %}
+    ### {{ group | striptags | trim | upper_first }}
+    {% for commit in commits %}
+        - {% if commit.scope %}*({{ commit.scope }})* {% endif %}\
+            {% if commit.breaking %}[**breaking**] {% endif %}\
+            {{ commit.message | upper_first }}\
+    {% endfor %}
+{% endfor %}\n
+"""
+trim = true
+footer = ""
+
+[git]
+conventional_commits = true
+filter_unconventional = true
+split_commits = false
+commit_parsers = [
+    { message = "^feat", group = "<!-- 0 -->Features" },
+    { message = "^fix", group = "<!-- 1 -->Bug Fixes" },
+    { message = "^perf", group = "<!-- 2 -->Performance" },
+    { message = "^refactor", group = "<!-- 3 -->Refactor" },
+    { message = "^doc", group = "<!-- 4 -->Documentation" },
+    { message = "^style", group = "<!-- 5 -->Styling" },
+    { message = "^test", group = "<!-- 6 -->Testing" },
+    { message = "^chore\\(release\\):", skip = true },
+    { message = "^chore\\(deps.*\\)", skip = true },
+    { message = "^chore|^ci|^build", group = "<!-- 7 -->Miscellaneous" },
+    { body = ".*security", group = "<!-- 8 -->Security" },
+    { message = "^revert", group = "<!-- 9 -->Revert" },
+]
+protect_breaking_commits = false
+filter_commits = false
+tag_pattern = "v[0-9].*"
+topo_order = false
+sort_commits = "oldest"

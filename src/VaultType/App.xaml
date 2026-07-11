@@ -1,0 +1,16 @@
+<Application x:Class="VaultType.App"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="clr-namespace:VaultType"
+             ShutdownMode="OnExplicitShutdown">
+    <Application.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="Themes/Bitwarden.xaml" />
+            </ResourceDictionary.MergedDictionaries>
+            <local:InitialConverter x:Key="Initial" />
+            <local:AvatarBrushConverter x:Key="AvatarBrush" />
+            <BooleanToVisibilityConverter x:Key="BoolToVis" />
+        </ResourceDictionary>
+    </Application.Resources>
+</Application>

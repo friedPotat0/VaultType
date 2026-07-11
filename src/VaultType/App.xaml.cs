@@ -1,0 +1,603 @@
+using System.Diagnostics;
+using System.Linq;
+using System.Security;
+using System.Threading;
+using System.Threading.Tasks;
+using System.Windows;
+using VaultType.Config;
+using VaultType.Models;
+using VaultType.Security;
+using VaultType.Services;
+using VaultType.Views;
+using Drawing = System.Drawing;
+using WinForms = System.Windows.Forms;
+
+namespace VaultType;
+
+public partial class App : Application
+{
+    private AppConfig _cfg = null!;
+    private BitwardenCli _cli = null!;
+    private IconService _icons = null!;
+    private HotkeyManager _hotkey = null!;
+    private IdleLockService _idle = null!;
+    private ForegroundTracker? _fgTracker;
+    private WinForms.NotifyIcon _tray = null!;
+    private WinForms.ToolStripMenuItem? _statusItem, _lockItem, _syncItem;
+    private Mutex? _mutex;
+
+    // Session state (RAM only)
+    private bool _unlocked;
+    private SecureString? _session;
+    private SecretProtector? _protector;
+    private List<VaultItem> _items = new();
+    private bool _busy;
+    private bool _serverConfigured;
+    private Task? _serverReady;   // background CLI/Node warm-up so the unlock window can open instantly
+    private string? _pendingUpdateUrl;   // set when a newer release is found; opened if the balloon is clicked
+
+    protected override void OnStartup(StartupEventArgs e)
+    {
+        base.OnStartup(e);
+
+        // Dev-only: render the real windows (with mock data) to PNGs for the README, then exit.
+        for (int i = 0; i < e.Args.Length; i++)
+        {
+            if (string.Equals(e.Args[i], "--screenshots", StringComparison.OrdinalIgnoreCase))
+            {
+                string dir = i + 1 < e.Args.Length ? e.Args[i + 1]
+                    : System.IO.Path.Combine(AppContext.BaseDirectory, "screenshots");
+                RunScreenshotMode(dir);
+                return;
+            }
+        }
+
+        _mutex = new Mutex(true, "VaultType_SingleInstance_9F2A", out bool isNew);
+        if (!isNew) { Shutdown(); return; }
+
+        _cfg = AppConfig.Load();
+        Loc.Init(_cfg.Language);
+        ProcessHardening.Apply(_cfg.AntiDebugger);
+
+        _cli = new BitwardenCli(_cfg);
+
+        _hotkey = new HotkeyManager();
+        _hotkey.Pressed += OnHotkey;
+        if (!_hotkey.Register(_cfg.Hotkey, out string herr))
+            MessageBox.Show(herr, "VaultType", MessageBoxButton.OK, MessageBoxImage.Warning);
+
+        _idle = new IdleLockService(_cfg.IdleTimeoutMinutes);
+        _idle.Lock += () => Dispatcher.Invoke(() => LockVault(true));
+
+        _icons = new IconService(_cfg);
+        if (_cfg.EnableTrayClick) _fgTracker = new ForegroundTracker();
+        AutostartService.Set(_cfg.Autostart);   // keep the Run entry in sync with the preference
+
+        SetupTray();
+        ShowBalloon(Loc.T("msg.runningTitle"), Loc.T("msg.runningMsg", _cfg.Hotkey));
+    }
+
+    // Global hotkey: auto-type into the current foreground window (suggested entries first).
+    private void OnHotkey() => _ = Trigger(ForegroundContext.CaptureWindow(), showAllFirst: false);
+
+    // Tray click: auto-type into the window that was active before the click; list all entries.
+    private void OnTrayTrigger()
+    {
+        IntPtr target = _fgTracker?.LastWindow ?? IntPtr.Zero;
+        if (target == IntPtr.Zero) target = Native.GetForegroundWindow();
+        _ = Trigger(ForegroundContext.FromWindow(target), showAllFirst: true);
+    }
+
+    // Shared flow (UI thread, async so slow work doesn't freeze the UI).
+    private async Task Trigger(ForegroundInfo ctx, bool showAllFirst)
+    {
+        if (_busy) return;
+        _busy = true;
+        try
+        {
+            var urlTask = Task.Run(() => ForegroundContext.ReadUrl(ctx.Hwnd, ctx.Exe)); // slow UIA in parallel
+
+            if (!await EnsureCliReadyAsync()) return;
+            BeginServerWarmup();   // cold-start bw.exe/Node in the background while the unlock window is up
+            if (!_unlocked && !await EnsureUnlockedAsync()) return;
+
+            // The URL read ran in parallel; only show a brief spinner if it isn't done yet.
+            if (urlTask.IsCompleted) ctx.Url = await urlTask;
+            else
+            {
+                var l = new LoadingWindow(_cfg.ExcludeFromScreenCapture);
+                l.SetStatus(Loc.T("loading.reading"));
+                l.Show();
+                try { ctx.Url = await urlTask; } finally { l.Close(); }
+            }
+
+            var matches = Matcher.FindMatches(_items, ctx);
+            var picker = new PickerWindow(_items, matches, ctx, _cfg.ExcludeFromScreenCapture, _icons, showAllFirst);
+            bool? ok = picker.ShowDialog();
+            _idle.Arm(_cfg.IdleTimeoutMinutes);
+
+            if (ok == true && picker.Result != null)
+            {
+                Dispatch(picker.Result, ctx);
+                MaybeOfferRemember(picker.Result.Item, matches, ctx);
+            }
+        }
+        catch (Exception ex) { ShowBalloon("Error", ex.Message); }
+        finally { _busy = false; }
+    }
+
+    // if they picked an entry we didn't auto-suggest, offer to remember it for next time
+    private void MaybeOfferRemember(VaultItem item, IReadOnlyList<VaultItem> matches, ForegroundInfo ctx)
+    {
+        if (_session == null || matches.Contains(item)) return;
+        string? uri = BuildRememberUri(ctx);
+        if (uri == null) return;
+        if (item.Uris.Any(u => string.Equals(u.Value, uri, StringComparison.OrdinalIgnoreCase))) return;
+
+        string label = !string.IsNullOrEmpty(ctx.Url) ? Matcher.HostDomain(ctx.Url!).domain : ctx.Exe;
+        var confirm = new ConfirmWindow(Loc.T("confirm.rememberTitle"),
+            Loc.T("confirm.rememberMsg", uri, item.Name, label),
+            _cfg.ExcludeFromScreenCapture);
+        if (confirm.ShowDialog() != true) return;
+
+        if (_cli.AddUri(_session, item.Id, uri, out string err))
+        {
+            var iu = new ItemUri { Value = uri, MatchType = 0 };
+            Matcher.FillHostDomain(iu);
+            item.Uris.Add(iu);
+            ShowBalloon(Loc.T("msg.savedTitle"), Loc.T("msg.savedMsg", item.Name, label));
+        }
+        else ShowBalloon(Loc.T("msg.error"), err);
+    }
+
+    private static string? BuildRememberUri(ForegroundInfo ctx)
+    {
+        if (!string.IsNullOrEmpty(ctx.Url))
+        {
+            var (host, domain) = Matcher.HostDomain(ctx.Url!);
+            string d = string.IsNullOrEmpty(domain) ? host : domain;
+            return string.IsNullOrEmpty(d) ? null : "https://" + d;
+        }
+        if (!string.IsNullOrEmpty(ctx.Exe)) return "app://" + ctx.Exe;
+        return null;
+    }
+
+    private void Dispatch(PickResult r, ForegroundInfo ctx)
+    {
+        // Actions that reveal the password/TOTP require re-prompt if the entry demands it.
+        bool sensitive = r.Action is PickAction.TypeFull or PickAction.TypePassword or PickAction.TypeTotp
+            or PickAction.CopyPassword or PickAction.CopyTotp;
+        if (sensitive && r.Item.Reprompt && _cfg.HonorMasterPasswordReprompt && !VerifyMasterPassword()) return;
+
+        int secs = _cfg.ClipboardClearSeconds;
+        switch (r.Action)
+        {
+            case PickAction.TypeFull:
+                AutoTyper.Type(ctx.Hwnd, r.Item, _protector!, TypeAction.Full, _cfg.TypingDelayMs, _cfg.ClearFieldBeforeTyping); break;
+            case PickAction.TypeUsername:
+                AutoTyper.Type(ctx.Hwnd, r.Item, _protector!, TypeAction.Username, _cfg.TypingDelayMs, _cfg.ClearFieldBeforeTyping); break;
+            case PickAction.TypePassword:
+                AutoTyper.Type(ctx.Hwnd, r.Item, _protector!, TypeAction.Password, _cfg.TypingDelayMs, _cfg.ClearFieldBeforeTyping); break;
+            case PickAction.TypeTotp:
+                AutoTyper.Type(ctx.Hwnd, r.Item, _protector!, TypeAction.Totp, _cfg.TypingDelayMs, _cfg.ClearFieldBeforeTyping); break;
+            case PickAction.CopyUsername:
+                ClipboardService.CopyUsername(r.Item, secs); ShowBalloon(Loc.T("msg.copiedTitle"), Loc.T("msg.copiedUser", secs)); break;
+            case PickAction.CopyPassword:
+                ClipboardService.CopyPassword(r.Item, _protector!, secs); ShowBalloon(Loc.T("msg.copiedTitle"), Loc.T("msg.copiedPass", secs)); break;
+            case PickAction.CopyTotp:
+                ClipboardService.CopyTotp(r.Item, _protector!, secs); ShowBalloon(Loc.T("msg.copiedTitle"), Loc.T("msg.copiedTotp", secs)); break;
+        }
+    }
+
+    private async Task<bool> EnsureCliReadyAsync()
+    {
+        if (!_cli.ExeExists)
+        {
+            var l = new LoadingWindow(_cfg.ExcludeFromScreenCapture);
+            l.SetStatus(Loc.T("loading.downloadCli"));
+            l.Show();
+            bool ok;
+            try { ok = await Task.Run(() => CliBootstrap.EnsureAsync(_cli.ExePath)); }
+            finally { l.Close(); }
+            if (!ok)
+            {
+                ShowBalloon(Loc.T("msg.error"), Loc.T("msg.cliMissing"));
+                return false;
+            }
+        }
+        return true;
+    }
+
+    // Apply the server config on a background thread. The first bw.exe call cold-starts Node
+    // (~1-2s); doing it here instead of before the unlock window lets the window pop up instantly
+    // and hides the cold-start behind the time the user spends typing.
+    private void BeginServerWarmup()
+    {
+        if (_serverConfigured || string.IsNullOrWhiteSpace(_cfg.ServerUrl)) return;
+        _serverReady ??= Task.Run(() =>
+        {
+            _cli.ConfigServer(_cfg.ServerUrl, out _);
+            _serverConfigured = true;
+        });
+    }
+
+    private async Task<bool> EnsureUnlockedAsync()
+    {
+        // No upfront `bw status` (that Node cold-start delayed the window ~2s). Assume "unlock"
+        // using account/server from config; only fall back to sign-in if unlocking says so.
+        bool loginMode = false;
+        string server = _cfg.ServerUrl;
+        string emailPrefill = _cfg.AccountEmail;
+        string? pendingError = null;
+
+        while (true)
+        {
+            string heading = loginMode ? Loc.T("unlock.titleSignin") : Loc.T("unlock.titleUnlock");
+            string subtitle = loginMode
+                ? $"{Loc.T("unlock.signinTo")}\n{server}"
+                : $"{(emailPrefill.Length > 0 ? emailPrefill + "\n" : "")}{server}";
+
+            var win = new UnlockWindow(heading, subtitle, loginMode, emailPrefill, _cfg.ExcludeFromScreenCapture);
+            if (pendingError != null)
+            {
+                string errCopy = pendingError;
+                win.Loaded += (_, __) => win.ShowError(errCopy);
+                pendingError = null;
+            }
+            bool? ok = win.ShowDialog();
+            if (ok != true || win.Password == null) return false;
+
+            SecureString master = win.Password;
+            if (win.Email.Length > 0) emailPrefill = win.Email;
+
+            var loading = new LoadingWindow(_cfg.ExcludeFromScreenCapture);
+            loading.SetStatus(loginMode ? Loc.T("loading.signingin") : Loc.T("loading.unlocking"));
+            loading.Show();
+
+            // KDF (Argon2) + Node startup run OFF the UI thread so the spinner animates.
+            var (session, err) = await Task.Run(() =>
+            {
+                if (_serverReady != null) { try { _serverReady.Wait(); } catch { } }   // ensure server config applied
+                string e;
+                SecureString? s;
+                if (!loginMode) s = _cli.Unlock(master, out e);
+                else if (win.UseApiKey) s = _cli.LoginApiKey(win.ClientId, win.ClientSecret!, out e) ? _cli.Unlock(master, out e) : null;
+                else s = _cli.Login(win.Email, master, win.TwoFactorCode, win.TwoFactorMethod, out e);
+                return (s, e);
+            });
+            master.Dispose();
+            win.ClientSecret?.Dispose();
+
+            if (session == null)
+            {
+                loading.Close();
+                if (!loginMode && LooksUnauthenticated(err)) { loginMode = true; continue; } // not logged in -> sign-in form
+                pendingError = err;
+                continue;
+            }
+
+            if (loginMode && win.Email.Length > 0) { _cfg.AccountEmail = win.Email; _cfg.Save(); }
+
+            _session = session;
+            _protector = new SecretProtector();
+            loading.SetStatus(Loc.T("loading.loading"));
+
+            var (items, lerr) = await Task.Run(() =>
+            {
+                var it = _cli.ListItems(session, _protector, out string e);
+                return (it, e);
+            });
+            loading.Close();
+
+            _items = items;
+            if (_items.Count == 0 && lerr.Length > 0)
+                ShowBalloon(Loc.T("msg.note"), Loc.T("msg.couldNotLoad", lerr));
+
+            _unlocked = true;
+            _idle.Arm(_cfg.IdleTimeoutMinutes);
+            UpdateTray();
+            return true;
+        }
+    }
+
+    private static bool LooksUnauthenticated(string err)
+        => err.Contains("logged in", StringComparison.OrdinalIgnoreCase)
+        || err.Contains("log in", StringComparison.OrdinalIgnoreCase);
+
+    private bool VerifyMasterPassword()
+    {
+        var win = new UnlockWindow(Loc.T("unlock.confirmTitle"),
+            Loc.T("unlock.confirmMsg"),
+            false, "", _cfg.ExcludeFromScreenCapture);
+        if (win.ShowDialog() != true || win.Password == null) return false;
+        SecureString? s = _cli.Unlock(win.Password, out _);
+        win.Password.Dispose();
+        if (s == null) return false;
+        s.Dispose();
+        return true;
+    }
+
+    private void LockVault(bool notify)
+    {
+        ClipboardService.ClearNow();
+        if (_session != null) { _cli.Lock(_session); _session.Dispose(); _session = null; }
+        _protector?.Dispose(); _protector = null;
+        _items = new List<VaultItem>();
+        _unlocked = false;
+        _idle.Disarm();
+        UpdateTray();
+        if (notify) ShowBalloon(Loc.T("msg.lockedTitle"), Loc.T("msg.lockedMsg"));
+    }
+
+    private void SyncNow()
+    {
+        if (!_unlocked || _session == null) { ShowBalloon(Loc.T("msg.note"), Loc.T("msg.unlockFirst")); return; }
+        if (_busy) return;
+        _busy = true;
+        try
+        {
+            _cli.Sync(_session);
+            var items = _cli.ListItems(_session, _protector!, out string err);
+            if (err.Length == 0) { _items = items; UpdateTray(); ShowBalloon(Loc.T("msg.syncedTitle"), Loc.T("msg.syncedMsg", _items.Count)); }
+            else ShowBalloon(Loc.T("msg.syncErr"), err);
+        }
+        finally { _busy = false; }
+    }
+
+    private void OpenSettings()
+    {
+        _hotkey.Unregister();                 // don't let the global hotkey fire while it is being edited
+        string prevLang = _cfg.Language;
+        bool langChanged = false;
+        try
+        {
+            var w = new SettingsWindow(_cfg, _cfg.ExcludeFromScreenCapture);
+            if (w.ShowDialog() != true) return;
+            _cfg.Save();
+            if (_cfg.EnableTrayClick && _fgTracker == null) _fgTracker = new ForegroundTracker();
+            else if (!_cfg.EnableTrayClick && _fgTracker != null) { _fgTracker.Dispose(); _fgTracker = null; }
+            _serverConfigured = false;        // re-apply server config on next unlock if the URL changed
+            _serverReady = null;              // force a fresh warm-up with the (possibly) new URL
+            if (_unlocked) _idle.Arm(_cfg.IdleTimeoutMinutes);
+            UpdateTray();
+            langChanged = !string.Equals(prevLang, _cfg.Language, StringComparison.OrdinalIgnoreCase);
+        }
+        finally
+        {
+            _hotkey.Register(_cfg.Hotkey, out _);   // re-register: new combo if saved, old if cancelled
+        }
+
+        // The UI resolves its strings once at startup, so a language switch needs a fresh process.
+        if (langChanged) RestartApp();
+    }
+
+    private void RestartApp()
+    {
+        string? exe = Environment.ProcessPath;
+        // Release the single-instance mutex first so the new process can claim it.
+        try { _mutex?.ReleaseMutex(); } catch { }
+        try { _mutex?.Dispose(); } catch { }
+        _mutex = null;
+        if (exe != null)
+        {
+            try { Process.Start(new ProcessStartInfo(exe) { UseShellExecute = true }); } catch { }
+        }
+        ExitApp();
+    }
+
+    // Manual update check from the tray menu. On success the balloon is clickable and opens the release.
+    private async void CheckForUpdates()
+    {
+        var info = await UpdateService.CheckAsync(AppInfo.Version);
+        if (info == null) { ShowBalloon(Loc.T("msg.error"), Loc.T("msg.updateFailed")); return; }
+        if (info.IsNewer)
+        {
+            _pendingUpdateUrl = info.Url;
+            ShowBalloon(Loc.T("msg.updateTitle"), Loc.T("msg.updateAvailable", info.LatestVersion));
+        }
+        else
+        {
+            _pendingUpdateUrl = null;
+            ShowBalloon("VaultType", Loc.T("msg.upToDate", AppInfo.Version));
+        }
+    }
+
+    // ---- Screenshot mode (README assets) ----
+
+    // Render the three main windows to transparent PNGs with mock data, then quit.
+    private void RunScreenshotMode(string outDir)
+    {
+        try
+        {
+            Loc.Init("en");
+            try { System.IO.Directory.CreateDirectory(outDir); } catch { }
+
+            _cfg = new AppConfig
+            {
+                ServerUrl = "https://vault.example.com",
+                ShowIcons = false,   // offline capture: letter avatars, no network requests
+            };
+
+            var icons = new IconService(_cfg);
+            var ctx = new ForegroundInfo { Exe = "brave.exe", Title = "Sign in to GitHub", Url = "https://github.com/login" };
+            var all = BuildMockItems();
+
+            var picker = new PickerWindow(all, all, ctx, false, icons, showAllFirst: true);
+            CaptureWindow(picker, System.IO.Path.Combine(outDir, "picker.png"));
+
+            var unlock = new UnlockWindow("Unlock vault",
+                "alex.doe@example.com\nhttps://vault.example.com", false, "", false);
+            unlock.Pw.Password = "correct horse battery staple";
+            CaptureWindow(unlock, System.IO.Path.Combine(outDir, "unlock.png"),
+                beforeRender: () => MoveCaretToEnd(unlock.Pw));
+
+            var settings = new SettingsWindow(_cfg, false);
+            CaptureWindow(settings, System.IO.Path.Combine(outDir, "settings.png"));
+        }
+        catch (Exception ex) { MessageBox.Show(ex.ToString(), "Screenshot mode"); }
+        finally { Shutdown(); }
+    }
+
+    // Mock login entries - display data only, no real secrets - covering every badge state.
+    private static List<VaultItem> BuildMockItems()
+    {
+        static VaultItem It(string name, string user, string host, bool totp = false, string? seq = null)
+        {
+            var it = new VaultItem { Name = name, Username = user, HasTotp = totp, CustomSequence = seq };
+            if (host.Length > 0) it.Uris.Add(new ItemUri { Value = "https://" + host, Host = host, Domain = host });
+            return it;
+        }
+        return new List<VaultItem>
+        {
+            It("GitHub", "alex.doe@example.com", "github.com", totp: true),
+            It("Google", "alex.doe@example.com", "google.com", totp: true),
+            It("Amazon AWS", "iam-admin", "aws.amazon.com", seq: "{USERNAME}{TAB}{PASSWORD}{ENTER}"),
+            It("Proxmox VE", "root@pam", "pve.example.lan", seq: "{USERNAME}{TAB}{PASSWORD}{ENTER}"),
+            It("Nextcloud", "alex.doe", "cloud.example.com"),
+            It("Reddit", "u/night_owl", "reddit.com", totp: true),
+            It("Steam", "night_owl", "steampowered.com", totp: true, seq: "{USERNAME}{TAB}{PASSWORD}{ENTER}"),
+            It("PayPal", "alex.doe@example.com", "paypal.com"),
+        };
+    }
+
+    // Show a window off-screen, let it lay out, then render it (2x, transparent) to a PNG.
+    private void CaptureWindow(Window w, string path, double scale = 2.0, Action? beforeRender = null)
+    {
+        w.WindowStartupLocation = WindowStartupLocation.Manual;
+        w.Left = -10000;
+        w.Top = -10000;
+        w.ShowInTaskbar = false;
+        w.Topmost = false;
+        w.Show();
+
+        // Let Loaded handlers, layout and a render pass finish before capturing.
+        Dispatcher.Invoke(() => { }, System.Windows.Threading.DispatcherPriority.Loaded);
+        w.UpdateLayout();
+        Dispatcher.Invoke(() => { }, System.Windows.Threading.DispatcherPriority.ContextIdle);
+        w.UpdateLayout();
+
+        beforeRender?.Invoke();
+        Dispatcher.Invoke(() => { }, System.Windows.Threading.DispatcherPriority.ContextIdle);
+        w.UpdateLayout();
+
+        var root = (FrameworkElement)w.Content;   // root Border (Margin=16) incl. its drop shadow
+        double width = w.ActualWidth;
+        double height = w.ActualHeight;
+
+        var rtb = new System.Windows.Media.Imaging.RenderTargetBitmap(
+            (int)System.Math.Ceiling(width * scale),
+            (int)System.Math.Ceiling(height * scale),
+            96 * scale, 96 * scale,
+            System.Windows.Media.PixelFormats.Pbgra32);
+        rtb.Render(root);
+
+        var enc = new System.Windows.Media.Imaging.PngBitmapEncoder();
+        enc.Frames.Add(System.Windows.Media.Imaging.BitmapFrame.Create(rtb));
+        using (var fs = System.IO.File.Create(path)) enc.Save(fs);
+
+        w.Close();
+    }
+
+    // put the password caret at the end (after the dots), like a normally filled field
+    private static void MoveCaretToEnd(System.Windows.Controls.PasswordBox pw)
+    {
+        pw.Focus();
+        try
+        {
+            typeof(System.Windows.Controls.PasswordBox)
+                .GetMethod("Select", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)
+                ?.Invoke(pw, new object[] { pw.Password.Length, 0 });
+        }
+        catch { }
+    }
+
+    // ---- Tray ----
+    private void SetupTray()
+    {
+        _tray = new WinForms.NotifyIcon { Icon = BuildIcon(), Visible = true, Text = $"VaultType {AppInfo.Version}" };
+        var menu = new WinForms.ContextMenuStrip();
+        _statusItem = new WinForms.ToolStripMenuItem(Loc.T("tray.locked")) { Enabled = false };
+        menu.Items.Add(_statusItem);
+        menu.Items.Add(new WinForms.ToolStripSeparator());
+        menu.Items.Add(Loc.T("tray.autotype"), null, (_, __) => OnHotkey());
+        _syncItem = new WinForms.ToolStripMenuItem(Loc.T("tray.sync"), null, (_, __) => SyncNow());
+        menu.Items.Add(_syncItem);
+        _lockItem = new WinForms.ToolStripMenuItem(Loc.T("tray.lock"), null, (_, __) => LockVault(true));
+        menu.Items.Add(_lockItem);
+        menu.Items.Add(new WinForms.ToolStripSeparator());
+        menu.Items.Add(Loc.T("tray.checkUpdates"), null, (_, __) => CheckForUpdates());
+        menu.Items.Add(Loc.T("tray.settings"), null, (_, __) => OpenSettings());
+        menu.Items.Add(Loc.T("tray.exit"), null, (_, __) => ExitApp());
+        _tray.ContextMenuStrip = menu;
+        _tray.MouseClick += (_, e) => { if (_cfg.EnableTrayClick && e.Button == WinForms.MouseButtons.Left) OnTrayTrigger(); };
+        _tray.BalloonTipClicked += (_, __) =>
+        {
+            if (_pendingUpdateUrl == null) return;
+            try { Process.Start(new ProcessStartInfo(_pendingUpdateUrl) { UseShellExecute = true }); } catch { }
+            _pendingUpdateUrl = null;
+        };
+        UpdateTray();
+    }
+
+    private void UpdateTray()
+    {
+        if (_statusItem != null) _statusItem.Text = _unlocked ? Loc.T("tray.unlocked", _items.Count) : Loc.T("tray.locked");
+        if (_lockItem != null) _lockItem.Enabled = _unlocked;
+    }
+
+    private static Drawing.Icon BuildIcon()
+    {
+        try
+        {
+            var asm = System.Reflection.Assembly.GetExecutingAssembly();
+            using var s = asm.GetManifestResourceStream("VaultType.Assets.vaulttype.ico");
+            if (s != null) return new Drawing.Icon(s, new Drawing.Size(32, 32));
+        }
+        catch { }
+
+        // Fallback: plain green rounded square
+        using var bmp = new Drawing.Bitmap(32, 32);
+        using (var g = Drawing.Graphics.FromImage(bmp))
+        {
+            g.SmoothingMode = Drawing.Drawing2D.SmoothingMode.AntiAlias;
+            g.Clear(Drawing.Color.Transparent);
+            using var path = RoundedRect(3f, 3f, 26f, 26f, 7f);
+            using var green = new Drawing.SolidBrush(Drawing.ColorTranslator.FromHtml("#3FAE77"));
+            g.FillPath(green, path);
+        }
+        return Drawing.Icon.FromHandle(bmp.GetHicon());
+    }
+
+    private static Drawing.Drawing2D.GraphicsPath RoundedRect(float x, float y, float w, float h, float r)
+    {
+        var p = new Drawing.Drawing2D.GraphicsPath();
+        p.AddArc(x, y, r, r, 180, 90);
+        p.AddArc(x + w - r, y, r, r, 270, 90);
+        p.AddArc(x + w - r, y + h - r, r, r, 0, 90);
+        p.AddArc(x, y + h - r, r, r, 90, 90);
+        p.CloseFigure();
+        return p;
+    }
+
+    private void ShowBalloon(string title, string text)
+    {
+        try { _tray.BalloonTipTitle = title; _tray.BalloonTipText = text; _tray.ShowBalloonTip(4000); }
+        catch { }
+    }
+
+    private void ExitApp()
+    {
+        LockVault(false);
+        try { _tray.Visible = false; _tray.Dispose(); } catch { }
+        _hotkey?.Dispose();
+        _idle?.Dispose();
+        _fgTracker?.Dispose();
+        Shutdown();
+    }
+
+    protected override void OnExit(ExitEventArgs e)
+    {
+        try { _mutex?.ReleaseMutex(); _mutex?.Dispose(); } catch { }
+        base.OnExit(e);
+    }
+}

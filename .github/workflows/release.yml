@@ -1,0 +1,103 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to build (e.g. 1.0.1)'
+        required: true
+        default: '0.0.0-dev'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # git-cliff needs the full history and tags
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '9.0.x'
+
+      # tag "v1.0.1" -> "1.0.1"; manual runs use the input instead
+      - name: Resolve version
+        id: v
+        shell: bash
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "version=${{ github.event.inputs.version }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+          fi
+
+      # changelog for THIS release, from the conventional commits since the last tag
+      - name: Generate release notes
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: orhun/git-cliff-action@v4
+        with:
+          config: cliff.toml
+          args: --latest --strip header
+        env:
+          OUTPUT: RELEASE_NOTES.md
+
+      - name: Publish (self-contained, single file)
+        shell: pwsh
+        run: |
+          dotnet publish src/VaultType/VaultType.csproj `
+            -c Release -r win-x64 --self-contained true `
+            -p:PublishSingleFile=true `
+            -p:IncludeNativeLibrariesForSelfExtract=true `
+            -p:EnableCompressionInSingleFile=true `
+            -p:Version=${{ steps.v.outputs.version }} `
+            -o publish
+          Copy-Item publish/VaultType.exe "VaultType-${{ steps.v.outputs.version }}-win-x64.exe"
+
+      # keep the build around even for manual/test runs that don't cut a release
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: VaultType-win-x64
+          path: VaultType-*.exe
+
+      - name: Publish release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: VaultType-*.exe
+          body_path: RELEASE_NOTES.md
+
+      # keep a CHANGELOG.md in the repo, refreshed on the default branch
+      - name: Switch to default branch
+        if: startsWith(github.ref, 'refs/tags/v')
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git fetch origin "${{ github.event.repository.default_branch }}"
+          git checkout "${{ github.event.repository.default_branch }}"
+
+      - name: Regenerate CHANGELOG.md
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: orhun/git-cliff-action@v4
+        with:
+          config: cliff.toml
+          args: --tag ${{ github.ref_name }}
+        env:
+          OUTPUT: CHANGELOG.md
+
+      - name: Commit CHANGELOG.md
+        if: startsWith(github.ref, 'refs/tags/v')
+        shell: bash
+        run: |
+          git add CHANGELOG.md
+          git diff --staged --quiet && { echo "changelog unchanged"; exit 0; }
+          git commit -m "docs: update changelog for ${GITHUB_REF_NAME} [skip ci]"
+          git push origin HEAD
