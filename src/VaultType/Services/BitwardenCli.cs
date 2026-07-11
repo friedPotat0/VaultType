@@ -130,6 +130,13 @@ public sealed class BitwardenCli
         catch { /* best effort */ }
     }
 
+    // Logs the CLI out entirely, so a different account/server can sign in.
+    public void Logout()
+    {
+        try { using var _ = NativeProcess.Run(_exe, "logout", BaseEnv()); }
+        catch { /* best effort */ }
+    }
+
     // Add a URI to an item so it gets suggested next time (get -> tweak -> edit). The item
     // JSON round-trips through memory once; the base64 payload goes to bw.exe over stdin only,
     // never on the command line. Only runs when the user confirms it.

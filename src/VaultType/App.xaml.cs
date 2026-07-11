@@ -223,9 +223,10 @@ public partial class App : Application
 
     private async Task<bool> EnsureUnlockedAsync()
     {
-        // No upfront `bw status` (that Node cold-start delayed the window ~2s). Assume "unlock"
-        // using account/server from config; only fall back to sign-in if unlocking says so.
-        bool loginMode = false;
+        // Start in sign-in mode only if we've never signed in; otherwise take the fast "unlock"
+        // path (no upfront `bw status` - that Node cold-start delayed the window ~2s; a failed
+        // unlock falls back to sign-in anyway).
+        bool loginMode = !_cfg.SignedInBefore && string.IsNullOrEmpty(_cfg.AccountEmail);
         string server = _cfg.ServerUrl;
         string emailPrefill = _cfg.AccountEmail;
         string? pendingError = null;
@@ -233,11 +234,12 @@ public partial class App : Application
         while (true)
         {
             string heading = loginMode ? Loc.T("unlock.titleSignin") : Loc.T("unlock.titleUnlock");
+            // In sign-in mode the server is an editable field, so it isn't repeated in the subtitle.
             string subtitle = loginMode
-                ? $"{Loc.T("unlock.signinTo")}\n{server}"
+                ? ""
                 : $"{(emailPrefill.Length > 0 ? emailPrefill + "\n" : "")}{server}";
 
-            var win = new UnlockWindow(heading, subtitle, loginMode, emailPrefill, _cfg.ExcludeFromScreenCapture);
+            var win = new UnlockWindow(heading, subtitle, loginMode, emailPrefill, server, _cfg.ExcludeFromScreenCapture);
             if (pendingError != null)
             {
                 string errCopy = pendingError;
@@ -250,6 +252,15 @@ public partial class App : Application
             SecureString master = win.Password;
             if (win.Email.Length > 0) emailPrefill = win.Email;
 
+            // In sign-in mode the user may have set/changed the server URL right in the form.
+            if (loginMode && !string.Equals(win.Server, _cfg.ServerUrl, StringComparison.OrdinalIgnoreCase))
+            {
+                _cfg.ServerUrl = win.Server;
+                _cfg.Save();
+                server = win.Server;
+                _serverConfigured = false;
+            }
+
             var loading = new LoadingWindow(_cfg.ExcludeFromScreenCapture);
             loading.SetStatus(loginMode ? Loc.T("loading.signingin") : Loc.T("loading.unlocking"));
             loading.Show();
@@ -257,12 +268,18 @@ public partial class App : Application
             // KDF (Argon2) + Node startup run OFF the UI thread so the spinner animates.
             var (session, err) = await Task.Run(() =>
             {
-                if (_serverReady != null) { try { _serverReady.Wait(); } catch { } }   // ensure server config applied
+                if (_serverReady != null) { try { _serverReady.Wait(); } catch { } }   // let any warm-up finish
                 string e;
                 SecureString? s;
                 if (!loginMode) s = _cli.Unlock(master, out e);
-                else if (win.UseApiKey) s = _cli.LoginApiKey(win.ClientId, win.ClientSecret!, out e) ? _cli.Unlock(master, out e) : null;
-                else s = _cli.Login(win.Email, master, win.TwoFactorCode, win.TwoFactorMethod, out e);
+                else
+                {
+                    // apply the server from the sign-in form (empty = bitwarden.com default)
+                    _cli.ConfigServer(string.IsNullOrWhiteSpace(_cfg.ServerUrl) ? "https://bitwarden.com" : _cfg.ServerUrl, out _);
+                    _serverConfigured = true;
+                    if (win.UseApiKey) s = _cli.LoginApiKey(win.ClientId, win.ClientSecret!, out e) ? _cli.Unlock(master, out e) : null;
+                    else s = _cli.Login(win.Email, master, win.TwoFactorCode, win.TwoFactorMethod, out e);
+                }
                 return (s, e);
             });
             master.Dispose();
@@ -276,7 +293,9 @@ public partial class App : Application
                 continue;
             }
 
-            if (loginMode && win.Email.Length > 0) { _cfg.AccountEmail = win.Email; _cfg.Save(); }
+            if (loginMode && win.Email.Length > 0) _cfg.AccountEmail = win.Email;
+            if (!_cfg.SignedInBefore) _cfg.SignedInBefore = true;
+            _cfg.Save();   // persist SignedInBefore (and AccountEmail)
 
             _session = session;
             _protector = new SecretProtector();
@@ -308,7 +327,7 @@ public partial class App : Application
     {
         var win = new UnlockWindow(Loc.T("unlock.confirmTitle"),
             Loc.T("unlock.confirmMsg"),
-            false, "", _cfg.ExcludeFromScreenCapture);
+            false, "", "", _cfg.ExcludeFromScreenCapture);
         if (win.ShowDialog() != true || win.Password == null) return false;
         SecureString? s = _cli.Unlock(win.Password, out _);
         win.Password.Dispose();
@@ -349,6 +368,7 @@ public partial class App : Application
         _hotkey.Unregister();                 // don't let the global hotkey fire while it is being edited
         string prevLang = _cfg.Language;
         bool langChanged = false;
+        bool changeLogin = false;
         try
         {
             var w = new SettingsWindow(_cfg, _cfg.ExcludeFromScreenCapture);
@@ -361,6 +381,7 @@ public partial class App : Application
             if (_unlocked) _idle.Arm(_cfg.IdleTimeoutMinutes);
             UpdateTray();
             langChanged = !string.Equals(prevLang, _cfg.Language, StringComparison.OrdinalIgnoreCase);
+            changeLogin = w.ChangeLoginRequested;
         }
         finally
         {
@@ -368,7 +389,29 @@ public partial class App : Application
         }
 
         // The UI resolves its strings once at startup, so a language switch needs a fresh process.
-        if (langChanged) RestartApp();
+        if (langChanged) { RestartApp(); return; }
+        if (changeLogin) ChangeLogin();
+    }
+
+    // Log out and reopen the sign-in window so the user can switch account, server or email/API key.
+    private async void ChangeLogin()
+    {
+        if (_busy) return;
+        _busy = true;
+        try
+        {
+            if (!await EnsureCliReadyAsync()) return;
+            LockVault(false);                        // drop the current in-app session
+            await Task.Run(() => _cli.Logout());     // bw logout so a different account can sign in
+            _cfg.SignedInBefore = false;
+            _cfg.AccountEmail = "";
+            _cfg.Save();
+            _serverConfigured = false;
+            _serverReady = null;
+            await EnsureUnlockedAsync();              // starts in sign-in mode
+        }
+        catch (Exception ex) { ShowBalloon(Loc.T("msg.error"), ex.Message); }
+        finally { _busy = false; }
     }
 
     private void RestartApp()
@@ -404,7 +447,7 @@ public partial class App : Application
 
     // ---- Screenshot mode (README assets) ----
 
-    // Render the three main windows to transparent PNGs with mock data, then quit.
+    // Render the app's windows to transparent PNGs with mock data, then quit.
     private void RunScreenshotMode(string outDir)
     {
         try
@@ -425,8 +468,22 @@ public partial class App : Application
             var picker = new PickerWindow(all, all, ctx, false, icons, showAllFirst: true);
             CaptureWindow(picker, System.IO.Path.Combine(outDir, "picker.png"));
 
+            var signinVw = new UnlockWindow("Sign in", "", true, "", "https://vault.example.net", false);
+            signinVw.EmailBox.Text = "alex.doe@example.com";
+            signinVw.Pw.Password = "correct horse battery staple";
+            CaptureWindow(signinVw, System.IO.Path.Combine(outDir, "signin-vaultwarden.png"),
+                beforeRender: () => MoveCaretToEnd(signinVw.Pw));
+
+            var signinBw = new UnlockWindow("Sign in", "", true, "", "", false);
+            signinBw.AccountBox.SelectedIndex = 1;   // Bitwarden.com -> API-key login by default
+            signinBw.ClientIdBox.Text = "user.7f3a1c9e-2b4d-4e8a-9f10-abcdef123456";
+            signinBw.ClientSecretBox.Password = "aXb9Kd2mNp7qRs4tUv1wYz0e";
+            signinBw.Pw.Password = "correct horse battery staple";
+            CaptureWindow(signinBw, System.IO.Path.Combine(outDir, "signin-bitwarden.png"),
+                beforeRender: () => MoveCaretToEnd(signinBw.Pw));
+
             var unlock = new UnlockWindow("Unlock vault",
-                "alex.doe@example.com\nhttps://vault.example.com", false, "", false);
+                "alex.doe@example.com\nhttps://vault.example.com", false, "", "", false);
             unlock.Pw.Password = "correct horse battery staple";
             CaptureWindow(unlock, System.IO.Path.Combine(outDir, "unlock.png"),
                 beforeRender: () => MoveCaretToEnd(unlock.Pw));

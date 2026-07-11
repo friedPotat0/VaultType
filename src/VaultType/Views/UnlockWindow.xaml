@@ -29,6 +29,19 @@
             <TextBlock x:Name="Subtitle" Foreground="{StaticResource TextSecondary}" FontSize="12.5"
                        TextWrapping="Wrap" Margin="0,0,0,18" />
 
+            <StackPanel x:Name="AccountTypeGroup" Margin="0,0,0,14">
+                <ComboBox x:Name="AccountBox" SelectedIndex="0" SelectionChanged="Account_Changed">
+                    <ComboBoxItem Content="Vaultwarden (self-hosted)" />
+                    <ComboBoxItem Content="Bitwarden.com" />
+                </ComboBox>
+            </StackPanel>
+
+            <StackPanel x:Name="ServerGroup">
+                <TextBlock Text="{local:Tr unlock.server}" Foreground="{StaticResource TextSecondary}" FontSize="12" Margin="2,0,0,6" />
+                <TextBox x:Name="ServerBox" Style="{StaticResource SearchBox}" />
+                <TextBlock Text="{local:Tr unlock.serverHint}" Foreground="{StaticResource TextMuted}" FontSize="11" Margin="2,4,0,14" />
+            </StackPanel>
+
             <CheckBox x:Name="ApiKeyChk" Content="{local:Tr unlock.useApiKey}" Margin="0,0,0,14"
                       Checked="ApiKey_Changed" Unchecked="ApiKey_Changed" />
 

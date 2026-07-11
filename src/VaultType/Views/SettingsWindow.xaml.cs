@@ -14,13 +14,14 @@ public partial class SettingsWindow : Window
     private readonly bool _excludeCapture;
     private readonly string[] _langCodes;
 
+    public bool ChangeLoginRequested { get; private set; }
+
     public SettingsWindow(AppConfig cfg, bool excludeCapture)
     {
         InitializeComponent();
         _cfg = cfg;
         _excludeCapture = excludeCapture;
 
-        ServerBox.Text = cfg.ServerUrl;
         HotkeyBox.Text = cfg.Hotkey;
         IdleBox.Text = cfg.IdleTimeoutMinutes.ToString();
         ClipBox.Text = cfg.ClipboardClearSeconds.ToString();
@@ -85,7 +86,6 @@ public partial class SettingsWindow : Window
 
     private void Save_Click(object sender, RoutedEventArgs e)
     {
-        _cfg.ServerUrl = ServerBox.Text.Trim();
         if (HotkeyBox.Text.Trim().Length > 0) _cfg.Hotkey = HotkeyBox.Text.Trim();
         _cfg.IdleTimeoutMinutes = ParseInt(IdleBox.Text, _cfg.IdleTimeoutMinutes, 0, 1440);
         _cfg.ClipboardClearSeconds = ParseInt(ClipBox.Text, _cfg.ClipboardClearSeconds, 0, 3600);
@@ -117,6 +117,12 @@ public partial class SettingsWindow : Window
         ExcludeCapChk.IsChecked = d.ExcludeFromScreenCapture;
         AntiDbgChk.IsChecked = d.AntiDebugger;
         LangBox.SelectedIndex = 0;
+    }
+
+    private void ChangeLogin_Click(object sender, RoutedEventArgs e)
+    {
+        ChangeLoginRequested = true;   // App reopens the sign-in window after Settings closes
+        DialogResult = true;
     }
 
     private void Cancel_Click(object sender, RoutedEventArgs e) => DialogResult = false;

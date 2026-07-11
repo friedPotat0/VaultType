@@ -10,6 +10,7 @@ public partial class UnlockWindow : Window
 {
     public SecureString? Password { get; private set; }   // master password
     public string Email { get; private set; } = "";
+    public string Server { get; private set; } = "";
     public bool UseApiKey { get; private set; }
     public string ClientId { get; private set; } = "";
     public SecureString? ClientSecret { get; private set; }
@@ -19,7 +20,7 @@ public partial class UnlockWindow : Window
     private readonly bool _loginMode;
     private readonly bool _excludeCapture;
 
-    public UnlockWindow(string heading, string subtitle, bool loginMode, string email, bool excludeCapture)
+    public UnlockWindow(string heading, string subtitle, bool loginMode, string email, string server, bool excludeCapture)
     {
         InitializeComponent();
         _loginMode = loginMode;
@@ -27,8 +28,14 @@ public partial class UnlockWindow : Window
 
         Heading.Text = heading;
         Subtitle.Text = subtitle;
+        if (string.IsNullOrEmpty(subtitle))
+        {
+            Subtitle.Visibility = Visibility.Collapsed;
+            Heading.Margin = new Thickness(0, 18, 0, 16);   // no subtitle -> give the heading room below
+        }
         OkBtn.Content = loginMode ? Loc.T("unlock.btnSignin") : Loc.T("unlock.btnUnlock");
         EmailBox.Text = email;
+        ServerBox.Text = server;
 
         MouseLeftButtonDown += (_, e) => { if (e.ButtonState == MouseButtonState.Pressed) { try { DragMove(); } catch { } } };
         Loaded += OnLoaded;
@@ -36,15 +43,24 @@ public partial class UnlockWindow : Window
     }
 
     private void ApiKey_Changed(object sender, RoutedEventArgs e) => UpdateFields();
+    private void Account_Changed(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
+    {
+        if (!IsInitialized) return;
+        if (AccountBox.SelectedIndex == 1) ApiKeyChk.IsChecked = true;   // API key is the reliable path for bitwarden.com
+        UpdateFields();
+    }
 
     private void UpdateFields()
     {
-        bool api = ApiKeyChk.IsChecked == true;
-        ApiKeyChk.Visibility = _loginMode ? Visibility.Visible : Visibility.Collapsed;
-        ApiHint.Visibility = _loginMode && api ? Visibility.Visible : Visibility.Collapsed;
+        bool vw = AccountBox.SelectedIndex == 0;                       // 0 = Vaultwarden, 1 = Bitwarden.com
+        bool api = _loginMode && !vw && ApiKeyChk.IsChecked == true;   // API key only makes sense for bitwarden.com
+        AccountTypeGroup.Visibility = _loginMode ? Visibility.Visible : Visibility.Collapsed;
+        ServerGroup.Visibility = _loginMode && vw ? Visibility.Visible : Visibility.Collapsed;
+        ApiKeyChk.Visibility = _loginMode && !vw ? Visibility.Visible : Visibility.Collapsed;
+        ApiHint.Visibility = api ? Visibility.Visible : Visibility.Collapsed;
         EmailGroup.Visibility = _loginMode && !api ? Visibility.Visible : Visibility.Collapsed;
-        ClientIdGroup.Visibility = _loginMode && api ? Visibility.Visible : Visibility.Collapsed;
-        ClientSecretGroup.Visibility = _loginMode && api ? Visibility.Visible : Visibility.Collapsed;
+        ClientIdGroup.Visibility = api ? Visibility.Visible : Visibility.Collapsed;
+        ClientSecretGroup.Visibility = api ? Visibility.Visible : Visibility.Collapsed;
         TwoFactorGroup.Visibility = _loginMode && !api ? Visibility.Visible : Visibility.Collapsed;
     }
 
@@ -56,8 +72,14 @@ public partial class UnlockWindow : Window
             Native.SetWindowDisplayAffinity(h, Native.WDA_EXCLUDEFROMCAPTURE);
         }
         Activate();
-        if (_loginMode && ApiKeyChk.IsChecked == true) ClientIdBox.Focus();
-        else if (_loginMode && EmailBox.Text.Length == 0) EmailBox.Focus();
+        if (_loginMode)
+        {
+            bool vw = AccountBox.SelectedIndex == 0;
+            if (vw && ServerBox.Text.Length == 0) ServerBox.Focus();
+            else if (!vw && ApiKeyChk.IsChecked == true) ClientIdBox.Focus();
+            else if (EmailBox.Text.Length == 0) EmailBox.Focus();
+            else Pw.Focus();
+        }
         else Pw.Focus();
     }
 
@@ -71,10 +93,12 @@ public partial class UnlockWindow : Window
 
     private void Ok_Click(object sender, RoutedEventArgs e)
     {
-        bool api = ApiKeyChk.IsChecked == true;
+        bool vw = AccountBox.SelectedIndex == 0;
+        bool api = _loginMode && !vw && ApiKeyChk.IsChecked == true;
 
         if (Pw.SecurePassword.Length == 0) { ShowError(Loc.T("unlock.errMaster")); return; }
-        if (_loginMode && api)
+        if (_loginMode && vw && ServerBox.Text.Trim().Length == 0) { ShowError(Loc.T("unlock.errServer")); return; }
+        if (api)
         {
             if (ClientIdBox.Text.Trim().Length == 0) { ShowError(Loc.T("unlock.errClientId")); return; }
             if (ClientSecretBox.SecurePassword.Length == 0) { ShowError(Loc.T("unlock.errClientSecret")); return; }
@@ -86,7 +110,8 @@ public partial class UnlockWindow : Window
 
         Password = Pw.SecurePassword;
         Email = EmailBox.Text.Trim();
-        UseApiKey = _loginMode && api;
+        Server = vw ? ServerBox.Text.Trim() : "";
+        UseApiKey = api;
         ClientId = ClientIdBox.Text.Trim();
         ClientSecret = ClientSecretBox.SecurePassword;
         TwoFactorCode = TwoFactorBox.Text.Trim();

@@ -53,6 +53,9 @@ public sealed class AppConfig
     // honour the master-password reprompt flag on entries that ask for it
     public bool HonorMasterPasswordReprompt { get; set; } = true;
 
+    // set once the user has signed in successfully; lets first run go straight to the sign-in form
+    public bool SignedInBefore { get; set; } = false;
+
     [JsonIgnore]
     public static string DataDir { get; } = Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),

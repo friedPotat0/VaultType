@@ -28,17 +28,16 @@
             </Grid>
 
             <Grid Margin="0,16,0,4">
-                <TextBlock Text="{local:Tr settings.title}" Foreground="{StaticResource TextPrimary}" FontSize="20" FontWeight="SemiBold" VerticalAlignment="Center" />
+                <TextBlock Text="{local:Tr settings.title}" Foreground="{StaticResource TextPrimary}" FontSize="22" FontWeight="SemiBold" VerticalAlignment="Center" />
                 <Button Content="{local:Tr settings.reset}" Style="{StaticResource GhostButton}" Click="Reset_Click"
                         HorizontalAlignment="Right" VerticalAlignment="Center" Height="30" FontSize="11.5" />
             </Grid>
 
             <!-- Connection -->
             <TextBlock Text="{local:Tr settings.connection}" Foreground="{StaticResource TextMuted}" FontSize="10.5" FontWeight="SemiBold" Margin="0,14,0,8" />
-            <TextBlock Text="{local:Tr settings.serverUrl}" Foreground="{StaticResource TextSecondary}" FontSize="12" Margin="2,0,0,5" />
-            <Border Style="{StaticResource FieldBorder}">
-                <TextBox x:Name="ServerBox" Style="{StaticResource PlainBox}" Margin="12,0" />
-            </Border>
+            <Button Content="{local:Tr settings.changeLogin}" Style="{StaticResource GhostButton}" Click="ChangeLogin_Click"
+                    HorizontalAlignment="Left" Height="34" />
+            <TextBlock Text="{local:Tr settings.changeLoginHint}" Foreground="{StaticResource TextMuted}" FontSize="11" Margin="2,5,0,0" />
             <TextBlock Text="{local:Tr settings.hotkey}" Foreground="{StaticResource TextSecondary}" FontSize="12" Margin="2,12,0,5" />
             <Border Style="{StaticResource FieldBorder}">
                 <TextBox x:Name="HotkeyBox" Style="{StaticResource PlainBox}" IsReadOnly="True" Margin="12,0" />
