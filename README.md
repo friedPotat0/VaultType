@@ -76,17 +76,27 @@ search the whole vault at any time. Every window shares the same clean, dark int
   <tr>
     <td colspan="2" align="center">
       <img src="assets/screenshots/picker.png" width="420" alt="VaultType entry picker" /><br />
-      <sub><b>Entry picker</b> - matches for the active window come first; start typing to search the whole vault.</sub>
+      <sub><b>Entry picker</b> - matches for the active window come first; start typing to search the whole vault.</sub><br /><br />
+    </td>
+  </tr>
+  <tr>
+    <td align="center" valign="top" width="50%">
+      <img src="assets/screenshots/signin-vaultwarden.png" width="380" alt="VaultType sign-in (Vaultwarden)" /><br />
+      <sub><b>Vaultwarden sign-in</b> - pick the account type, then server URL, email and master password.</sub><br /><br />
+    </td>
+    <td align="center" valign="top" width="50%">
+      <img src="assets/screenshots/signin-bitwarden.png" width="380" alt="VaultType sign-in (Bitwarden.com)" /><br />
+      <sub><b>Bitwarden.com sign-in</b> - API-key login by default (avoids the CAPTCHA); no server field.</sub><br /><br />
     </td>
   </tr>
   <tr>
     <td align="center" valign="top" width="50%">
       <img src="assets/screenshots/unlock.png" width="380" alt="VaultType unlock prompt" /><br />
-      <sub><b>Unlock</b> - the master password only lives in locked, non-paged memory, then is discarded.</sub>
+      <sub><b>Unlock</b> - on later launches just the master password (locked memory, then discarded).</sub><br /><br />
     </td>
     <td align="center" valign="top" width="50%">
       <img src="assets/screenshots/settings.png" width="380" alt="VaultType settings window" /><br />
-      <sub><b>Settings</b> - hotkey, timeouts, language and the security-hardening toggles.</sub>
+      <sub><b>Settings</b> - hotkey, timeouts, language and the security-hardening toggles.</sub><br /><br />
     </td>
   </tr>
 </table>
@@ -137,13 +147,28 @@ VaultType **downloads it automatically** from the official source on first run a
 
 ## Installation
 
-1. Download **`VaultType.exe`** from the [latest release](../../releases/latest) - one
-   self-contained file, nothing else to install.
-2. Run it. Windows may show a SmartScreen warning because the `.exe` isn't code-signed (there is
-   currently no code-signing certificate for this project) - click *More info -> Run anyway*.
-3. On first launch it fetches the official Bitwarden CLI, then asks for your server URL and
-   master password.
-4. Optional: enable *Start with Windows* from the tray menu.
+Grab either build from the [latest release](../../releases/latest):
+
+- **Installer** (recommended) - `VaultType-<version>-Setup.exe`. Installs VaultType into your user
+  profile with a Start-menu shortcut and an uninstaller; no admin rights needed. You can delete the
+  downloaded setup afterwards.
+- **Portable** - `VaultType-<version>-win-x64.exe`. A single self-contained file you run directly;
+  keep it somewhere permanent (not your Downloads folder, where it's easy to delete by accident).
+
+Then, either way:
+
+1. Run it. Windows may show a SmartScreen warning because it isn't code-signed (there is currently
+   no code-signing certificate for this project) - click *More info -> Run anyway*.
+2. On first launch it fetches the official Bitwarden CLI, then shows the sign-in window - pick
+   **Vaultwarden** or **Bitwarden.com** and enter your details.
+3. Optional: enable *Start with Windows* from the tray menu.
+
+> [!NOTE]
+> **Signing in to bitwarden.com uses a personal API key by default.** The Bitwarden CLI can't
+> solve bitwarden.com's login CAPTCHA, so an API key is the reliable way in (it also avoids the
+> 2FA prompt). Create one in the Bitwarden web vault under *Account settings -> Security -> Keys
+> -> View API key*, then paste the client ID and secret. **Self-hosted Vaultwarden** has no such
+> CAPTCHA, so it simply uses your email and master password.
 
 ## Configuration
 
