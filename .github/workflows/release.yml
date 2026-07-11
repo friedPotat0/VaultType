@@ -60,7 +60,13 @@ jobs:
             -o publish
           Copy-Item publish/VaultType.exe "VaultType-${{ steps.v.outputs.version }}-win-x64.exe"
 
-      # keep the build around even for manual/test runs that don't cut a release
+      - name: Build installer (Inno Setup)
+        shell: pwsh
+        run: |
+          choco install innosetup --no-progress -y
+          & "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" /DMyAppVersion=${{ steps.v.outputs.version }} installer\VaultType.iss
+
+      # keep the builds around even for manual/test runs that don't cut a release
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
         with:
