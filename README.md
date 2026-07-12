@@ -97,7 +97,7 @@ search the whole vault at any time. Every window shares the same clean, dark int
     </td>
     <td align="center" valign="top" width="50%">
       <img src="assets/screenshots/signin-bitwarden.png" width="380" alt="VaultType sign-in (Bitwarden.com)" /><br />
-      <sub><b>Bitwarden.com sign-in</b> - API-key login by default (avoids the CAPTCHA); no server field.</sub><br /><br />
+      <sub><b>Bitwarden cloud sign-in</b> - pick the US or EU region; API-key login by default (avoids the CAPTCHA).</sub><br /><br />
     </td>
   </tr>
   <tr>
@@ -179,15 +179,16 @@ Then, either way:
 1. Run it. Windows may show a SmartScreen warning because it isn't code-signed (there is currently
    no code-signing certificate for this project) - click *More info -> Run anyway*.
 2. On first launch it asks whether to download the official Bitwarden CLI or add it yourself, then
-   shows the sign-in window - pick **Vaultwarden** or **Bitwarden.com** and enter your details.
+   shows the sign-in window - pick **Vaultwarden**, **Bitwarden US** or **Bitwarden EU** and enter your details.
 3. Optional: enable *Start with Windows* from the tray menu.
 
 > [!NOTE]
-> **Signing in to bitwarden.com uses a personal API key by default.** The Bitwarden CLI can't
-> solve bitwarden.com's login CAPTCHA, so an API key is the reliable way in (it also avoids the
-> 2FA prompt). Create one in the Bitwarden web vault under *Account settings -> Security -> Keys
-> -> View API key*, then paste the client ID and secret. **Self-hosted Vaultwarden** has no such
-> CAPTCHA, so it simply uses your email and master password.
+> **The Bitwarden cloud comes in two regions** - US (`bitwarden.com`) and EU (`bitwarden.eu`);
+> pick the one your account was created in, they are separate. **Signing in there uses a personal
+> API key by default:** the Bitwarden CLI can't solve the cloud login CAPTCHA, so an API key is the
+> reliable way in (it also avoids the 2FA prompt). Create one in the Bitwarden web vault under
+> *Account settings -> Security -> Keys -> View API key*, then paste the client ID and secret.
+> **Self-hosted Vaultwarden** has no such CAPTCHA, so it simply uses your email and master password.
 
 ## Configuration
 
