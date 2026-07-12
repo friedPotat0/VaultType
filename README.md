@@ -107,7 +107,7 @@ search the whole vault at any time. Every window shares the same clean, dark int
     </td>
     <td align="center" valign="top" width="50%">
       <img src="assets/screenshots/settings.png" width="380" alt="VaultType settings window" /><br />
-      <sub><b>Settings</b> - hotkey, timeouts, language and the security-hardening toggles.</sub><br /><br />
+      <sub><b>Settings</b> - hotkey, timeouts, URL matching, language and the security-hardening toggles.</sub><br /><br />
     </td>
   </tr>
 </table>
@@ -200,6 +200,7 @@ Settings live in `%LOCALAPPDATA%\VaultType\config.json` - **no secrets are store
 | `Language` | `auto` | UI language (`auto` follows Windows) |
 | `IdleTimeoutMinutes` | `30` | Auto-lock after inactivity |
 | `ClearFieldBeforeTyping` | `true` | Select the field (Ctrl+A) before typing |
+| `DefaultUriMatch` | `0` | Fallback URL match for entries with no rule of their own (`0` = base domain, `1` = host) |
 | `ShowIcons` | `true` | Favicons from your own server (`false` = letter avatars, offline) |
 | `ClipboardClearSeconds` | `12` | Clear the clipboard this long after a copy |
 | `ExcludeFromScreenCapture` | `true` | Hide windows from screenshots |
