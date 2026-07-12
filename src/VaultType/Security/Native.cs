@@ -23,7 +23,6 @@ internal static class Native
     public const uint CREATE_UNICODE_ENVIRONMENT = 0x00000400;
     public const uint STARTF_USESTDHANDLES = 0x00000100;
     public const uint HANDLE_FLAG_INHERIT = 0x00000001;
-    public const uint STILL_ACTIVE = 259;
     public const uint INFINITE = 0xFFFFFFFF;
 
     [StructLayout(LayoutKind.Sequential)]
@@ -70,7 +69,7 @@ internal static class Native
     [DllImport("kernel32.dll", SetLastError = true)]
     public static extern bool CheckRemoteDebuggerPresent(IntPtr hProcess, ref bool pbDebuggerPresent);
 
-    public enum PROCESS_MITIGATION_POLICY { ExtensionPointDisablePolicy = 8, ImageLoadPolicy = 10 }
+    public enum PROCESS_MITIGATION_POLICY { ExtensionPointDisablePolicy = 8 }
 
     [DllImport("kernel32.dll", SetLastError = true)]
     public static extern bool SetProcessMitigationPolicy(PROCESS_MITIGATION_POLICY policy, ref uint lpBuffer, IntPtr dwLength);
@@ -83,7 +82,7 @@ internal static class Native
     [DllImport("user32.dll")] public static extern int GetWindowTextLength(IntPtr hWnd);
 
     // Anti-screenshot: WDA_EXCLUDEFROMCAPTURE (Win10 2004+) hides the window from screen captures.
-    public const uint WDA_NONE = 0x0, WDA_EXCLUDEFROMCAPTURE = 0x11;
+    public const uint WDA_EXCLUDEFROMCAPTURE = 0x11;
     [DllImport("user32.dll", SetLastError = true)] public static extern bool SetWindowDisplayAffinity(IntPtr hWnd, uint dwAffinity);
 
     // ---- Global hotkey ----

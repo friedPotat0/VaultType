@@ -27,7 +27,6 @@ public sealed class VaultItem
     public SecretBox? TotpSecret { get; set; }
 
     public string PrimaryHost => Uris.Count > 0 ? Uris[0].Host : "";
-    public string PrimaryUri => Uris.Count > 0 ? Uris[0].Value : "";
 
     // case-insensitive search over name, username and URIs (nothing secret)
     public bool Matches(string term)
