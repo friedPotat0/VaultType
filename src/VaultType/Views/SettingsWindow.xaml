@@ -94,6 +94,11 @@
             <CheckBox x:Name="TrayClickChk" Content="{local:Tr settings.trayClick}" Margin="0,12,0,0"
                       ToolTip="{local:Tr settings.trayClickHint}" />
 
+            <!-- URL match -->
+            <TextBlock Text="{local:Tr settings.uriMatch}" Foreground="{StaticResource TextSecondary}" FontSize="12" Margin="2,18,0,5" />
+            <ComboBox x:Name="UriMatchBox" />
+            <TextBlock Text="{local:Tr settings.uriMatchHint}" Foreground="{StaticResource TextMuted}" FontSize="11" Margin="2,5,0,0" />
+
             <!-- Language -->
             <TextBlock Text="{local:Tr settings.language}" Foreground="{StaticResource TextSecondary}" FontSize="12" Margin="2,18,0,5" />
             <ComboBox x:Name="LangBox" />

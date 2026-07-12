@@ -81,6 +81,10 @@
   "settings.antiDebug": "Afsluiten als een debugger wordt gedetecteerd",
   "settings.language": "Taal",
   "settings.langAuto": "Systeemstandaard",
+  "settings.uriMatch": "Standaard-URL-overeenkomst",
+  "settings.uriMatchHint": "Geldt voor items zonder eigen overeenkomsttype.",
+  "settings.uriMatchBase": "Basisdomein",
+  "settings.uriMatchHost": "Host",
   "settings.reset": "Standaardwaarden herstellen",
 
   "tray.locked": "Vergrendeld",

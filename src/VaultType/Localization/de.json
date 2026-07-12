@@ -81,6 +81,10 @@
   "settings.antiDebug": "Beenden, wenn ein Debugger erkannt wird",
   "settings.language": "Sprache",
   "settings.langAuto": "Systemstandard",
+  "settings.uriMatch": "Standard-URL-Abgleich",
+  "settings.uriMatchHint": "Gilt für Einträge ohne eigenen Abgleichtyp.",
+  "settings.uriMatchBase": "Basis-Domäne",
+  "settings.uriMatchHost": "Host",
   "settings.reset": "Auf Standard zurücksetzen",
 
   "tray.locked": "Gesperrt",

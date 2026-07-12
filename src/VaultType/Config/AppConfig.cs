@@ -44,6 +44,11 @@ public sealed class AppConfig
     // name of the custom entry field that holds a per-entry auto-type sequence
     public string AutoTypeFieldName { get; set; } = "auto-type";
 
+    // URI match rule for entries that don't set their own (0 = base domain, 1 = host).
+    // Bitwarden's own default is base domain; host is handy when every service sits on its
+    // own subdomain of one domain.
+    public int DefaultUriMatch { get; set; } = 0;
+
     // keep windows out of screenshots / screen scrapers
     public bool ExcludeFromScreenCapture { get; set; } = true;
 

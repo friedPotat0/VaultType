@@ -81,6 +81,10 @@
   "settings.antiDebug": "Zakończ, jeśli wykryto debuger",
   "settings.language": "Język",
   "settings.langAuto": "Domyślny systemu",
+  "settings.uriMatch": "Domyślne dopasowanie adresu URL",
+  "settings.uriMatchHint": "Dotyczy wpisów bez własnego typu dopasowania.",
+  "settings.uriMatchBase": "Domena podstawowa",
+  "settings.uriMatchHost": "Host",
   "settings.reset": "Przywróć domyślne",
 
   "tray.locked": "Zablokowano",

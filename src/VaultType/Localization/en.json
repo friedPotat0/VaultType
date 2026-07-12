@@ -81,6 +81,10 @@
   "settings.antiDebug": "Exit if a debugger attaches",
   "settings.language": "Language",
   "settings.langAuto": "System default",
+  "settings.uriMatch": "Default URL match",
+  "settings.uriMatchHint": "Applies to entries without their own match type.",
+  "settings.uriMatchBase": "Base domain",
+  "settings.uriMatchHost": "Host",
   "settings.reset": "Reset to defaults",
 
   "tray.locked": "Locked",

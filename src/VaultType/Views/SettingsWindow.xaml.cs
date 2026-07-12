@@ -43,6 +43,10 @@ public partial class SettingsWindow : Window
         int li = Array.FindIndex(_langCodes, c => c.Equals(cfg.Language, StringComparison.OrdinalIgnoreCase));
         LangBox.SelectedIndex = li < 0 ? 0 : li;
 
+        UriMatchBox.Items.Add(Loc.T("settings.uriMatchBase"));   // index 0 = base domain
+        UriMatchBox.Items.Add(Loc.T("settings.uriMatchHost"));   // index 1 = host
+        UriMatchBox.SelectedIndex = cfg.DefaultUriMatch == 1 ? 1 : 0;
+
         VersionRun.Text = "v" + AppInfo.Version;
 
         HotkeyBox.PreviewKeyDown += HotkeyBox_PreviewKeyDown;
@@ -101,6 +105,8 @@ public partial class SettingsWindow : Window
         int lsel = LangBox.SelectedIndex;
         _cfg.Language = (lsel >= 0 && lsel < _langCodes.Length) ? _langCodes[lsel] : "auto";
 
+        _cfg.DefaultUriMatch = UriMatchBox.SelectedIndex == 1 ? 1 : 0;
+
         DialogResult = true;
     }
 
@@ -117,6 +123,7 @@ public partial class SettingsWindow : Window
         ExcludeCapChk.IsChecked = d.ExcludeFromScreenCapture;
         AntiDbgChk.IsChecked = d.AntiDebugger;
         LangBox.SelectedIndex = 0;
+        UriMatchBox.SelectedIndex = d.DefaultUriMatch;
     }
 
     private void ChangeLogin_Click(object sender, RoutedEventArgs e)

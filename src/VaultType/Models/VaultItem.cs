@@ -6,7 +6,7 @@ namespace VaultType.Models;
 public sealed class ItemUri
 {
     public string Value { get; set; } = "";
-    public int MatchType { get; set; }   // 0=Domain,1=Host,2=StartsWith,3=Exact,4=Regex,5=Never
+    public int? MatchType { get; set; }   // null = use the configured default; 0=Domain,1=Host,2=StartsWith,3=Exact,4=Regex,5=Never
     public string Host { get; set; } = "";
     public string Domain { get; set; } = "";
 }

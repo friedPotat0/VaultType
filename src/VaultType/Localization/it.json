@@ -81,6 +81,10 @@
   "settings.antiDebug": "Esci se viene rilevato un debugger",
   "settings.language": "Lingua",
   "settings.langAuto": "Predefinito di sistema",
+  "settings.uriMatch": "Corrispondenza URL predefinita",
+  "settings.uriMatchHint": "Si applica agli elementi senza un tipo di corrispondenza proprio.",
+  "settings.uriMatchBase": "Dominio di base",
+  "settings.uriMatchHost": "Host",
   "settings.reset": "Ripristina valori",
 
   "tray.locked": "Bloccato",

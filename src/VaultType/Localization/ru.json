@@ -81,6 +81,10 @@
   "settings.antiDebug": "Выходить при обнаружении отладчика",
   "settings.language": "Язык",
   "settings.langAuto": "Системный по умолчанию",
+  "settings.uriMatch": "Сопоставление URL по умолчанию",
+  "settings.uriMatchHint": "Применяется к записям без собственного типа сопоставления.",
+  "settings.uriMatchBase": "Базовый домен",
+  "settings.uriMatchHost": "Хост",
   "settings.reset": "Сбросить к умолчаниям",
 
   "tray.locked": "Заблокировано",

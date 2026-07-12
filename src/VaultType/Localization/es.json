@@ -81,6 +81,10 @@
   "settings.antiDebug": "Salir si se detecta un depurador",
   "settings.language": "Idioma",
   "settings.langAuto": "Predeterminado del sistema",
+  "settings.uriMatch": "Coincidencia de URL predeterminada",
+  "settings.uriMatchHint": "Se aplica a los elementos sin su propio tipo de coincidencia.",
+  "settings.uriMatchBase": "Dominio base",
+  "settings.uriMatchHost": "Host",
   "settings.reset": "Restablecer valores",
 
   "tray.locked": "Bloqueado",

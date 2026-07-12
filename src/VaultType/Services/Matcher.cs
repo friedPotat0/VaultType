@@ -45,9 +45,9 @@ public static class Matcher
         return $"{sld}.{tld}";
     }
 
-    public static bool UriMatches(ItemUri u, string pageFull, string pageHost, string pageDomain)
+    public static bool UriMatches(ItemUri u, string pageFull, string pageHost, string pageDomain, int defaultMatch)
     {
-        switch (u.MatchType)
+        switch (u.MatchType ?? defaultMatch)
         {
             case 5: return false;                                            // Never
             // Regex from the user's own vault, but a bad pattern could backtrack forever - cap it.
@@ -60,7 +60,7 @@ public static class Matcher
     }
 
     // entries that match the current foreground context
-    public static List<VaultItem> FindMatches(IReadOnlyList<VaultItem> all, ForegroundInfo ctx)
+    public static List<VaultItem> FindMatches(IReadOnlyList<VaultItem> all, ForegroundInfo ctx, int defaultMatch)
     {
         var res = new List<VaultItem>();
 
@@ -69,7 +69,7 @@ public static class Matcher
             var (host, domain) = HostDomain(ctx.Url!);
             foreach (var it in all)
                 foreach (var u in it.Uris)
-                    if (UriMatches(u, ctx.Url!, host, domain)) { res.Add(it); break; }
+                    if (UriMatches(u, ctx.Url!, host, domain, defaultMatch)) { res.Add(it); break; }
             return res;
         }
 

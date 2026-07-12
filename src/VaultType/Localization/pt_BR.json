@@ -81,6 +81,10 @@
   "settings.antiDebug": "Sair se um depurador for detectado",
   "settings.language": "Idioma",
   "settings.langAuto": "Padrão do sistema",
+  "settings.uriMatch": "Correspondência de URL padrão",
+  "settings.uriMatchHint": "Aplica-se a itens sem tipo de correspondência próprio.",
+  "settings.uriMatchBase": "Domínio base",
+  "settings.uriMatchHost": "Host",
   "settings.reset": "Restaurar padrões",
 
   "tray.locked": "Bloqueado",

@@ -262,7 +262,7 @@ public sealed class BitwardenCli
                 if (reader.TokenType == JsonTokenType.EndObject) break;
                 if (reader.TokenType != JsonTokenType.PropertyName) continue;
                 if (reader.ValueTextEquals("uri")) { reader.Read(); u.Value = ReadStr(ref reader); }
-                else if (reader.ValueTextEquals("match")) { reader.Read(); u.MatchType = ReadInt(ref reader); }
+                else if (reader.ValueTextEquals("match")) { reader.Read(); if (reader.TokenType == JsonTokenType.Number && reader.TryGetInt32(out int m)) u.MatchType = m; }
                 else { reader.Read(); SkipValue(ref reader); }
             }
             if (u.Value.Length > 0) { Matcher.FillHostDomain(u); it.Uris.Add(u); }

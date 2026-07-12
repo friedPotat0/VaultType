@@ -81,6 +81,10 @@
   "settings.antiDebug": "检测到调试器时退出",
   "settings.language": "语言",
   "settings.langAuto": "系统默认",
+  "settings.uriMatch": "默认 URL 匹配",
+  "settings.uriMatchHint": "适用于未设置自身匹配类型的条目。",
+  "settings.uriMatchBase": "基础域名",
+  "settings.uriMatchHost": "主机",
   "settings.reset": "恢复默认",
 
   "tray.locked": "已锁定",

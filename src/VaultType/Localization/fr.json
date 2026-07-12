@@ -81,6 +81,10 @@
   "settings.antiDebug": "Quitter si un débogueur est détecté",
   "settings.language": "Langue",
   "settings.langAuto": "Par défaut du système",
+  "settings.uriMatch": "Correspondance d'URL par défaut",
+  "settings.uriMatchHint": "S'applique aux éléments sans type de correspondance propre.",
+  "settings.uriMatchBase": "Domaine de base",
+  "settings.uriMatchHost": "Hôte",
   "settings.reset": "Réinitialiser",
 
   "tray.locked": "Verrouillé",

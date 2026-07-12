@@ -81,6 +81,10 @@
   "settings.antiDebug": "デバッガーが検出されたら終了",
   "settings.language": "言語",
   "settings.langAuto": "システムの既定",
+  "settings.uriMatch": "既定の URL 一致",
+  "settings.uriMatchHint": "独自の一致タイプが設定されていない項目に適用されます。",
+  "settings.uriMatchBase": "ベースドメイン",
+  "settings.uriMatchHost": "ホスト",
   "settings.reset": "既定値に戻す",
 
   "tray.locked": "ロック中",

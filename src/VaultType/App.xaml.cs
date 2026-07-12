@@ -120,7 +120,7 @@ public partial class App : Application
                 try { ctx.Url = await urlTask; } finally { l.Close(); }
             }
 
-            var matches = Matcher.FindMatches(_items, ctx);
+            var matches = Matcher.FindMatches(_items, ctx, _cfg.DefaultUriMatch);
             var picker = new PickerWindow(_items, matches, ctx, _cfg.ExcludeFromScreenCapture, _icons, showAllFirst);
             bool? ok = picker.ShowDialog();
             _idle.Arm(_cfg.IdleTimeoutMinutes);
@@ -167,7 +167,7 @@ public partial class App : Application
 
         if (_cli.AddUri(_session, item.Id, uri, out string err))
         {
-            var iu = new ItemUri { Value = uri, MatchType = 0 };
+            var iu = new ItemUri { Value = uri };   // no explicit match -> follows the configured default
             Matcher.FillHostDomain(iu);
             item.Uris.Add(iu);
             ShowBalloon(Loc.T("msg.savedTitle"), Loc.T("msg.savedMsg", item.Name, label));
