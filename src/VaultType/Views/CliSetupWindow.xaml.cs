@@ -81,10 +81,22 @@ public partial class CliSetupWindow : Window
 
     private void CompleteIfPresent()
     {
-        if (!File.Exists(_targetPath)) return;
+        if (!IsReady(_targetPath)) return;
         SelectedFile = null;   // already at the target - the caller doesn't need to copy anything
         Choice = CliSetupChoice.Manual;
         try { DialogResult = true; } catch { }
+    }
+
+    // The Created/Changed events can fire mid-copy. An exclusive open only succeeds once the
+    // writer has released the file, so we don't finish setup on a half-written bw.exe.
+    private static bool IsReady(string path)
+    {
+        try
+        {
+            using var fs = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.None);
+            return fs.Length > 0;
+        }
+        catch { return false; }
     }
 
     private void Window_DragOver(object sender, DragEventArgs e)

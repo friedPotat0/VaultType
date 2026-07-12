@@ -418,19 +418,27 @@ public partial class App : Application
         if (notify) ShowBalloon(Loc.T("msg.lockedTitle"), Loc.T("msg.lockedMsg"));
     }
 
-    private void SyncNow()
+    private async void SyncNow()
     {
         if (!_unlocked || _session == null) { ShowBalloon(Loc.T("msg.note"), Loc.T("msg.unlockFirst")); return; }
         if (_busy) return;
         _busy = true;
+        _idle.Disarm();   // don't let the idle-lock dispose the session while the sync runs off-thread
         try
         {
-            _cli.Sync(_session);
-            var items = _cli.ListItems(_session, _protector!, out string err);
+            var session = _session;
+            var protector = _protector!;
+            var (items, err) = await Task.Run(() =>
+            {
+                _cli.Sync(session);
+                var it = _cli.ListItems(session, protector, out string e);
+                return (it, e);
+            });
             if (err.Length == 0) { _items = items; UpdateTray(); ShowBalloon(Loc.T("msg.syncedTitle"), Loc.T("msg.syncedMsg", _items.Count)); }
             else ShowBalloon(Loc.T("msg.syncErr"), err);
         }
-        finally { _busy = false; }
+        catch (Exception ex) { ShowBalloon(Loc.T("msg.syncErr"), ex.Message); }
+        finally { _busy = false; if (_unlocked) _idle.Arm(_cfg.IdleTimeoutMinutes); }
     }
 
     private void OpenSettings()
