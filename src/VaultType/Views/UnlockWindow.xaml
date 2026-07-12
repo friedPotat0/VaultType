@@ -32,7 +32,8 @@
             <StackPanel x:Name="AccountTypeGroup" Margin="0,0,0,14">
                 <ComboBox x:Name="AccountBox" SelectedIndex="0" SelectionChanged="Account_Changed">
                     <ComboBoxItem Content="Vaultwarden (self-hosted)" />
-                    <ComboBoxItem Content="Bitwarden.com" />
+                    <ComboBoxItem Content="Bitwarden.com (US)" />
+                    <ComboBoxItem Content="Bitwarden.eu (EU)" />
                 </ComboBox>
             </StackPanel>
 

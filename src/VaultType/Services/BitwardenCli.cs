@@ -84,7 +84,7 @@ public sealed class BitwardenCli
         return BytesToSecure(r.OutSpan);
     }
 
-    // Personal API-key sign-in - the sane option for bitwarden.com since it skips the
+    // Personal API-key sign-in - the sane option for the Bitwarden cloud since it skips the
     // CAPTCHA/bot check and 2FA. Only authenticates the CLI; the vault stays locked until
     // you unlock it with the master password afterwards.
     public bool LoginApiKey(string clientId, SecureString clientSecret, out string error)

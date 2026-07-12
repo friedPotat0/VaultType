@@ -20,6 +20,10 @@ public partial class UnlockWindow : Window
     private readonly bool _loginMode;
     private readonly bool _excludeCapture;
 
+    // official Bitwarden cloud regions (the URL passed to `bw config server`)
+    private const string UsCloud = "https://vault.bitwarden.com";
+    private const string EuCloud = "https://vault.bitwarden.eu";
+
     public UnlockWindow(string heading, string subtitle, bool loginMode, string email, string server, bool excludeCapture)
     {
         InitializeComponent();
@@ -35,7 +39,17 @@ public partial class UnlockWindow : Window
         }
         OkBtn.Content = loginMode ? Loc.T("unlock.btnSignin") : Loc.T("unlock.btnUnlock");
         EmailBox.Text = email;
-        ServerBox.Text = server;
+
+        // Pre-select the region that matches the saved server. The cloud regions have no editable
+        // URL, so only a self-hosted address goes into the server box.
+        bool usCloud = string.Equals(server, UsCloud, StringComparison.OrdinalIgnoreCase);
+        bool euCloud = string.Equals(server, EuCloud, StringComparison.OrdinalIgnoreCase);
+        if (loginMode)
+        {
+            AccountBox.SelectedIndex = usCloud ? 1 : euCloud ? 2 : 0;
+            if (usCloud || euCloud) ApiKeyChk.IsChecked = true;
+        }
+        ServerBox.Text = usCloud || euCloud ? "" : server;
 
         MouseLeftButtonDown += (_, e) => { if (e.ButtonState == MouseButtonState.Pressed) { try { DragMove(); } catch { } } };
         Loaded += OnLoaded;
@@ -46,14 +60,14 @@ public partial class UnlockWindow : Window
     private void Account_Changed(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
     {
         if (!IsInitialized) return;
-        if (AccountBox.SelectedIndex == 1) ApiKeyChk.IsChecked = true;   // API key is the reliable path for bitwarden.com
+        if (AccountBox.SelectedIndex >= 1) ApiKeyChk.IsChecked = true;   // API key is the reliable path for the Bitwarden cloud
         UpdateFields();
     }
 
     private void UpdateFields()
     {
-        bool vw = AccountBox.SelectedIndex == 0;                       // 0 = Vaultwarden, 1 = Bitwarden.com
-        bool api = _loginMode && !vw && ApiKeyChk.IsChecked == true;   // API key only makes sense for bitwarden.com
+        bool vw = AccountBox.SelectedIndex == 0;                       // 0 = Vaultwarden, 1/2 = Bitwarden cloud (US/EU)
+        bool api = _loginMode && !vw && ApiKeyChk.IsChecked == true;   // API key only makes sense for the Bitwarden cloud
         AccountTypeGroup.Visibility = _loginMode ? Visibility.Visible : Visibility.Collapsed;
         ServerGroup.Visibility = _loginMode && vw ? Visibility.Visible : Visibility.Collapsed;
         ApiKeyChk.Visibility = _loginMode && !vw ? Visibility.Visible : Visibility.Collapsed;
@@ -110,7 +124,12 @@ public partial class UnlockWindow : Window
 
         Password = Pw.SecurePassword;
         Email = EmailBox.Text.Trim();
-        Server = vw ? ServerBox.Text.Trim() : "";
+        Server = AccountBox.SelectedIndex switch
+        {
+            1 => UsCloud,
+            2 => EuCloud,
+            _ => ServerBox.Text.Trim(),   // Vaultwarden (self-hosted)
+        };
         UseApiKey = api;
         ClientId = ClientIdBox.Text.Trim();
         ClientSecret = ClientSecretBox.SecurePassword;

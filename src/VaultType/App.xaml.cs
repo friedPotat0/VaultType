@@ -344,8 +344,8 @@ public partial class App : Application
                 if (!loginMode) s = _cli.Unlock(master, out e);
                 else
                 {
-                    // apply the server from the sign-in form (empty = bitwarden.com default)
-                    _cli.ConfigServer(string.IsNullOrWhiteSpace(_cfg.ServerUrl) ? "https://bitwarden.com" : _cfg.ServerUrl, out _);
+                    // apply the server from the sign-in form (empty = US cloud default)
+                    _cli.ConfigServer(string.IsNullOrWhiteSpace(_cfg.ServerUrl) ? "https://vault.bitwarden.com" : _cfg.ServerUrl, out _);
                     _serverConfigured = true;
                     if (win.UseApiKey) s = _cli.LoginApiKey(win.ClientId, win.ClientSecret!, out e) ? _cli.Unlock(master, out e) : null;
                     else s = _cli.Login(win.Email, master, win.TwoFactorCode, win.TwoFactorMethod, out e);
