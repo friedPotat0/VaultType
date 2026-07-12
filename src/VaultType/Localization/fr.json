@@ -22,7 +22,6 @@
   "unlock.serverHint": "Exemple : https://vault.example.com",
   "unlock.master": "Mot de passe maître",
   "unlock.twofa": "Double authentification (si activée)",
-  "unlock.signinTo": "Se connecter au serveur :",
   "unlock.confirmTitle": "Confirmation requise",
   "unlock.confirmMsg": "Cette entrée nécessite de saisir à nouveau votre mot de passe maître.",
   "unlock.errServer": "Saisissez l'URL de votre serveur.",
@@ -50,11 +49,19 @@
   "loading.signingin": "Connexion ...",
   "loading.loading": "Chargement du coffre ...",
   "loading.reading": "Lecture de la page ...",
-  "loading.downloadCli": "Téléchargement de Bitwarden CLI ...",
+  "cli.title": "Configurer Bitwarden CLI",
+  "cli.body": "VaultType utilise l'outil en ligne de commande officiel de Bitwarden (bw.exe) pour accéder à votre coffre - il n'est pas inclus dans VaultType. Choisissez comment l'ajouter :",
+  "cli.download": "Télécharger automatiquement",
+  "cli.downloadHint": "Depuis la source officielle de Bitwarden : {0}",
+  "cli.selectFile": "L'ajouter moi-même",
+  "cli.selectHint": "Téléchargez bw.exe depuis bitwarden.com, puis glissez-le sur cette fenêtre - ou utilisez le bouton pour ouvrir son dossier et l'y déposer.",
+  "cli.waiting": "En attente de bw.exe dans : {0}",
+  "cli.dlTitle": "Téléchargement de Bitwarden CLI",
+  "cli.dlSource": "Source : {0}",
+  "cli.dlEta": "{0} restant",
 
   "settings.title": "Paramètres",
   "settings.connection": "CONNEXION",
-  "settings.serverUrl": "URL du serveur",
   "settings.changeLogin": "Modifier la connexion",
   "settings.changeLoginHint": "Changer de serveur, e-mail ou clé API.",
   "settings.hotkey": "Raccourci global",
@@ -84,6 +91,7 @@
 
   "msg.runningTitle": "VaultType est en cours d'exécution",
   "msg.runningMsg": "Raccourci : {0}. Clic droit sur l'icône pour le menu.",
+  "msg.hotkeyInUse": "Le raccourci {0} est déjà utilisé par un autre programme, la saisie automatique globale est donc désactivée. VaultType continue de fonctionner - choisissez une autre combinaison dans les Paramètres.",
   "msg.lockedTitle": "Verrouillé",
   "msg.lockedMsg": "Coffre verrouillé. Votre mot de passe maître est requis pour la prochaine saisie automatique.",
   "msg.syncedTitle": "Synchronisé",
@@ -99,5 +107,5 @@
   "msg.couldNotLoad": "Impossible de charger les entrées : {0}",
   "msg.savedTitle": "Enregistré",
   "msg.savedMsg": "'{0}' sera proposé pour {1}.",
-  "msg.cliMissing": "Impossible de télécharger Bitwarden CLI (bw.exe). Placez-le à côté de VaultType.exe."
+  "msg.cliMissing": "Impossible de télécharger Bitwarden CLI. Un pare-feu (p. ex. NetLimiter) ou l'absence de connexion Internet peut le bloquer. Autorisez VaultType, ou téléchargez bw.exe depuis bitwarden.com et placez-le ici :\n{0}"
 }

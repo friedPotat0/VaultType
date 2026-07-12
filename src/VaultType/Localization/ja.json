@@ -22,7 +22,6 @@
   "unlock.serverHint": "例: https://vault.example.com",
   "unlock.master": "マスターパスワード",
   "unlock.twofa": "二要素認証（有効な場合）",
-  "unlock.signinTo": "サーバーにサインイン:",
   "unlock.confirmTitle": "確認が必要です",
   "unlock.confirmMsg": "この項目はマスターパスワードの再入力が必要です。",
   "unlock.errServer": "サーバー URL を入力してください。",
@@ -50,11 +49,19 @@
   "loading.signingin": "サインイン中 ...",
   "loading.loading": "保管庫を読み込み中 ...",
   "loading.reading": "ページを読み取り中 ...",
-  "loading.downloadCli": "Bitwarden CLI をダウンロード中 ...",
+  "cli.title": "Bitwarden CLI のセットアップ",
+  "cli.body": "VaultType はボールトの操作に公式の Bitwarden コマンドラインツール（bw.exe）を使用します。VaultType には同梱されていません。追加方法を選んでください:",
+  "cli.download": "自動的にダウンロード",
+  "cli.downloadHint": "Bitwarden の公式ソースから: {0}",
+  "cli.selectFile": "自分で追加する",
+  "cli.selectHint": "bitwarden.com から bw.exe をダウンロードし、このウィンドウにドラッグしてください。またはボタンでフォルダーを開いてそこに置いてください。",
+  "cli.waiting": "bw.exe を待っています: {0}",
+  "cli.dlTitle": "Bitwarden CLI をダウンロード中",
+  "cli.dlSource": "ソース: {0}",
+  "cli.dlEta": "残り {0}",
 
   "settings.title": "設定",
   "settings.connection": "接続",
-  "settings.serverUrl": "サーバー URL",
   "settings.changeLogin": "ログイン情報を変更",
   "settings.changeLoginHint": "サーバー、メールまたは API キーを変更。",
   "settings.hotkey": "グローバルホットキー",
@@ -84,6 +91,7 @@
 
   "msg.runningTitle": "VaultType が実行中です",
   "msg.runningMsg": "ホットキー: {0}。メニューはトレイアイコンを右クリック。",
+  "msg.hotkeyInUse": "ホットキー {0} は既に別のプログラムが使用しているため、グローバル自動入力はオフです。VaultType は動作を続けます。設定で別の組み合わせを選んでください。",
   "msg.lockedTitle": "ロック中",
   "msg.lockedMsg": "保管庫をロックしました。次回の自動入力にはマスターパスワードが必要です。",
   "msg.syncedTitle": "同期完了",
@@ -99,5 +107,5 @@
   "msg.couldNotLoad": "項目を読み込めませんでした: {0}",
   "msg.savedTitle": "保存しました",
   "msg.savedMsg": "'{0}' は {1} で提案されます。",
-  "msg.cliMissing": "Bitwarden CLI (bw.exe) をダウンロードできませんでした。VaultType.exe の隣に配置してください。"
+  "msg.cliMissing": "Bitwarden CLI をダウンロードできませんでした。ファイアウォール（例: NetLimiter）またはインターネット接続がないことが原因かもしれません。VaultType の通信を許可するか、bitwarden.com から bw.exe をダウンロードして次の場所に配置してください:\n{0}"
 }

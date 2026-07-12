@@ -22,7 +22,6 @@
   "unlock.serverHint": "Beispiel: https://vault.example.com",
   "unlock.master": "Master-Passwort",
   "unlock.twofa": "Zwei-Faktor (falls aktiviert)",
-  "unlock.signinTo": "Am Server anmelden:",
   "unlock.confirmTitle": "Bestätigung erforderlich",
   "unlock.confirmMsg": "Dieser Eintrag verlangt eine erneute Eingabe des Master-Passworts.",
   "unlock.errServer": "Bitte gib deine Server-URL ein.",
@@ -50,11 +49,19 @@
   "loading.signingin": "Anmelden ...",
   "loading.loading": "Tresor wird geladen ...",
   "loading.reading": "Seite wird gelesen ...",
-  "loading.downloadCli": "Bitwarden-CLI wird geladen ...",
+  "cli.title": "Bitwarden-CLI einrichten",
+  "cli.body": "VaultType nutzt das offizielle Bitwarden-Kommandozeilenprogramm (bw.exe), um mit deinem Tresor zu arbeiten - es ist nicht in VaultType enthalten. Wähle, wie du es hinzufügen möchtest:",
+  "cli.download": "Automatisch herunterladen",
+  "cli.downloadHint": "Von der offiziellen Bitwarden-Quelle: {0}",
+  "cli.selectFile": "Selbst hinzufügen",
+  "cli.selectHint": "Lade bw.exe selbst von bitwarden.com herunter und ziehe sie auf dieses Fenster - oder öffne per Button den Ordner und lege sie dort ab.",
+  "cli.waiting": "Warte auf bw.exe in: {0}",
+  "cli.dlTitle": "Bitwarden-CLI wird heruntergeladen",
+  "cli.dlSource": "Quelle: {0}",
+  "cli.dlEta": "noch {0}",
 
   "settings.title": "Einstellungen",
   "settings.connection": "VERBINDUNG",
-  "settings.serverUrl": "Server-URL",
   "settings.changeLogin": "Anmeldung ändern",
   "settings.changeLoginHint": "Server, E-Mail oder API-Schlüssel ändern.",
   "settings.hotkey": "Globaler Hotkey",
@@ -84,6 +91,7 @@
 
   "msg.runningTitle": "VaultType läuft",
   "msg.runningMsg": "Hotkey: {0}. Rechtsklick aufs Tray-Icon für das Menü.",
+  "msg.hotkeyInUse": "Der Hotkey {0} wird bereits von einem anderen Programm belegt, globales Auto-Type ist deshalb ausgeschaltet. VaultType läuft weiter - wähle in den Einstellungen eine andere Kombination.",
   "msg.lockedTitle": "Gesperrt",
   "msg.lockedMsg": "Tresor gesperrt. Beim nächsten Auto-Type ist das Master-Passwort nötig.",
   "msg.syncedTitle": "Synchronisiert",
@@ -99,5 +107,5 @@
   "msg.couldNotLoad": "Einträge konnten nicht geladen werden: {0}",
   "msg.savedTitle": "Gespeichert",
   "msg.savedMsg": "'{0}' wird künftig für {1} vorgeschlagen.",
-  "msg.cliMissing": "Bitwarden-CLI (bw.exe) konnte nicht geladen werden. Bitte lege sie neben VaultType.exe."
+  "msg.cliMissing": "Die Bitwarden-CLI konnte nicht heruntergeladen werden. Vermutlich blockiert eine Firewall (z. B. NetLimiter) oder es fehlt die Internetverbindung. Erlaube VaultType den Zugriff, oder lade bw.exe von bitwarden.com herunter und lege sie hier ab:\n{0}"
 }

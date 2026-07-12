@@ -22,7 +22,6 @@
   "unlock.serverHint": "Example: https://vault.example.com",
   "unlock.master": "Master password",
   "unlock.twofa": "Two-factor (if enabled)",
-  "unlock.signinTo": "Sign in to server:",
   "unlock.confirmTitle": "Confirmation required",
   "unlock.confirmMsg": "This entry requires re-entering your master password.",
   "unlock.errServer": "Enter your server URL.",
@@ -50,11 +49,19 @@
   "loading.signingin": "Signing in ...",
   "loading.loading": "Loading vault ...",
   "loading.reading": "Reading page ...",
-  "loading.downloadCli": "Downloading Bitwarden CLI ...",
+  "cli.title": "Set up the Bitwarden CLI",
+  "cli.body": "VaultType uses the official Bitwarden command-line tool (bw.exe) to work with your vault - it is not bundled with VaultType. Choose how to add it:",
+  "cli.download": "Download automatically",
+  "cli.downloadHint": "From Bitwarden's official source: {0}",
+  "cli.selectFile": "Add it myself",
+  "cli.selectHint": "Download bw.exe from bitwarden.com, then drag it onto this window - or use the button to open its folder and drop it in.",
+  "cli.waiting": "Waiting for bw.exe in: {0}",
+  "cli.dlTitle": "Downloading the Bitwarden CLI",
+  "cli.dlSource": "Source: {0}",
+  "cli.dlEta": "{0} left",
 
   "settings.title": "Settings",
   "settings.connection": "CONNECTION",
-  "settings.serverUrl": "Server URL",
   "settings.changeLogin": "Change login",
   "settings.changeLoginHint": "Change server, email or API key.",
   "settings.hotkey": "Global hotkey",
@@ -84,6 +91,7 @@
 
   "msg.runningTitle": "VaultType is running",
   "msg.runningMsg": "Hotkey: {0}. Right-click the tray icon for the menu.",
+  "msg.hotkeyInUse": "The hotkey {0} is already used by another program, so global auto-type is off. VaultType keeps running - open Settings to pick a different combination.",
   "msg.lockedTitle": "Locked",
   "msg.lockedMsg": "Vault locked. Your master password is required for the next auto-type.",
   "msg.syncedTitle": "Synced",
@@ -99,5 +107,5 @@
   "msg.couldNotLoad": "Could not load entries: {0}",
   "msg.savedTitle": "Saved",
   "msg.savedMsg": "'{0}' will be suggested for {1}.",
-  "msg.cliMissing": "Could not download the Bitwarden CLI (bw.exe). Please place it next to VaultType.exe."
+  "msg.cliMissing": "Couldn't download the Bitwarden CLI. A firewall (e.g. NetLimiter) or a missing internet connection may be blocking it. Allow VaultType online, or download bw.exe from bitwarden.com and place it at:\n{0}"
 }

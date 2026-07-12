@@ -22,7 +22,6 @@
   "unlock.serverHint": "Пример: https://vault.example.com",
   "unlock.master": "Мастер-пароль",
   "unlock.twofa": "Двухфакторная (если включена)",
-  "unlock.signinTo": "Вход на сервер:",
   "unlock.confirmTitle": "Требуется подтверждение",
   "unlock.confirmMsg": "Эта запись требует повторного ввода мастер-пароля.",
   "unlock.errServer": "Введите URL сервера.",
@@ -50,11 +49,19 @@
   "loading.signingin": "Вход ...",
   "loading.loading": "Загрузка хранилища ...",
   "loading.reading": "Чтение страницы ...",
-  "loading.downloadCli": "Загрузка Bitwarden CLI ...",
+  "cli.title": "Настройка Bitwarden CLI",
+  "cli.body": "VaultType использует официальную программу командной строки Bitwarden (bw.exe) для работы с хранилищем - она не входит в состав VaultType. Выберите, как её добавить:",
+  "cli.download": "Скачать автоматически",
+  "cli.downloadHint": "Из официального источника Bitwarden: {0}",
+  "cli.selectFile": "Добавить самому",
+  "cli.selectHint": "Скачайте bw.exe с bitwarden.com и перетащите его на это окно - или откройте папку кнопкой и поместите файл туда.",
+  "cli.waiting": "Ожидание bw.exe в: {0}",
+  "cli.dlTitle": "Загрузка Bitwarden CLI",
+  "cli.dlSource": "Источник: {0}",
+  "cli.dlEta": "осталось {0}",
 
   "settings.title": "Настройки",
   "settings.connection": "ПОДКЛЮЧЕНИЕ",
-  "settings.serverUrl": "URL сервера",
   "settings.changeLogin": "Изменить вход",
   "settings.changeLoginHint": "Сменить сервер, эл. почту или API-ключ.",
   "settings.hotkey": "Глобальная горячая клавиша",
@@ -84,6 +91,7 @@
 
   "msg.runningTitle": "VaultType запущен",
   "msg.runningMsg": "Горячая клавиша: {0}. Щёлкните значок правой кнопкой для меню.",
+  "msg.hotkeyInUse": "Горячая клавиша {0} уже используется другой программой, поэтому глобальный авто-ввод отключён. VaultType продолжает работать - выберите другое сочетание в Настройках.",
   "msg.lockedTitle": "Заблокировано",
   "msg.lockedMsg": "Хранилище заблокировано. Для следующего авто-ввода потребуется мастер-пароль.",
   "msg.syncedTitle": "Синхронизировано",
@@ -99,5 +107,5 @@
   "msg.couldNotLoad": "Не удалось загрузить записи: {0}",
   "msg.savedTitle": "Сохранено",
   "msg.savedMsg": "'{0}' будет предлагаться для {1}.",
-  "msg.cliMissing": "Не удалось загрузить Bitwarden CLI (bw.exe). Поместите его рядом с VaultType.exe."
+  "msg.cliMissing": "Не удалось загрузить Bitwarden CLI. Возможно, его блокирует брандмауэр (напр. NetLimiter) или отсутствует подключение к интернету. Разрешите доступ VaultType или скачайте bw.exe с bitwarden.com и поместите в:\n{0}"
 }

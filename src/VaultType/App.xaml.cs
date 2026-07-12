@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.IO;
 using System.Linq;
 using System.Security;
 using System.Threading;
@@ -63,8 +64,7 @@ public partial class App : Application
 
         _hotkey = new HotkeyManager();
         _hotkey.Pressed += OnHotkey;
-        if (!_hotkey.Register(_cfg.Hotkey, out string herr))
-            MessageBox.Show(herr, "VaultType", MessageBoxButton.OK, MessageBoxImage.Warning);
+        bool hotkeyOk = _hotkey.Register(_cfg.Hotkey, out _);
 
         _idle = new IdleLockService(_cfg.IdleTimeoutMinutes);
         _idle.Lock += () => Dispatcher.Invoke(() => LockVault(true));
@@ -74,7 +74,15 @@ public partial class App : Application
         AutostartService.Set(_cfg.Autostart);   // keep the Run entry in sync with the preference
 
         SetupTray();
-        ShowBalloon(Loc.T("msg.runningTitle"), Loc.T("msg.runningMsg", _cfg.Hotkey));
+        if (hotkeyOk)
+            ShowBalloon(Loc.T("msg.runningTitle"), Loc.T("msg.runningMsg", _cfg.Hotkey));
+        else
+            MessageBox.Show(Loc.T("msg.hotkeyInUse", _cfg.Hotkey), "VaultType",
+                            MessageBoxButton.OK, MessageBoxImage.Warning);
+
+        // First launch after install: start setup right away instead of idling in the tray.
+        if (!_cfg.SignedInBefore)
+            Dispatcher.BeginInvoke((Action)(() => _ = RunFirstTimeSetup()));
     }
 
     // Global hotkey: auto-type into the current foreground window (suggested entries first).
@@ -121,6 +129,22 @@ public partial class App : Application
                 Dispatch(picker.Result, ctx);
                 MaybeOfferRemember(picker.Result.Item, matches, ctx);
             }
+        }
+        catch (Exception ex) { ShowBalloon("Error", ex.Message); }
+        finally { _busy = false; }
+    }
+
+    // Drive the initial setup on the first launch: get the CLI in place, then sign in. No auto-type
+    // target here - we just want the user set up and unlocked, ready for the next hotkey press.
+    private async Task RunFirstTimeSetup()
+    {
+        if (_busy) return;
+        _busy = true;
+        try
+        {
+            if (!await EnsureCliReadyAsync()) return;
+            BeginServerWarmup();
+            if (!_unlocked) await EnsureUnlockedAsync();
         }
         catch (Exception ex) { ShowBalloon("Error", ex.Message); }
         finally { _busy = false; }
@@ -191,19 +215,43 @@ public partial class App : Application
 
     private async Task<bool> EnsureCliReadyAsync()
     {
+        if (_cli.ExeExists) return true;
+
+        // First run: ask before reaching out to the network, so nothing happens behind the user's back.
+        var setup = new CliSetupWindow(_cfg.ExcludeFromScreenCapture, _cli.ExePath, CliBootstrap.DownloadUrl);
+        setup.ShowDialog();
+        if (setup.Choice == CliSetupChoice.Cancel) return false;
+
+        if (setup.Choice == CliSetupChoice.Manual)
+        {
+            try
+            {
+                // SelectedFile is set for a dragged file; null means it's already in the target folder.
+                if (setup.SelectedFile != null)
+                {
+                    Directory.CreateDirectory(Path.GetDirectoryName(_cli.ExePath)!);
+                    File.Copy(setup.SelectedFile, _cli.ExePath, overwrite: true);
+                }
+            }
+            catch { /* falls through to the missing-CLI message below */ }
+        }
+        else // download from the official source
+        {
+            using var cts = new CancellationTokenSource();
+            // Not topmost, so a firewall's allow/block prompt can surface in front of it.
+            var dl = new CliDownloadWindow(_cfg.ExcludeFromScreenCapture, CliBootstrap.DownloadUrl);
+            dl.Cancelled += () => cts.Cancel();
+            dl.Show();
+            var progress = new Progress<CliBootstrap.DownloadProgress>(p => dl.Report(p.BytesRead, p.TotalBytes));
+            try { await CliBootstrap.EnsureAsync(_cli.ExePath, progress, cts.Token); }
+            finally { dl.Close(); }
+        }
+
         if (!_cli.ExeExists)
         {
-            var l = new LoadingWindow(_cfg.ExcludeFromScreenCapture);
-            l.SetStatus(Loc.T("loading.downloadCli"));
-            l.Show();
-            bool ok;
-            try { ok = await Task.Run(() => CliBootstrap.EnsureAsync(_cli.ExePath)); }
-            finally { l.Close(); }
-            if (!ok)
-            {
-                ShowBalloon(Loc.T("msg.error"), Loc.T("msg.cliMissing"));
-                return false;
-            }
+            MessageBox.Show(Loc.T("msg.cliMissing", _cli.ExePath), "VaultType",
+                            MessageBoxButton.OK, MessageBoxImage.Warning);
+            return false;
         }
         return true;
     }
@@ -367,8 +415,10 @@ public partial class App : Application
     {
         _hotkey.Unregister();                 // don't let the global hotkey fire while it is being edited
         string prevLang = _cfg.Language;
+        string prevHotkey = _cfg.Hotkey;
         bool langChanged = false;
         bool changeLogin = false;
+        bool hotkeyFailed = false;
         try
         {
             var w = new SettingsWindow(_cfg, _cfg.ExcludeFromScreenCapture);
@@ -385,8 +435,13 @@ public partial class App : Application
         }
         finally
         {
-            _hotkey.Register(_cfg.Hotkey, out _);   // re-register: new combo if saved, old if cancelled
+            hotkeyFailed = !_hotkey.Register(_cfg.Hotkey, out _);   // re-register: new combo if saved, old if cancelled
         }
+
+        // Only warn when the user actually picked a new combo that another program already holds.
+        if (hotkeyFailed && !string.Equals(prevHotkey, _cfg.Hotkey, StringComparison.OrdinalIgnoreCase))
+            MessageBox.Show(Loc.T("msg.hotkeyInUse", _cfg.Hotkey), "VaultType",
+                            MessageBoxButton.OK, MessageBoxImage.Warning);
 
         // The UI resolves its strings once at startup, so a language switch needs a fresh process.
         if (langChanged) { RestartApp(); return; }
@@ -490,6 +545,14 @@ public partial class App : Application
 
             var settings = new SettingsWindow(_cfg, false);
             CaptureWindow(settings, System.IO.Path.Combine(outDir, "settings.png"));
+
+            var cliSetup = new CliSetupWindow(false,
+                @"C:\Users\alex\AppData\Local\VaultType\bw.exe", CliBootstrap.DownloadUrl);
+            CaptureWindow(cliSetup, System.IO.Path.Combine(outDir, "cli-setup.png"));
+
+            var cliDownload = new CliDownloadWindow(false, CliBootstrap.DownloadUrl);
+            cliDownload.Preview(12_600_000, 30_100_000, 3_300_000);   // ~42 %, 3.3 MB/s
+            CaptureWindow(cliDownload, System.IO.Path.Combine(outDir, "cli-download.png"));
         }
         catch (Exception ex) { MessageBox.Show(ex.ToString(), "Screenshot mode"); }
         finally { Shutdown(); }

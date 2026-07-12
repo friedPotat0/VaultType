@@ -22,7 +22,6 @@
   "unlock.serverHint": "Voorbeeld: https://vault.example.com",
   "unlock.master": "Hoofdwachtwoord",
   "unlock.twofa": "Tweestapsverificatie (indien ingeschakeld)",
-  "unlock.signinTo": "Aanmelden bij server:",
   "unlock.confirmTitle": "Bevestiging vereist",
   "unlock.confirmMsg": "Voor deze vermelding moet je je hoofdwachtwoord opnieuw invoeren.",
   "unlock.errServer": "Voer je server-URL in.",
@@ -50,11 +49,19 @@
   "loading.signingin": "Aanmelden ...",
   "loading.loading": "Kluis laden ...",
   "loading.reading": "Pagina lezen ...",
-  "loading.downloadCli": "Bitwarden CLI downloaden ...",
+  "cli.title": "Bitwarden CLI instellen",
+  "cli.body": "VaultType gebruikt de officiële Bitwarden-opdrachtregeltool (bw.exe) om met je kluis te werken - deze is niet bij VaultType inbegrepen. Kies hoe je hem wilt toevoegen:",
+  "cli.download": "Automatisch downloaden",
+  "cli.downloadHint": "Van de officiële bron van Bitwarden: {0}",
+  "cli.selectFile": "Zelf toevoegen",
+  "cli.selectHint": "Download bw.exe van bitwarden.com en sleep het op dit venster - of gebruik de knop om de map te openen en het daarin te plaatsen.",
+  "cli.waiting": "Wachten op bw.exe in: {0}",
+  "cli.dlTitle": "Bitwarden CLI downloaden",
+  "cli.dlSource": "Bron: {0}",
+  "cli.dlEta": "nog {0}",
 
   "settings.title": "Instellingen",
   "settings.connection": "VERBINDING",
-  "settings.serverUrl": "Server-URL",
   "settings.changeLogin": "Inloggegevens wijzigen",
   "settings.changeLoginHint": "Server, e-mail of API-sleutel wijzigen.",
   "settings.hotkey": "Globale sneltoets",
@@ -84,6 +91,7 @@
 
   "msg.runningTitle": "VaultType is actief",
   "msg.runningMsg": "Sneltoets: {0}. Klik met de rechtermuisknop op het pictogram voor het menu.",
+  "msg.hotkeyInUse": "De sneltoets {0} wordt al door een ander programma gebruikt, dus globaal automatisch typen is uit. VaultType blijft draaien - kies een andere combinatie in Instellingen.",
   "msg.lockedTitle": "Vergrendeld",
   "msg.lockedMsg": "Kluis vergrendeld. Je hoofdwachtwoord is nodig voor de volgende auto-type.",
   "msg.syncedTitle": "Gesynchroniseerd",
@@ -99,5 +107,5 @@
   "msg.couldNotLoad": "Kon vermeldingen niet laden: {0}",
   "msg.savedTitle": "Opgeslagen",
   "msg.savedMsg": "'{0}' wordt voorgesteld voor {1}.",
-  "msg.cliMissing": "Kon Bitwarden CLI (bw.exe) niet downloaden. Plaats het naast VaultType.exe."
+  "msg.cliMissing": "Kon Bitwarden CLI niet downloaden. Mogelijk blokkeert een firewall (bijv. NetLimiter) of ontbreekt de internetverbinding. Sta VaultType toe, of download bw.exe van bitwarden.com en plaats het op:\n{0}"
 }

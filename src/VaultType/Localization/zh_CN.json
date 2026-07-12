@@ -22,7 +22,6 @@
   "unlock.serverHint": "示例：https://vault.example.com",
   "unlock.master": "主密码",
   "unlock.twofa": "两步验证（如已启用）",
-  "unlock.signinTo": "登录到服务器：",
   "unlock.confirmTitle": "需要确认",
   "unlock.confirmMsg": "此条目需要重新输入主密码。",
   "unlock.errServer": "请输入服务器 URL。",
@@ -50,11 +49,19 @@
   "loading.signingin": "正在登录 ...",
   "loading.loading": "正在加载保险库 ...",
   "loading.reading": "正在读取页面 ...",
-  "loading.downloadCli": "正在下载 Bitwarden CLI ...",
+  "cli.title": "设置 Bitwarden CLI",
+  "cli.body": "VaultType 使用官方的 Bitwarden 命令行工具（bw.exe）来访问您的保管库，它未随 VaultType 一起打包。请选择如何添加它：",
+  "cli.download": "自动下载",
+  "cli.downloadHint": "来自 Bitwarden 官方源：{0}",
+  "cli.selectFile": "自行添加",
+  "cli.selectHint": "从 bitwarden.com 下载 bw.exe 并拖到此窗口 - 或用按钮打开文件夹并放入其中。",
+  "cli.waiting": "正在等待 bw.exe：{0}",
+  "cli.dlTitle": "正在下载 Bitwarden CLI",
+  "cli.dlSource": "来源：{0}",
+  "cli.dlEta": "剩余 {0}",
 
   "settings.title": "设置",
   "settings.connection": "连接",
-  "settings.serverUrl": "服务器 URL",
   "settings.changeLogin": "更改登录",
   "settings.changeLoginHint": "更改服务器、邮箱或 API 密钥。",
   "settings.hotkey": "全局热键",
@@ -84,6 +91,7 @@
 
   "msg.runningTitle": "VaultType 正在运行",
   "msg.runningMsg": "热键：{0}。右键点击托盘图标打开菜单。",
+  "msg.hotkeyInUse": "热键 {0} 已被其他程序占用，因此全局自动输入已关闭。VaultType 仍在运行 - 请在设置中选择其他组合键。",
   "msg.lockedTitle": "已锁定",
   "msg.lockedMsg": "保险库已锁定。下次自动输入需要主密码。",
   "msg.syncedTitle": "已同步",
@@ -99,5 +107,5 @@
   "msg.couldNotLoad": "无法加载条目：{0}",
   "msg.savedTitle": "已保存",
   "msg.savedMsg": "'{0}' 将为 {1} 推荐。",
-  "msg.cliMissing": "无法下载 Bitwarden CLI (bw.exe)。请将其放在 VaultType.exe 旁边。"
+  "msg.cliMissing": "无法下载 Bitwarden CLI。可能是防火墙（如 NetLimiter）或没有网络连接在阻止它。请允许 VaultType 联网，或从 bitwarden.com 下载 bw.exe 并放到：\n{0}"
 }

@@ -22,7 +22,6 @@
   "unlock.serverHint": "Ejemplo: https://vault.example.com",
   "unlock.master": "Contraseña maestra",
   "unlock.twofa": "Doble factor (si está activado)",
-  "unlock.signinTo": "Iniciar sesión en el servidor:",
   "unlock.confirmTitle": "Confirmación requerida",
   "unlock.confirmMsg": "Esta entrada requiere volver a introducir tu contraseña maestra.",
   "unlock.errServer": "Introduce la URL de tu servidor.",
@@ -50,11 +49,19 @@
   "loading.signingin": "Iniciando sesión ...",
   "loading.loading": "Cargando caja fuerte ...",
   "loading.reading": "Leyendo la página ...",
-  "loading.downloadCli": "Descargando Bitwarden CLI ...",
+  "cli.title": "Configurar Bitwarden CLI",
+  "cli.body": "VaultType usa la herramienta oficial de línea de comandos de Bitwarden (bw.exe) para trabajar con tu caja fuerte; no viene incluida en VaultType. Elige cómo añadirla:",
+  "cli.download": "Descargar automáticamente",
+  "cli.downloadHint": "Desde la fuente oficial de Bitwarden: {0}",
+  "cli.selectFile": "Añadirlo yo mismo",
+  "cli.selectHint": "Descarga bw.exe de bitwarden.com y arrástralo a esta ventana; o usa el botón para abrir su carpeta y soltarlo allí.",
+  "cli.waiting": "Esperando bw.exe en: {0}",
+  "cli.dlTitle": "Descargando Bitwarden CLI",
+  "cli.dlSource": "Origen: {0}",
+  "cli.dlEta": "faltan {0}",
 
   "settings.title": "Configuración",
   "settings.connection": "CONEXIÓN",
-  "settings.serverUrl": "URL del servidor",
   "settings.changeLogin": "Cambiar inicio de sesión",
   "settings.changeLoginHint": "Cambiar servidor, correo o clave API.",
   "settings.hotkey": "Atajo global",
@@ -84,6 +91,7 @@
 
   "msg.runningTitle": "VaultType está en ejecución",
   "msg.runningMsg": "Atajo: {0}. Haz clic derecho en el icono para el menú.",
+  "msg.hotkeyInUse": "El atajo {0} ya lo usa otro programa, por lo que la escritura automática global está desactivada. VaultType sigue funcionando - elige otra combinación en Configuración.",
   "msg.lockedTitle": "Bloqueado",
   "msg.lockedMsg": "Caja fuerte bloqueada. Se necesita tu contraseña maestra para la próxima auto-escritura.",
   "msg.syncedTitle": "Sincronizado",
@@ -99,5 +107,5 @@
   "msg.couldNotLoad": "No se pudieron cargar las entradas: {0}",
   "msg.savedTitle": "Guardado",
   "msg.savedMsg": "'{0}' se sugerirá para {1}.",
-  "msg.cliMissing": "No se pudo descargar Bitwarden CLI (bw.exe). Colócalo junto a VaultType.exe."
+  "msg.cliMissing": "No se pudo descargar Bitwarden CLI. Un firewall (p. ej. NetLimiter) o la falta de conexión a Internet podría estar bloqueándolo. Permite el acceso de VaultType, o descarga bw.exe de bitwarden.com y colócalo en:\n{0}"
 }
