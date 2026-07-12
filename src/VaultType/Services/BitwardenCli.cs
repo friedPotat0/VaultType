@@ -9,8 +9,6 @@ using VaultType.Security;
 
 namespace VaultType.Services;
 
-public sealed record StatusInfo(string ServerUrl, string Status, string UserEmail, string UserId);
-
 // Thin wrapper around the official bw.exe - that's where the actual crypto happens.
 public sealed class BitwardenCli
 {
@@ -53,21 +51,6 @@ public sealed class BitwardenCli
         using var r = NativeProcess.Run(_exe, $"config server {Quote(url)}", BaseEnv());
         if (r.ExitCode != 0) { error = Clean(r.StdErr); return false; }
         return true;
-    }
-
-    public StatusInfo? Status()
-    {
-        using var r = NativeProcess.Run(_exe, "status", BaseEnv());
-        try
-        {
-            // status contains no secrets -> a managed copy is harmless
-            using var doc = JsonDocument.Parse(r.OutSpan.ToArray());
-            var root = doc.RootElement;
-            return new StatusInfo(
-                Str(root, "serverUrl"), Str(root, "status"),
-                Str(root, "userEmail"), Str(root, "userId"));
-        }
-        catch { return null; }
     }
 
     // Unlock the vault. Master password stays a SecureString; we get back the session key.
@@ -324,10 +307,25 @@ public sealed class BitwardenCli
         return ss;
     }
 
-    private static string Str(JsonElement e, string prop)
-        => e.TryGetProperty(prop, out var v) && v.ValueKind == JsonValueKind.String ? (v.GetString() ?? "") : "";
-
-    private static string Quote(string s) => "\"" + s.Replace("\"", "") + "\"";
+    // Quote a single argument the way CreateProcessW/CommandLineToArgvW expect: wrap in quotes,
+    // escape embedded quotes, and double any run of backslashes that precedes a quote (a trailing
+    // backslash would otherwise escape the closing quote and merge into the next argument).
+    private static string Quote(string s)
+    {
+        var sb = new StringBuilder(s.Length + 2);
+        sb.Append('"');
+        int backslashes = 0;
+        foreach (char c in s)
+        {
+            if (c == '\\') { backslashes++; continue; }
+            if (c == '"') { sb.Append('\\', backslashes * 2 + 1); backslashes = 0; }
+            else { sb.Append('\\', backslashes); backslashes = 0; }
+            sb.Append(c);
+        }
+        sb.Append('\\', backslashes * 2);
+        sb.Append('"');
+        return sb.ToString();
+    }
 
     private static string Clean(string s) => s.Replace("\r", " ").Replace("\n", " ").Trim();
 }

@@ -50,7 +50,8 @@ public static class Matcher
         switch (u.MatchType)
         {
             case 5: return false;                                            // Never
-            case 4: try { return Regex.IsMatch(pageFull, u.Value); } catch { return false; }
+            // Regex from the user's own vault, but a bad pattern could backtrack forever - cap it.
+            case 4: try { return Regex.IsMatch(pageFull, u.Value, RegexOptions.None, TimeSpan.FromMilliseconds(100)); } catch { return false; }
             case 3: return string.Equals(pageFull, u.Value, StringComparison.OrdinalIgnoreCase);
             case 2: return pageFull.StartsWith(u.Value, StringComparison.OrdinalIgnoreCase);
             case 1: return !string.IsNullOrEmpty(u.Host) && string.Equals(pageHost, u.Host, StringComparison.OrdinalIgnoreCase);

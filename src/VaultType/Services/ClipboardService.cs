@@ -1,3 +1,4 @@
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Windows.Threading;
 using VaultType.Models;
@@ -26,8 +27,14 @@ public static class ClipboardService
     {
         if (item.TotpSecret == null || !p.IsActive) return;
         using var buf = p.Reveal(item.TotpSecret);
-        string seed = Encoding.UTF8.GetString(buf.Span.Slice(0, item.TotpSecret.Cipher.Length));
-        string? code = Totp.Compute(seed);
+        int byteLen = item.TotpSecret.Cipher.Length;
+
+        int charCount = Encoding.UTF8.GetCharCount(buf.Span.Slice(0, byteLen));
+        using var chars = new LockedBuffer(charCount * 2);   // seed stays in locked memory, not a managed string
+        var charSpan = MemoryMarshal.Cast<byte, char>(chars.Span);
+        int n = Encoding.UTF8.GetChars(buf.Span.Slice(0, byteLen), charSpan);
+
+        string? code = Totp.Compute(charSpan.Slice(0, n));
         if (code != null) Set(code, clearSeconds);
     }
 

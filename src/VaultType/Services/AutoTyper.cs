@@ -158,10 +158,15 @@ public static class AutoTyper
     private static void TypeTotp(IntPtr target, VaultItem item, SecretProtector protector, int delayMs)
     {
         if (item.TotpSecret == null || !protector.IsActive) return;
-        using LockedBuffer plain = protector.Reveal(item.TotpSecret);
-        string seed = Encoding.UTF8.GetString(plain.Span.Slice(0, item.TotpSecret.Cipher.Length));
-        string? code = Totp.Compute(seed);
-        seed = string.Empty;
+        using LockedBuffer plain = protector.Reveal(item.TotpSecret);   // UTF-8 seed in locked memory
+        int byteLen = item.TotpSecret.Cipher.Length;
+
+        int charCount = Encoding.UTF8.GetCharCount(plain.Span.Slice(0, byteLen));
+        using var chars = new LockedBuffer(charCount * 2);              // UTF-16 seed, also locked
+        var charSpan = MemoryMarshal.Cast<byte, char>(chars.Span);
+        int n = Encoding.UTF8.GetChars(plain.Span.Slice(0, byteLen), charSpan);
+
+        string? code = Totp.Compute(charSpan.Slice(0, n));             // seed never becomes a managed string
         if (code != null) TypeText(target, code, delayMs);
     }
 
