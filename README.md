@@ -63,7 +63,7 @@ that is built to **never** persist your secrets.
 - **Local TOTP** generation (RFC 6238) - no clipboard, no extra network calls.
 - **Real favicons** served by *your own* Vaultwarden (`/icons`), cached locally - no third-party
   icon service is contacted.
-- **Auto-lock** after inactivity (default 30 minutes); also locks while you are away or asleep.
+- **Auto-lock** after inactivity (default 30 minutes); it also re-locks after the computer wakes from sleep or standby, since real time keeps counting.
 - **Multilingual** - ships in 11 languages, follows your Windows display language automatically.
 - Clean dark interface, runs quietly in the system tray.
 
@@ -78,6 +78,16 @@ search the whole vault at any time. Every window shares the same clean, dark int
     <td colspan="2" align="center">
       <img src="assets/screenshots/picker.png" width="420" alt="VaultType entry picker" /><br />
       <sub><b>Entry picker</b> - matches for the active window come first; start typing to search the whole vault.</sub><br /><br />
+    </td>
+  </tr>
+  <tr>
+    <td align="center" valign="top" width="50%">
+      <img src="assets/screenshots/cli-setup.png" width="380" alt="VaultType first-run Bitwarden CLI setup" /><br />
+      <sub><b>First run</b> - VaultType asks before anything touches the network: download the CLI, or add your own.</sub><br /><br />
+    </td>
+    <td align="center" valign="top" width="50%">
+      <img src="assets/screenshots/cli-download.png" width="380" alt="VaultType Bitwarden CLI download progress" /><br />
+      <sub><b>Download</b> - live progress with transfer size, speed and time remaining; cancel any time.</sub><br /><br />
     </td>
   </tr>
   <tr>
@@ -142,9 +152,13 @@ Release builds are **self-contained** - the .NET runtime is baked into the singl
 there is nothing else to install. (To [build from source](#building-from-source) you need the
 [.NET 9 SDK](https://dotnet.microsoft.com/download/dotnet/9.0) instead.)
 
-The official **Bitwarden CLI** (`bw.exe`) is **not bundled** (it is Bitwarden's own binary).
-VaultType **downloads it automatically** from the official source on first run and keeps it in
-`%LOCALAPPDATA%\VaultType`. You can also drop your own `bw.exe` next to `VaultType.exe`.
+The official **Bitwarden CLI** (`bw.exe`) is **not bundled** (it is Bitwarden's own binary). On
+first run VaultType **asks** whether to download it automatically from the official source - kept
+in `%LOCALAPPDATA%\VaultType` - or to add your own. The automatic download needs internet access,
+so if a firewall (e.g. NetLimiter) is running, allow VaultType through it. To skip the download
+entirely - for offline installs, or a firewall you'd rather not touch - place your own `bw.exe`
+next to `VaultType.exe` or into `%LOCALAPPDATA%\VaultType\bw.exe` beforehand, or point to it in the
+first-run prompt.
 
 ## Installation
 
@@ -160,8 +174,8 @@ Then, either way:
 
 1. Run it. Windows may show a SmartScreen warning because it isn't code-signed (there is currently
    no code-signing certificate for this project) - click *More info -> Run anyway*.
-2. On first launch it fetches the official Bitwarden CLI, then shows the sign-in window - pick
-   **Vaultwarden** or **Bitwarden.com** and enter your details.
+2. On first launch it asks whether to download the official Bitwarden CLI or add it yourself, then
+   shows the sign-in window - pick **Vaultwarden** or **Bitwarden.com** and enter your details.
 3. Optional: enable *Start with Windows* from the tray menu.
 
 > [!NOTE]
