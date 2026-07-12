@@ -59,6 +59,8 @@
   "cli.dlTitle": "Pobieranie Bitwarden CLI",
   "cli.dlSource": "Źródło: {0}",
   "cli.dlEta": "pozostało {0}",
+  "cli.untrustedTitle": "Niezweryfikowany bw.exe",
+  "cli.untrustedBody": "Ten bw.exe nie jest prawidłowo podpisany przez Bitwarden. Zostałoby mu przekazane Twoje hasło główne, więc kontynuuj tylko, jeśli w pełni ufasz jego pochodzeniu. Użyć mimo to?",
 
   "settings.title": "Ustawienia",
   "settings.connection": "POŁĄCZENIE",
@@ -107,5 +109,6 @@
   "msg.couldNotLoad": "Nie można załadować wpisów: {0}",
   "msg.savedTitle": "Zapisano",
   "msg.savedMsg": "'{0}' będzie proponowany dla {1}.",
-  "msg.cliMissing": "Nie można pobrać Bitwarden CLI. Może to blokować zapora sieciowa (np. NetLimiter) lub brak połączenia z internetem. Zezwól VaultType na dostęp lub pobierz bw.exe z bitwarden.com i umieść w:\n{0}"
+  "msg.cliMissing": "Nie można pobrać Bitwarden CLI. Może to blokować zapora sieciowa (np. NetLimiter) lub brak połączenia z internetem. Zezwól VaultType na dostęp lub pobierz bw.exe z bitwarden.com i umieść w:\n{0}",
+  "msg.cliUntrusted": "Pobrany Bitwarden CLI nie jest prawidłowo podpisany przez Bitwarden i został odrzucony dla Twojego bezpieczeństwa. Spróbuj ponownie lub dodaj zaufany plik bw.exe samodzielnie."
 }

@@ -59,6 +59,8 @@
   "cli.dlTitle": "Bitwarden CLI をダウンロード中",
   "cli.dlSource": "ソース: {0}",
   "cli.dlEta": "残り {0}",
+  "cli.untrustedTitle": "検証されていない bw.exe",
+  "cli.untrustedBody": "この bw.exe は Bitwarden によって正しく署名されていません。マスターパスワードがこれに渡されるため、提供元を完全に信頼できる場合のみ続行してください。それでも使用しますか？",
 
   "settings.title": "設定",
   "settings.connection": "接続",
@@ -107,5 +109,6 @@
   "msg.couldNotLoad": "項目を読み込めませんでした: {0}",
   "msg.savedTitle": "保存しました",
   "msg.savedMsg": "'{0}' は {1} で提案されます。",
-  "msg.cliMissing": "Bitwarden CLI をダウンロードできませんでした。ファイアウォール（例: NetLimiter）またはインターネット接続がないことが原因かもしれません。VaultType の通信を許可するか、bitwarden.com から bw.exe をダウンロードして次の場所に配置してください:\n{0}"
+  "msg.cliMissing": "Bitwarden CLI をダウンロードできませんでした。ファイアウォール（例: NetLimiter）またはインターネット接続がないことが原因かもしれません。VaultType の通信を許可するか、bitwarden.com から bw.exe をダウンロードして次の場所に配置してください:\n{0}",
+  "msg.cliUntrusted": "ダウンロードした Bitwarden CLI は Bitwarden によって正しく署名されていないため、安全のため破棄しました。もう一度お試しいただくか、信頼できる bw.exe をご自分で追加してください。"
 }

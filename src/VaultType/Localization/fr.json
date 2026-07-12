@@ -59,6 +59,8 @@
   "cli.dlTitle": "Téléchargement de Bitwarden CLI",
   "cli.dlSource": "Source : {0}",
   "cli.dlEta": "{0} restant",
+  "cli.untrustedTitle": "bw.exe non vérifié",
+  "cli.untrustedBody": "Ce bw.exe n'est pas signé valablement par Bitwarden. Votre mot de passe principal lui serait transmis ; ne continuez que si vous faites entièrement confiance à sa provenance. L'utiliser quand même ?",
 
   "settings.title": "Paramètres",
   "settings.connection": "CONNEXION",
@@ -107,5 +109,6 @@
   "msg.couldNotLoad": "Impossible de charger les entrées : {0}",
   "msg.savedTitle": "Enregistré",
   "msg.savedMsg": "'{0}' sera proposé pour {1}.",
-  "msg.cliMissing": "Impossible de télécharger Bitwarden CLI. Un pare-feu (p. ex. NetLimiter) ou l'absence de connexion Internet peut le bloquer. Autorisez VaultType, ou téléchargez bw.exe depuis bitwarden.com et placez-le ici :\n{0}"
+  "msg.cliMissing": "Impossible de télécharger Bitwarden CLI. Un pare-feu (p. ex. NetLimiter) ou l'absence de connexion Internet peut le bloquer. Autorisez VaultType, ou téléchargez bw.exe depuis bitwarden.com et placez-le ici :\n{0}",
+  "msg.cliUntrusted": "La CLI Bitwarden téléchargée n'est pas signée valablement par Bitwarden et a été supprimée par sécurité. Réessayez ou ajoutez vous-même un bw.exe de confiance."
 }

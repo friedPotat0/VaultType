@@ -59,6 +59,8 @@
   "cli.dlTitle": "Bitwarden-CLI wird heruntergeladen",
   "cli.dlSource": "Quelle: {0}",
   "cli.dlEta": "noch {0}",
+  "cli.untrustedTitle": "Nicht verifizierte bw.exe",
+  "cli.untrustedBody": "Diese bw.exe ist nicht gültig von Bitwarden signiert. Dein Master-Passwort würde an sie übergeben - fahre nur fort, wenn du der Herkunft voll vertraust. Trotzdem verwenden?",
 
   "settings.title": "Einstellungen",
   "settings.connection": "VERBINDUNG",
@@ -107,5 +109,6 @@
   "msg.couldNotLoad": "Einträge konnten nicht geladen werden: {0}",
   "msg.savedTitle": "Gespeichert",
   "msg.savedMsg": "'{0}' wird künftig für {1} vorgeschlagen.",
-  "msg.cliMissing": "Die Bitwarden-CLI konnte nicht heruntergeladen werden. Vermutlich blockiert eine Firewall (z. B. NetLimiter) oder es fehlt die Internetverbindung. Erlaube VaultType den Zugriff, oder lade bw.exe von bitwarden.com herunter und lege sie hier ab:\n{0}"
+  "msg.cliMissing": "Die Bitwarden-CLI konnte nicht heruntergeladen werden. Vermutlich blockiert eine Firewall (z. B. NetLimiter) oder es fehlt die Internetverbindung. Erlaube VaultType den Zugriff, oder lade bw.exe von bitwarden.com herunter und lege sie hier ab:\n{0}",
+  "msg.cliUntrusted": "Die heruntergeladene Bitwarden-CLI ist nicht gültig von Bitwarden signiert und wurde zu deiner Sicherheit verworfen. Bitte erneut versuchen oder selbst eine vertrauenswürdige bw.exe bereitstellen."
 }

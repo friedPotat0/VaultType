@@ -59,6 +59,8 @@
   "cli.dlTitle": "Downloading the Bitwarden CLI",
   "cli.dlSource": "Source: {0}",
   "cli.dlEta": "{0} left",
+  "cli.untrustedTitle": "Unverified bw.exe",
+  "cli.untrustedBody": "This bw.exe is not validly signed by Bitwarden. Your master password would be handed to it, so only continue if you fully trust where it came from. Use it anyway?",
 
   "settings.title": "Settings",
   "settings.connection": "CONNECTION",
@@ -107,5 +109,6 @@
   "msg.couldNotLoad": "Could not load entries: {0}",
   "msg.savedTitle": "Saved",
   "msg.savedMsg": "'{0}' will be suggested for {1}.",
-  "msg.cliMissing": "Couldn't download the Bitwarden CLI. A firewall (e.g. NetLimiter) or a missing internet connection may be blocking it. Allow VaultType online, or download bw.exe from bitwarden.com and place it at:\n{0}"
+  "msg.cliMissing": "Couldn't download the Bitwarden CLI. A firewall (e.g. NetLimiter) or a missing internet connection may be blocking it. Allow VaultType online, or download bw.exe from bitwarden.com and place it at:\n{0}",
+  "msg.cliUntrusted": "The downloaded Bitwarden CLI isn't validly signed by Bitwarden and was discarded for your safety. Please try again, or add a trusted bw.exe yourself."
 }

@@ -34,6 +34,7 @@ public partial class App : Application
     private List<VaultItem> _items = new();
     private bool _busy;
     private bool _serverConfigured;
+    private bool _cliVerified;    // bw.exe passed the Bitwarden-signature check (once per process)
     private Task? _serverReady;   // background CLI/Node warm-up so the unlock window can open instantly
     private string? _pendingUpdateUrl;   // set when a newer release is found; opened if the balloon is clicked
 
@@ -215,7 +216,8 @@ public partial class App : Application
 
     private async Task<bool> EnsureCliReadyAsync()
     {
-        if (_cli.ExeExists) return true;
+        // Already in place (from a previous run, or dropped next to the app): verify it once.
+        if (_cli.ExeExists) return _cliVerified || ConfirmCliTrusted(downloaded: false);
 
         // First run: ask before reaching out to the network, so nothing happens behind the user's back.
         var setup = new CliSetupWindow(_cfg.ExcludeFromScreenCapture, _cli.ExePath, CliBootstrap.DownloadUrl);
@@ -253,7 +255,27 @@ public partial class App : Application
                             MessageBoxButton.OK, MessageBoxImage.Warning);
             return false;
         }
-        return true;
+        return ConfirmCliTrusted(downloaded: setup.Choice == CliSetupChoice.Download);
+    }
+
+    // Only run a bw.exe we can attribute to Bitwarden. A freshly downloaded file that fails the
+    // check is treated as tampering and dropped; a user-provided one gets a clear warning so they
+    // can decide (they put it there). Cached for the process - the file doesn't change at runtime.
+    private bool ConfirmCliTrusted(bool downloaded)
+    {
+        if (CodeSignature.IsBitwardenTrusted(_cli.ExePath)) { _cliVerified = true; return true; }
+
+        if (downloaded)
+        {
+            try { File.Delete(_cli.ExePath); } catch { }
+            MessageBox.Show(Loc.T("msg.cliUntrusted"), "VaultType",
+                            MessageBoxButton.OK, MessageBoxImage.Warning);
+            return false;
+        }
+
+        var warn = new ConfirmWindow(Loc.T("cli.untrustedTitle"), Loc.T("cli.untrustedBody"), _cfg.ExcludeFromScreenCapture);
+        if (warn.ShowDialog() == true) { _cliVerified = true; return true; }
+        return false;
     }
 
     // Apply the server config on a background thread. The first bw.exe call cold-starts Node

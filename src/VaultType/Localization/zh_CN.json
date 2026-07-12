@@ -59,6 +59,8 @@
   "cli.dlTitle": "正在下载 Bitwarden CLI",
   "cli.dlSource": "来源：{0}",
   "cli.dlEta": "剩余 {0}",
+  "cli.untrustedTitle": "未验证的 bw.exe",
+  "cli.untrustedBody": "此 bw.exe 未经 Bitwarden 有效签名。你的主密码将被交给它，因此请仅在完全信任其来源时才继续。仍要使用吗？",
 
   "settings.title": "设置",
   "settings.connection": "连接",
@@ -107,5 +109,6 @@
   "msg.couldNotLoad": "无法加载条目：{0}",
   "msg.savedTitle": "已保存",
   "msg.savedMsg": "'{0}' 将为 {1} 推荐。",
-  "msg.cliMissing": "无法下载 Bitwarden CLI。可能是防火墙（如 NetLimiter）或没有网络连接在阻止它。请允许 VaultType 联网，或从 bitwarden.com 下载 bw.exe 并放到：\n{0}"
+  "msg.cliMissing": "无法下载 Bitwarden CLI。可能是防火墙（如 NetLimiter）或没有网络连接在阻止它。请允许 VaultType 联网，或从 bitwarden.com 下载 bw.exe 并放到：\n{0}",
+  "msg.cliUntrusted": "下载的 Bitwarden CLI 未经 Bitwarden 有效签名，已为你的安全将其丢弃。请重试，或自行添加受信任的 bw.exe。"
 }

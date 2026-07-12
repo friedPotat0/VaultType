@@ -59,6 +59,8 @@
   "cli.dlTitle": "Descargando Bitwarden CLI",
   "cli.dlSource": "Origen: {0}",
   "cli.dlEta": "faltan {0}",
+  "cli.untrustedTitle": "bw.exe no verificado",
+  "cli.untrustedBody": "Este bw.exe no tiene una firma válida de Bitwarden. Tu contraseña maestra se le entregaría, así que continúa solo si confías plenamente en su origen. ¿Usarlo de todos modos?",
 
   "settings.title": "Configuración",
   "settings.connection": "CONEXIÓN",
@@ -107,5 +109,6 @@
   "msg.couldNotLoad": "No se pudieron cargar las entradas: {0}",
   "msg.savedTitle": "Guardado",
   "msg.savedMsg": "'{0}' se sugerirá para {1}.",
-  "msg.cliMissing": "No se pudo descargar Bitwarden CLI. Un firewall (p. ej. NetLimiter) o la falta de conexión a Internet podría estar bloqueándolo. Permite el acceso de VaultType, o descarga bw.exe de bitwarden.com y colócalo en:\n{0}"
+  "msg.cliMissing": "No se pudo descargar Bitwarden CLI. Un firewall (p. ej. NetLimiter) o la falta de conexión a Internet podría estar bloqueándolo. Permite el acceso de VaultType, o descarga bw.exe de bitwarden.com y colócalo en:\n{0}",
+  "msg.cliUntrusted": "La CLI de Bitwarden descargada no tiene una firma válida de Bitwarden y se descartó por tu seguridad. Inténtalo de nuevo o añade tú mismo un bw.exe de confianza."
 }

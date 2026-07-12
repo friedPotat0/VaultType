@@ -129,4 +129,43 @@ internal static class Native
     public static extern bool UnhookWinEvent(IntPtr hWinEventHook);
     [DllImport("user32.dll", CharSet = CharSet.Unicode)]
     public static extern int GetClassName(IntPtr hWnd, char[] lpClassName, int nMaxCount);
+
+    // ---- Authenticode verification (wintrust) ----
+    public static readonly Guid WINTRUST_ACTION_GENERIC_VERIFY_V2 = new("00AAC56B-CD44-11D0-8CC2-00C04FC295EE");
+    public const uint WTD_UI_NONE = 2;
+    public const uint WTD_REVOKE_NONE = 0;
+    public const uint WTD_CHOICE_FILE = 1;
+    public const uint WTD_STATEACTION_VERIFY = 1;
+    public const uint WTD_STATEACTION_CLOSE = 2;
+    public const uint WTD_CACHE_ONLY_URL_RETRIEVAL = 0x00001000;   // never hit the network for revocation
+
+    [StructLayout(LayoutKind.Sequential)]
+    public struct WINTRUST_FILE_INFO
+    {
+        public uint cbStruct;
+        [MarshalAs(UnmanagedType.LPWStr)] public string pcwszFilePath;
+        public IntPtr hFile;
+        public IntPtr pgKnownSubject;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    public struct WINTRUST_DATA
+    {
+        public uint cbStruct;
+        public IntPtr pPolicyCallbackData;
+        public IntPtr pSIPClientData;
+        public uint dwUIChoice;
+        public uint fdwRevocationChecks;
+        public uint dwUnionChoice;
+        public IntPtr pFile;
+        public uint dwStateAction;
+        public IntPtr hWVTStateData;
+        [MarshalAs(UnmanagedType.LPWStr)] public string? pwszURLReference;
+        public uint dwProvFlags;
+        public uint dwUIContext;
+        public IntPtr pSignatureSettings;
+    }
+
+    [DllImport("wintrust.dll", ExactSpelling = true, CharSet = CharSet.Unicode)]
+    public static extern int WinVerifyTrust(IntPtr hwnd, [MarshalAs(UnmanagedType.LPStruct)] Guid pgActionID, IntPtr pWVTData);
 }

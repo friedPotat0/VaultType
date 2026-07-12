@@ -59,6 +59,8 @@
   "cli.dlTitle": "Bitwarden CLI downloaden",
   "cli.dlSource": "Bron: {0}",
   "cli.dlEta": "nog {0}",
+  "cli.untrustedTitle": "Niet-geverifieerde bw.exe",
+  "cli.untrustedBody": "Deze bw.exe is niet geldig ondertekend door Bitwarden. Je hoofdwachtwoord zou eraan worden doorgegeven, dus ga alleen door als je de herkomst volledig vertrouwt. Toch gebruiken?",
 
   "settings.title": "Instellingen",
   "settings.connection": "VERBINDING",
@@ -107,5 +109,6 @@
   "msg.couldNotLoad": "Kon vermeldingen niet laden: {0}",
   "msg.savedTitle": "Opgeslagen",
   "msg.savedMsg": "'{0}' wordt voorgesteld voor {1}.",
-  "msg.cliMissing": "Kon Bitwarden CLI niet downloaden. Mogelijk blokkeert een firewall (bijv. NetLimiter) of ontbreekt de internetverbinding. Sta VaultType toe, of download bw.exe van bitwarden.com en plaats het op:\n{0}"
+  "msg.cliMissing": "Kon Bitwarden CLI niet downloaden. Mogelijk blokkeert een firewall (bijv. NetLimiter) of ontbreekt de internetverbinding. Sta VaultType toe, of download bw.exe van bitwarden.com en plaats het op:\n{0}",
+  "msg.cliUntrusted": "De gedownloade Bitwarden-CLI is niet geldig ondertekend door Bitwarden en is voor je veiligheid verwijderd. Probeer het opnieuw of voeg zelf een vertrouwde bw.exe toe."
 }
