@@ -122,6 +122,9 @@ password or vault data.
   memory** (`VirtualLock`) and handed to the CLI through a **private environment block** - never
   a command-line argument, never the parent environment, never a managed string. It is
   **discarded immediately** after unlocking and is not kept for the session.
+- The **Bitwarden CLI is verified before it runs**: VaultType confirms `bw.exe` carries a valid
+  Authenticode signature from **Bitwarden Inc.** before handing it your master password. A copy it
+  downloaded that fails the check is deleted; a `bw.exe` you supplied yourself warns you first.
 - **Vault secrets in RAM** (passwords, TOTP seeds) are stored **AES-256-GCM encrypted** under an
   ephemeral key held in locked memory. Plaintext exists only for the milliseconds needed to type a
   field, inside a locked buffer that is then zeroed. Locking wipes the key, rendering any leftover
@@ -158,7 +161,8 @@ in `%LOCALAPPDATA%\VaultType` - or to add your own. The automatic download needs
 so if a firewall (e.g. NetLimiter) is running, allow VaultType through it. To skip the download
 entirely - for offline installs, or a firewall you'd rather not touch - place your own `bw.exe`
 next to `VaultType.exe` or into `%LOCALAPPDATA%\VaultType\bw.exe` beforehand, or point to it in the
-first-run prompt.
+first-run prompt. However you provide it, VaultType runs it only if it is validly signed by
+Bitwarden.
 
 ## Installation
 
