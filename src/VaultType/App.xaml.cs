@@ -790,6 +790,14 @@ public partial class App : Application
     // async void: guard the whole body so a failure surfaces as a balloon, not an unhandled exception.
     private async void CheckForUpdates()
     {
+        // Store edition: updates are delivered by the Microsoft Store, and a GitHub exe couldn't
+        // replace an MSIX install anyway - send the user to the product page instead.
+        if (AppInfo.IsPackaged)
+        {
+            try { Process.Start(new ProcessStartInfo(AppInfo.StoreUri) { UseShellExecute = true }); }
+            catch (Exception ex) { LogCrash(ex); ShowBalloon(Loc.T("msg.error"), ex.Message); }
+            return;
+        }
         try
         {
             var info = await UpdateService.CheckAsync(AppInfo.Version);

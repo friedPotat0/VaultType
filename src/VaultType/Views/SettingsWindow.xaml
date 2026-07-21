@@ -457,16 +457,6 @@
                                         <TextBlock x:Name="UpdBtnLabel" Foreground="{StaticResource TextBody}" FontSize="12.5" FontWeight="SemiBold" />
                                     </Button>
                                 </Grid>
-                                <Grid Margin="0,0,0,14">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="*" /><ColumnDefinition Width="16" /><ColumnDefinition Width="Auto" />
-                                    </Grid.ColumnDefinitions>
-                                    <StackPanel VerticalAlignment="Center">
-                                        <TextBlock Style="{StaticResource RowTitle}" Text="{local:Tr settings.autoUpdate}" />
-                                        <TextBlock Style="{StaticResource RowSub}" Text="{local:Tr settings.autoUpdateHint}" />
-                                    </StackPanel>
-                                    <ToggleButton Grid.Column="2" x:Name="AutoUpdateTgl" Style="{StaticResource ToggleSwitch}" VerticalAlignment="Center" />
-                                </Grid>
                             </StackPanel>
                         </StackPanel>
                     </ScrollViewer>

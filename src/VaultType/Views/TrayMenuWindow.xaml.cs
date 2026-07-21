@@ -86,7 +86,10 @@ public partial class TrayMenuWindow : Window
         }
 
         Root.Children.Add(Divider());
-        Root.Children.Add(ActionRow("IconDownload", Loc.T("tray.checkUpdates"), null, () => _actions.CheckUpdates?.Invoke()));
+        // Store edition: the action opens the Store product page, so say that instead of "check".
+        Root.Children.Add(ActionRow("IconDownload",
+            Loc.T(AppInfo.IsPackaged ? "settings.updatesOpenStore" : "tray.checkUpdates"),
+            null, () => _actions.CheckUpdates?.Invoke()));
         Root.Children.Add(ActionRow("IconSliders", Loc.T("tray.settings"), null, () => _actions.OpenSettings?.Invoke()));
         Root.Children.Add(ActionRow("IconPower", Loc.T("tray.exit"), null, () => _actions.Exit?.Invoke()));
     }

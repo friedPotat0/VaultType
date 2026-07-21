@@ -11,24 +11,9 @@ namespace VaultType.Security.Passkey;
 // a site runs a ceremony against it.
 public static class PasskeyProvider
 {
-    // True when the process is running from an MSIX package (has a package identity). Only then can
-    // the plugin COM server be activated by Windows.
-    public static bool IsPackaged
-    {
-        get
-        {
-            try
-            {
-                int len = 0;
-                int rc = GetCurrentPackageFullName(ref len, null);
-                return rc != 15700;   // APPMODEL_ERROR_NO_PACKAGE
-            }
-            catch { return false; }
-        }
-    }
-
-    // The plugin authenticator API shipped in Windows 11 24H2 (build 26100).
-    public static bool Supported => IsPackaged && Environment.OSVersion.Version.Build >= 26100;
+    // The plugin authenticator API shipped in Windows 11 24H2 (build 26100); the plugin COM
+    // server can only be activated by Windows when the app has a package identity.
+    public static bool Supported => AppInfo.IsPackaged && Environment.OSVersion.Version.Build >= 26100;
 
     // Whether Windows currently has us registered as an enabled authenticator.
     public static bool Registered
@@ -56,7 +41,7 @@ public static class PasskeyProvider
         PasskeyLog.Write($"provider: {(enabled ? "enable" : "disable")} requested");
         if (!Supported)
         {
-            PasskeyLog.Write($"provider: skipped (packaged={IsPackaged}, build={Environment.OSVersion.Version.Build})");
+            PasskeyLog.Write($"provider: skipped (packaged={AppInfo.IsPackaged}, build={Environment.OSVersion.Version.Build})");
             return;
         }
 
@@ -201,7 +186,4 @@ public static class PasskeyProvider
         int hr = PasskeyNative.WebAuthNPluginRemoveAuthenticator(ref clsid);
         PasskeyLog.Write($"provider: WebAuthNPluginRemoveAuthenticator hr=0x{hr:X8}");
     }
-
-    [DllImport("kernel32.dll", CharSet = CharSet.Unicode)]
-    private static extern int GetCurrentPackageFullName(ref int packageFullNameLength, char[]? packageFullName);
 }

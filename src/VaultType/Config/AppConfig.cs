@@ -59,9 +59,6 @@ public sealed class AppConfig
     // 2 = open the settings (design "Tray-Klick"; default)
     public int TrayClickAction { get; set; } = 2;
 
-    // check for updates periodically and notify on a new release
-    public bool AutoUpdateCheck { get; set; } = true;
-
     // the "VaultType is running" balloon is shown once after installation, not on every start
     public bool FirstRunNotified { get; set; }
 

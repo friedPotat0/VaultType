@@ -72,7 +72,6 @@ public partial class SettingsWindow : Window
         HideCaptureTgl.IsChecked = cfg.ExcludeFromScreenCapture;
         AntiDbgTgl.IsChecked = cfg.AntiDebugger;
         AutostartTgl.IsChecked = cfg.Autostart;
-        AutoUpdateTgl.IsChecked = cfg.AutoUpdateCheck;
         SshAgentTgl.IsChecked = cfg.SshAgentEnabled;
         SshConfirmTgl.IsChecked = cfg.SshConfirmEachUse;
         PkProviderTgl.IsChecked = cfg.PasskeyProviderEnabled;
@@ -84,7 +83,7 @@ public partial class SettingsWindow : Window
         {
             PkProviderTgl.IsChecked = false;
             PkProviderTgl.IsEnabled = false;
-            PkUnavailableText.Text = Loc.T(Security.Passkey.PasskeyProvider.IsPackaged
+            PkUnavailableText.Text = Loc.T(AppInfo.IsPackaged
                 ? "settings.pkNeedsWin11" : "settings.pkStoreOnly");
             PkUnavailableBox.Visibility = Visibility.Visible;
         }
@@ -97,8 +96,18 @@ public partial class SettingsWindow : Window
         for (int i = 0; i < Loc.Languages.Length; i++) _langCodes[i + 1] = Loc.Languages[i].Code;
         _lang = Math.Max(0, Array.FindIndex(_langCodes, c => c.Equals(cfg.Language, StringComparison.OrdinalIgnoreCase)));
 
-        UpdStatus.Text = Loc.T("settings.updatesCurrent", AppInfo.Version);
-        UpdBtnLabel.Text = Loc.T("settings.updatesBtn");
+        // Store edition: the Store keeps the app current on its own; the GitHub check only
+        // applies to the installer/portable builds.
+        if (AppInfo.IsPackaged)
+        {
+            UpdStatus.Text = Loc.T("settings.updatesStore", AppInfo.Version);
+            UpdBtnLabel.Text = Loc.T("settings.updatesOpenStore");
+        }
+        else
+        {
+            UpdStatus.Text = Loc.T("settings.updatesCurrent", AppInfo.Version);
+            UpdBtnLabel.Text = Loc.T("settings.updatesBtn");
+        }
 
         BuildAccounts();
         RefreshLabels();
@@ -398,6 +407,19 @@ public partial class SettingsWindow : Window
 
     private async void CheckUpdates_Click(object sender, RoutedEventArgs e)
     {
+        if (AppInfo.IsPackaged)
+        {
+            try
+            {
+                System.Diagnostics.Process.Start(
+                    new System.Diagnostics.ProcessStartInfo(AppInfo.StoreUri) { UseShellExecute = true });
+            }
+            catch (Exception ex)
+            {
+                UpdStatus.Text = ex.Message;
+            }
+            return;
+        }
         if (_updChecking) return;
         _updChecking = true;
         UpdStatus.Text = Loc.T("settings.updatesChecking");
@@ -458,7 +480,6 @@ public partial class SettingsWindow : Window
         _cfg.AntiDebugger = AntiDbgTgl.IsChecked == true;
         _cfg.Autostart = AutostartTgl.IsChecked == true;
         AutostartService.Set(_cfg.Autostart);
-        _cfg.AutoUpdateCheck = AutoUpdateTgl.IsChecked == true;
 
         _cfg.SshAgentEnabled = SshAgentTgl.IsChecked == true;
         _cfg.SshConfirmEachUse = SshConfirmTgl.IsChecked == true;
