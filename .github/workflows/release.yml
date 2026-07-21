@@ -31,9 +31,12 @@ jobs:
       - name: Resolve version
         id: v
         shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          INPUT_VERSION: ${{ github.event.inputs.version }}
         run: |
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            echo "version=${{ github.event.inputs.version }}" >> "$GITHUB_OUTPUT"
+          if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
+            echo "version=$INPUT_VERSION" >> "$GITHUB_OUTPUT"
           else
             echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
           fi
@@ -41,7 +44,7 @@ jobs:
       # changelog for THIS release, from the conventional commits since the last tag
       - name: Generate release notes
         if: startsWith(github.ref, 'refs/tags/v')
-        uses: orhun/git-cliff-action@v4
+        uses: orhun/git-cliff-action@f50e11560dce63f7c33227798f90b924471a88b5 # v4.8.0
         with:
           config: cliff.toml
           args: --latest --strip header
@@ -50,21 +53,25 @@ jobs:
 
       - name: Publish (self-contained, single file)
         shell: pwsh
+        env:
+          VERSION: ${{ steps.v.outputs.version }}
         run: |
           dotnet publish src/VaultType/VaultType.csproj `
             -c Release -r win-x64 --self-contained true `
             -p:PublishSingleFile=true `
             -p:IncludeNativeLibrariesForSelfExtract=true `
             -p:EnableCompressionInSingleFile=true `
-            -p:Version=${{ steps.v.outputs.version }} `
+            -p:Version=$env:VERSION `
             -o publish
-          Copy-Item publish/VaultType.exe "VaultType-${{ steps.v.outputs.version }}-win-x64.exe"
+          Copy-Item publish/VaultType.exe "VaultType-${env:VERSION}-win-x64.exe"
 
       - name: Build installer (Inno Setup)
         shell: pwsh
+        env:
+          VERSION: ${{ steps.v.outputs.version }}
         run: |
           choco install innosetup --no-progress -y
-          & "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" /DMyAppVersion=${{ steps.v.outputs.version }} installer\VaultType.iss
+          & "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" /DMyAppVersion=$env:VERSION installer\VaultType.iss
 
       # keep the builds around even for manual/test runs that don't cut a release
       - name: Upload build artifact
@@ -75,7 +82,7 @@ jobs:
 
       - name: Publish release
         if: startsWith(github.ref, 'refs/tags/v')
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2.6.2
         with:
           files: VaultType-*.exe
           body_path: RELEASE_NOTES.md
@@ -92,7 +99,7 @@ jobs:
 
       - name: Regenerate CHANGELOG.md
         if: startsWith(github.ref, 'refs/tags/v')
-        uses: orhun/git-cliff-action@v4
+        uses: orhun/git-cliff-action@f50e11560dce63f7c33227798f90b924471a88b5 # v4.8.0
         with:
           config: cliff.toml
           args: --tag ${{ github.ref_name }}
