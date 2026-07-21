@@ -10,6 +10,7 @@
 [![.NET](https://img.shields.io/badge/.NET-10.0-512BD4?logo=dotnet&logoColor=white)](#requirements)
 [![CI](https://github.com/friedPotat0/VaultType/actions/workflows/ci.yml/badge.svg)](https://github.com/friedPotat0/VaultType/actions/workflows/ci.yml)
 [![Latest release](https://img.shields.io/github/v/release/friedPotat0/VaultType?label=download&logo=github)](https://github.com/friedPotat0/VaultType/releases/latest)
+[![Microsoft Store](https://img.shields.io/badge/Microsoft%20Store-get%20it-0078D4?logo=windows&logoColor=white)](https://apps.microsoft.com/detail/9N5CLMW5XJ49)
 [![License: Apache-2.0 + Commons Clause](https://img.shields.io/badge/License-Apache--2.0%20%2B%20Commons%20Clause-lightgrey)](LICENSE)
 [![Donate](https://img.shields.io/badge/Donate-Ko--fi-FF5E5B?logo=kofi&logoColor=white)](https://ko-fi.com/friedpotat0)
 
@@ -189,18 +190,23 @@ That's it. Release builds are **self-contained** - the .NET runtime is baked int
 
 ## Installation
 
-Grab either build from the [latest release](../../releases/latest):
+Pick one of three ways to install:
 
-- **Installer** (recommended) - `VaultType-<version>-Setup.exe`. Installs VaultType into your user
-  profile with a Start-menu shortcut and an uninstaller; no admin rights needed. You can delete the
-  downloaded setup afterwards.
-- **Portable** - `VaultType-<version>-win-x64.exe`. A single self-contained file you run directly;
-  keep it somewhere permanent (not your Downloads folder, where it's easy to delete by accident).
+- **Microsoft Store** (recommended) - [get VaultType from the Store](https://apps.microsoft.com/detail/9N5CLMW5XJ49).
+  Store-signed (no SmartScreen warning), updates automatically, and it is the **packaged edition** -
+  the only one that can act as a [Windows passkey provider](#passkeys-experimental).
+- **Installer** - `VaultType-<version>-Setup.exe` from the [latest release](../../releases/latest).
+  Installs VaultType into your user profile with a Start-menu shortcut and an uninstaller; no admin
+  rights needed. You can delete the downloaded setup afterwards.
+- **Portable** - `VaultType-<version>-win-x64.exe` from the [latest release](../../releases/latest).
+  A single self-contained file you run directly; keep it somewhere permanent (not your Downloads
+  folder, where it's easy to delete by accident).
 
 Then, either way:
 
-1. Run it. Windows may show a SmartScreen warning because it isn't code-signed (there is currently
-   no code-signing certificate for this project) - click *More info -> Run anyway*.
+1. Run it. For the GitHub builds, Windows may show a SmartScreen warning because they aren't
+   code-signed (there is currently no code-signing certificate for this project) - click
+   *More info -> Run anyway*. The Store build is signed by the Store and starts without a warning.
 2. Sign in: pick **Bitwarden.com (US)**, **Bitwarden.eu (EU)**, **Bitwarden (self-hosted)** or
    **Vaultwarden (self-hosted)** and enter your details. If your account has two-factor
    authentication, choose the method (authenticator app, email, YubiKey, Duo) and enter the code.
@@ -245,7 +251,6 @@ Everything below is adjustable in the Settings window; the file itself lives in
 | `PasskeyRequireHello` | `true` | Gate passkey use behind Windows Hello |
 | `TrayClickAction` | `2` | Tray left-click: `0` = menu, `1` = auto-type, `2` = settings |
 | `Autostart` | `true` | Start with Windows (per-user) |
-| `AutoUpdateCheck` | `true` | Periodic update check against GitHub |
 
 ## Usage
 
@@ -341,12 +346,13 @@ without it), and passkeys in locked vaults trigger the unlock window first - jus
 agent.
 
 > [!IMPORTANT]
-> **Passkeys only work in the packaged edition.** Windows activates passkey providers exclusively
-> for apps with a package identity (MSIX), which the regular installer and portable builds do not
-> have - in those builds the toggle under *Settings -> Integration* is greyed out with a note
-> saying exactly that. A Microsoft Store release of the packaged edition is planned; until then
-> the only way to try passkeys is the self-built, dev-signed MSIX package
-> (`packaging/msix/build-msix.ps1`). Windows 11 24H2 or later is required either way.
+> **Passkeys only work in the packaged edition -
+> [install VaultType from the Microsoft Store](https://apps.microsoft.com/detail/9N5CLMW5XJ49).**
+> Windows activates passkey providers exclusively for apps with a package identity (MSIX), which
+> the installer and portable builds from GitHub do not have - in those builds the toggle under
+> *Settings -> Integration* is greyed out with a note saying exactly that. Alternatively you can
+> build the MSIX package yourself (`packaging/msix/build-msix.ps1`). Windows 11 24H2 or later is
+> required either way.
 
 ## Languages
 
