@@ -4,10 +4,10 @@
 
 # VaultType
 
-**Secure, KeePass-style auto-type for Bitwarden & Vaultwarden - on Windows.**
+**A native Bitwarden & Vaultwarden client for Windows - KeePass-style auto-type, SSH agent and passkeys.**
 
 [![Windows](https://img.shields.io/badge/Windows-10%2F11-0078D6?logo=windows&logoColor=white)](#requirements)
-[![.NET](https://img.shields.io/badge/.NET-9.0-512BD4?logo=dotnet&logoColor=white)](#requirements)
+[![.NET](https://img.shields.io/badge/.NET-10.0-512BD4?logo=dotnet&logoColor=white)](#requirements)
 [![CI](https://github.com/friedPotat0/VaultType/actions/workflows/ci.yml/badge.svg)](https://github.com/friedPotat0/VaultType/actions/workflows/ci.yml)
 [![Latest release](https://img.shields.io/github/v/release/friedPotat0/VaultType?label=download&logo=github)](https://github.com/friedPotat0/VaultType/releases/latest)
 [![License: Apache-2.0 + Commons Clause](https://img.shields.io/badge/License-Apache--2.0%20%2B%20Commons%20Clause-lightgrey)](LICENSE)
@@ -21,15 +21,19 @@
 
 VaultType gives Bitwarden a global auto-type hotkey - the feature power users miss from KeePass.
 Press a shortcut and it types your username, password and TOTP into **any** window: desktop
-applications *and* browsers. It uses the official Bitwarden CLI as its vault backend, so every
-cryptographic operation is performed by Bitwarden's own code. VaultType is a hardened front-end
-that is built to **never** persist your secrets.
+applications *and* browsers. Beyond auto-type, it can serve the **SSH keys** stored in your vault
+through the Windows OpenSSH agent, and act as a **Windows 11 passkey provider** (experimental).
+
+VaultType is a **native Bitwarden client**: it speaks the Bitwarden server API directly and
+performs all cryptography in-process - no Bitwarden CLI, no browser extension, no helper
+processes. The entire app is a single hardened executable that is built to **never** persist your
+secrets.
 
 > [!IMPORTANT]
 > VaultType is an independent, unofficial project. It is **not affiliated with, endorsed by, or
 > sponsored by Bitwarden Inc.** "Bitwarden" and "Vaultwarden" are trademarks of their respective
-> owners. VaultType only drives the official Bitwarden CLI, which connects to whichever server you
-> configure - your self-hosted Vaultwarden or bitwarden.com.
+> owners. VaultType implements the Bitwarden client protocol and connects only to the server you
+> configure - your self-hosted Vaultwarden/Bitwarden or the bitwarden.com cloud.
 
 ---
 
@@ -43,6 +47,8 @@ that is built to **never** persist your secrets.
 - [Configuration](#configuration)
 - [Usage](#usage)
 - [Auto-type sequences](#auto-type-sequences)
+- [SSH agent](#ssh-agent)
+- [Passkeys](#passkeys-experimental)
 - [Languages](#languages)
 - [Building from source](#building-from-source)
 - [Contributing](#contributing)
@@ -55,15 +61,32 @@ that is built to **never** persist your secrets.
 - **KeePass-style picker** - entries matching the active window/URL come first, but you can
   **search the whole vault** if the automatic match is wrong.
 - **Auto-type** the full sequence (username → Tab → password → Enter), or username / password /
-  TOTP only.
+  TOTP only - with per-entry [custom sequences](#auto-type-sequences).
 - **Copy to clipboard** (right-click) for username / password / TOTP, with the clipboard
   **cleared automatically** after a timeout.
 - **Learn associations** - pick a non-suggested entry and VaultType offers to remember the
   current site or app for next time.
-- **Local TOTP** generation (RFC 6238) - no clipboard, no extra network calls.
-- **Real favicons** served by *your own* Vaultwarden (`/icons`), cached locally - no third-party
-  icon service is contacted.
-- **Auto-lock** after inactivity (default 30 minutes); it also re-locks after the computer wakes from sleep or standby, since real time keeps counting.
+- **Multiple accounts** - keep several vaults side by side (say a personal Vaultwarden and a work
+  Bitwarden cloud). Unlock as many as you like; the picker merges their entries and tags each with a
+  coloured account badge. Locked accounts show up as chips you can unlock on the spot, without
+  leaving the picker. Each vault keeps its own session and its own encryption key.
+- **Native vault client** - VaultType talks to the Bitwarden/Vaultwarden API itself (PBKDF2 *and*
+  Argon2id KDF, API-key login, two-factor via authenticator app, email, YubiKey or Duo). No
+  Bitwarden CLI to download, verify or keep updated.
+- **SSH agent** - serve the SSH keys stored in your vault over the standard Windows OpenSSH agent
+  pipe; `ssh`/`git` just work, with an optional confirmation for every signature.
+- **Passkey provider** *(experimental, packaged edition only)* - register VaultType as a Windows 11
+  passkey provider and use the FIDO2 credentials in your vault for website sign-ins, gated behind
+  Windows Hello.
+- **PIN unlock** - unlock with a short PIN instead of the full master password, Bitwarden-style
+  (wrong-PIN limit, optional "require master password after restart").
+- **Local TOTP** generation (RFC 6238, plus Steam Guard) - no clipboard, no extra network calls.
+- **Real favicons** served by *your own* server (`/icons`), cached locally - no third-party icon
+  service is contacted.
+- **Auto-lock** after inactivity (default 30 minutes); it also re-locks after the computer wakes
+  from sleep or standby, since real time keeps counting.
+- **Master password reprompt** - entries flagged in Bitwarden as "ask for master password" are
+  re-confirmed before typing or copying.
 - **Multilingual** - ships in 11 languages, follows your Windows display language automatically.
 - Clean dark interface, runs quietly in the system tray.
 
@@ -77,23 +100,13 @@ search the whole vault at any time. Every window shares the same clean, dark int
   <tr>
     <td colspan="2" align="center">
       <img src="assets/screenshots/picker.png" width="420" alt="VaultType entry picker" /><br />
-      <sub><b>Entry picker</b> - matches for the active window come first; start typing to search the whole vault.</sub><br /><br />
-    </td>
-  </tr>
-  <tr>
-    <td align="center" valign="top" width="50%">
-      <img src="assets/screenshots/cli-setup.png" width="380" alt="VaultType first-run Bitwarden CLI setup" /><br />
-      <sub><b>First run</b> - VaultType asks before anything touches the network: download the CLI, or add your own.</sub><br /><br />
-    </td>
-    <td align="center" valign="top" width="50%">
-      <img src="assets/screenshots/cli-download.png" width="380" alt="VaultType Bitwarden CLI download progress" /><br />
-      <sub><b>Download</b> - live progress with transfer size, speed and time remaining; cancel any time.</sub><br /><br />
+      <sub><b>Entry picker</b> - matches for the active window come first; start typing to search the whole vault. With more than one account, each entry carries a coloured badge and locked vaults appear as chips you can unlock in place.</sub><br /><br />
     </td>
   </tr>
   <tr>
     <td align="center" valign="top" width="50%">
       <img src="assets/screenshots/signin-vaultwarden.png" width="380" alt="VaultType sign-in (Vaultwarden)" /><br />
-      <sub><b>Vaultwarden sign-in</b> - pick the account type, then server URL, email and master password.</sub><br /><br />
+      <sub><b>Self-hosted sign-in</b> - server URL, email and master password, plus your second factor if the account has one.</sub><br /><br />
     </td>
     <td align="center" valign="top" width="50%">
       <img src="assets/screenshots/signin-bitwarden.png" width="380" alt="VaultType sign-in (Bitwarden.com)" /><br />
@@ -103,11 +116,21 @@ search the whole vault at any time. Every window shares the same clean, dark int
   <tr>
     <td align="center" valign="top" width="50%">
       <img src="assets/screenshots/unlock.png" width="380" alt="VaultType unlock prompt" /><br />
-      <sub><b>Unlock</b> - on later launches just the master password (locked memory, then discarded).</sub><br /><br />
+      <sub><b>Unlock</b> - on later launches just the master password or your PIN (locked memory, then discarded).</sub><br /><br />
     </td>
     <td align="center" valign="top" width="50%">
+      <img src="assets/screenshots/tray.png" width="300" alt="VaultType tray menu" /><br />
+      <sub><b>Tray menu</b> - every account with its state, auto-type, sync, lock, updates and settings one right-click away.</sub><br /><br />
+    </td>
+  </tr>
+  <tr>
+    <td align="center" valign="top" width="50%">
       <img src="assets/screenshots/settings.png" width="380" alt="VaultType settings window" /><br />
-      <sub><b>Settings</b> - hotkey, timeouts, URL matching, language and the security-hardening toggles.</sub><br /><br />
+      <sub><b>Settings</b> - organised into Vaults, Auto-Type, Security, Integration and General. Manage your vaults (name, colour, add or remove) alongside every behaviour and hardening toggle.</sub><br /><br />
+    </td>
+    <td align="center" valign="top" width="50%">
+      <img src="assets/screenshots/settings-integration.png" width="380" alt="VaultType integration settings (SSH agent and passkey provider)" /><br />
+      <sub><b>Integration</b> - switch on the SSH agent and the Windows passkey provider, with per-use confirmation and Windows Hello gating.</sub><br /><br />
     </td>
   </tr>
 </table>
@@ -118,28 +141,36 @@ search the whole vault at any time. Every window shares the same clean, dark int
 VaultType is designed to make it as hard as possible to leak, intercept or scrape your master
 password or vault data.
 
-- **Master password** only ever exists as a `SecureString`, copied into **locked, non-paged
-  memory** (`VirtualLock`) and handed to the CLI through a **private environment block** - never
-  a command-line argument, never the parent environment, never a managed string. It is
-  **discarded immediately** after unlocking and is not kept for the session.
-- The **Bitwarden CLI is verified before it runs**: VaultType confirms `bw.exe` carries a valid
-  Authenticode signature from **Bitwarden Inc.** before handing it your master password. A copy it
-  downloaded that fails the check is deleted; a `bw.exe` you supplied yourself warns you first.
-- **Vault secrets in RAM** (passwords, TOTP seeds) are stored **AES-256-GCM encrypted** under an
-  ephemeral key held in locked memory. Plaintext exists only for the milliseconds needed to type a
-  field, inside a locked buffer that is then zeroed. Locking wipes the key, rendering any leftover
-  ciphertext useless.
-- The `list items` output is parsed **byte-by-byte**, so the full plaintext JSON never becomes a
-  managed string on the heap.
+- **Everything happens in one process.** Login, sync and all vault cryptography are implemented
+  natively (PBKDF2-SHA256 / Argon2id key derivation, AES-256-CBC + HMAC verification, RSA key
+  unwrapping). Your master password never crosses a process boundary, a command line or an
+  environment block - there is no CLI child process anymore.
+- **Master password** (and PIN) only ever exist as a `SecureString`, marshalled into **locked,
+  non-paged memory** (`VirtualLock`) for the moment of key derivation, then zeroed. They are
+  **discarded immediately** after unlocking and are not kept for the session.
+- **Vault secrets in RAM** (passwords, TOTP seeds, SSH and passkey private keys) are stored
+  **AES-256-GCM encrypted** under an ephemeral key held in locked memory. Plaintext exists only for
+  the milliseconds needed to type or sign, inside a locked buffer that is then zeroed. Locking
+  wipes the key, rendering any leftover ciphertext useless.
+- **Nothing decrypted touches the disk.** Per account, only the key envelopes needed to unlock
+  (master-key-wrapped user key, DPAPI-sealed refresh token, optional PIN envelope) plus non-secret
+  metadata are stored under `%LOCALAPPDATA%\VaultType` - a folder whose ACL is restricted to your
+  user. Vault items themselves are re-fetched from the server on every unlock.
 - Windows are hidden from screen capture (`WDA_EXCLUDEFROMCAPTURE`), legacy DLL/hook injection is
   blocked (`ProcessExtensionPointDisablePolicy`), and the app refuses to run under a debugger.
 - **Auto-type aborts instantly** if focus leaves the target window - no stray characters end up
   in the wrong place, and nothing is typed if focus cannot be restored to the target.
 - **No clipboard** is used for typing. The optional copy actions are the only clipboard use, and
-  they self-clear.
-- The application itself opens **no network connections** except favicon requests to *your*
-  Vaultwarden (which you can disable) and the manual *Check for updates* action (a version check
-  against GitHub). All server communication is performed by the official CLI.
+  they self-clear (only if the clipboard still holds what VaultType put there).
+- **PIN unlock is rate-limited**: five wrong PINs destroy the PIN envelope and force the master
+  password. With *require master password after restart* (the default) the envelope only ever
+  lives in RAM.
+- **Minimal supply chain**: a single Microsoft-published NuGet package (`System.Formats.Cbor`).
+  Argon2id and Ed25519 are implemented in VaultType itself instead of pulling third-party DLLs -
+  which also means the app runs on WDAC-locked machines that only allow Microsoft-signed binaries.
+- The application opens **no network connections** except to *your* configured vault server
+  (API + favicons, the latter can be disabled) and the *Check for updates* action (a version
+  check against GitHub).
 
 > [!NOTE]
 > No user-space password manager - VaultType or KeePass - can fully defend against an attacker who
@@ -148,21 +179,13 @@ password or vault data.
 
 ## Requirements
 
-- Windows 10 or 11 (x64)
+- Windows 10 or 11 (x64) - the passkey provider additionally needs Windows 11 24H2
 - A Bitwarden or self-hosted Vaultwarden account
 
-Release builds are **self-contained** - the .NET runtime is baked into the single `.exe`, so
-there is nothing else to install. (To [build from source](#building-from-source) you need the
-[.NET 9 SDK](https://dotnet.microsoft.com/download/dotnet/9.0) instead.)
-
-The official **Bitwarden CLI** (`bw.exe`) is **not bundled** (it is Bitwarden's own binary). On
-first run VaultType **asks** whether to download it automatically from the official source - kept
-in `%LOCALAPPDATA%\VaultType` - or to add your own. The automatic download needs internet access,
-so if a firewall (e.g. NetLimiter) is running, allow VaultType through it. To skip the download
-entirely - for offline installs, or a firewall you'd rather not touch - place your own `bw.exe`
-next to `VaultType.exe` or into `%LOCALAPPDATA%\VaultType\bw.exe` beforehand, or point to it in the
-first-run prompt. However you provide it, VaultType runs it only if it is validly signed by
-Bitwarden.
+That's it. Release builds are **self-contained** - the .NET runtime is baked into the single
+`.exe`, and the Bitwarden client is built in, so there is nothing else to install or download.
+(To [build from source](#building-from-source) you need the
+[.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0) instead.)
 
 ## Installation
 
@@ -178,34 +201,51 @@ Then, either way:
 
 1. Run it. Windows may show a SmartScreen warning because it isn't code-signed (there is currently
    no code-signing certificate for this project) - click *More info -> Run anyway*.
-2. On first launch it asks whether to download the official Bitwarden CLI or add it yourself, then
-   shows the sign-in window - pick **Vaultwarden**, **Bitwarden US** or **Bitwarden EU** and enter your details.
-3. Optional: enable *Start with Windows* from the tray menu.
+2. Sign in: pick **Bitwarden.com (US)**, **Bitwarden.eu (EU)**, **Bitwarden (self-hosted)** or
+   **Vaultwarden (self-hosted)** and enter your details. If your account has two-factor
+   authentication, choose the method (authenticator app, email, YubiKey, Duo) and enter the code.
+   You can also pick how to unlock in the future: master password or a PIN.
+3. Optional: add more accounts any time via *Add account* in the tray menu or in Settings, and
+   enable the [SSH agent](#ssh-agent) or [passkey provider](#passkeys-experimental) under
+   *Settings -> Integration*.
 
 > [!NOTE]
 > **The Bitwarden cloud comes in two regions** - US (`bitwarden.com`) and EU (`bitwarden.eu`);
 > pick the one your account was created in, they are separate. **Signing in there uses a personal
-> API key by default:** the Bitwarden CLI can't solve the cloud login CAPTCHA, so an API key is the
-> reliable way in (it also avoids the 2FA prompt). Create one in the Bitwarden web vault under
-> *Account settings -> Security -> Keys -> View API key*, then paste the client ID and secret.
-> **Self-hosted Vaultwarden** has no such CAPTCHA, so it simply uses your email and master password.
+> API key by default:** the cloud login is protected by a CAPTCHA that a desktop app cannot solve,
+> so an API key is the reliable way in (it also avoids the 2FA prompt). Create one in the Bitwarden
+> web vault under *Account settings -> Security -> Keys -> View API key*, then paste the client ID
+> and secret - the master password is still required, it protects your keys. **Self-hosted
+> Vaultwarden** has no such CAPTCHA, so it simply uses your email and master password.
 
 ## Configuration
 
-Settings live in `%LOCALAPPDATA%\VaultType\config.json` - **no secrets are stored there**:
+Everything below is adjustable in the Settings window; the file itself lives in
+`%LOCALAPPDATA%\VaultType\config.json` - **no secrets are stored there**:
 
 | Key | Default | Description |
 | --- | --- | --- |
-| `ServerUrl` | - | Your Bitwarden / Vaultwarden URL |
+| `Accounts` | `[]` | Your configured vaults (name, badge colour, server, email, unlock method) - managed in Settings, no secrets. Each account's session envelope lives in its own `accounts\<id>\` folder |
 | `Hotkey` | `Ctrl+Alt+A` | Global hotkey |
 | `Language` | `auto` | UI language (`auto` follows Windows) |
-| `IdleTimeoutMinutes` | `30` | Auto-lock after inactivity |
+| `IdleTimeoutMinutes` | `30` | Auto-lock after inactivity (`0` = never) |
+| `TypingDelayMs` | `4` | Delay between simulated keystrokes |
 | `ClearFieldBeforeTyping` | `true` | Select the field (Ctrl+A) before typing |
-| `DefaultUriMatch` | `0` | Fallback URL match for entries with no rule of their own (`0` = base domain, `1` = host) |
+| `AutoTypeFieldName` | `auto-type` | Name of the custom field holding a per-entry [sequence](#auto-type-sequences) |
+| `DefaultUriMatch` | `0` | Fallback URL match for entries with no rule of their own (`0` = base domain, `1` = host, `2` = exact URL) |
 | `ShowIcons` | `true` | Favicons from your own server (`false` = letter avatars, offline) |
-| `ClipboardClearSeconds` | `12` | Clear the clipboard this long after a copy |
+| `ClipboardClearSeconds` | `12` | Clear the clipboard this long after a copy (`0` = never) |
+| `HonorMasterPasswordReprompt` | `true` | Re-confirm entries flagged "ask for master password" in Bitwarden |
 | `ExcludeFromScreenCapture` | `true` | Hide windows from screenshots |
 | `AntiDebugger` | `true` | Exit if a debugger attaches |
+| `SshAgentEnabled` | `false` | Serve vault SSH keys on the OpenSSH agent pipe |
+| `SshConfirmEachUse` | `true` | Ask before every SSH signature |
+| `SshDisabledKeys` | `[]` | SSH keys switched off in the agent (managed in the key list) |
+| `PasskeyProviderEnabled` | `false` | Register as a Windows 11 passkey provider (experimental) |
+| `PasskeyRequireHello` | `true` | Gate passkey use behind Windows Hello |
+| `TrayClickAction` | `2` | Tray left-click: `0` = menu, `1` = auto-type, `2` = settings |
+| `Autostart` | `true` | Start with Windows (per-user) |
+| `AutoUpdateCheck` | `true` | Periodic update check against GitHub |
 
 ## Usage
 
@@ -222,6 +262,15 @@ Press the hotkey, unlock once, then in the picker:
 
 For desktop apps, add a URI like `app://programname.exe` to the entry - or simply let VaultType
 offer to remember it the first time.
+
+With **several accounts**, the picker lists the entries of every unlocked vault together, each
+tagged with its account badge. Any vault that is still locked appears as a chip at the bottom -
+click it (or press `Enter` on an empty search) to unlock just that account and fold its entries in,
+without closing the picker.
+
+The **tray menu** shows each account with its state (entry count, or a lock you can click to
+unlock), and offers *Auto-type*, *Sync*, *Lock* per account or *Lock all*, *Check for updates*,
+*Settings* and *Exit*.
 
 ## Auto-type sequences
 
@@ -240,12 +289,12 @@ Supported placeholders (case-insensitive):
 
 | Placeholder | Types |
 | --- | --- |
-| `{USERNAME}` / `{USER}` | the username |
+| `{USERNAME}` / `{USER}` / `{LOGIN}` | the username |
 | `{PASSWORD}` / `{PASS}` | the password |
-| `{TOTP}` | the current TOTP code |
+| `{TOTP}` / `{OTP}` | the current TOTP code |
 | `{TAB}` `{ENTER}` `{SPACE}` | those keys |
 | `{CLEARFIELD}` | selects the field first (Ctrl+A) |
-| `{DELAY 200}` | waits 200 ms |
+| `{DELAY 200}` | waits 200 ms (also `{WAIT}` / `{SLEEP}`) |
 | any other text | typed literally |
 
 Example for a two-step login where the username comes first and the password field only appears a
@@ -257,16 +306,59 @@ moment later (the way PayPal and some others do it):
 
 The field name (`auto-type`) can be changed via `AutoTypeFieldName` in `config.json`.
 
+## SSH agent
+
+Bitwarden vaults can store **SSH keys** as their own item type. Enable the agent under
+*Settings -> Integration -> SSH agent* and VaultType serves those keys on the standard Windows
+OpenSSH agent pipe (`\\.\pipe\openssh-ssh-agent`) - `ssh`, `git` and every other OpenSSH-aware
+tool pick them up automatically, no key files on disk.
+
+<div align="center">
+<img src="assets/screenshots/ssh-keys.png" width="420" alt="VaultType SSH key management" /><br />
+<sub><b>Manage keys</b> - every SSH key across your vaults, with fingerprint, copy-public-key button and a per-key agent toggle.</sub>
+</div>
+<br />
+
+- **Ed25519** and **RSA** keys are supported (rsa-sha2-256/512 signatures).
+- *Confirm each use* (on by default) pops a dialog before every signature, naming the requesting
+  key - nothing signs silently.
+- **Locked vaults still advertise their keys**: a signature request for a key in a locked vault
+  brings up the unlock window first, then signs. You don't have to pre-unlock before pushing.
+- *Manage keys* opens a list of every SSH key across your vaults, with its fingerprint, a
+  copy-public-key button, and a per-key toggle to keep individual keys out of the agent.
+
+> [!NOTE]
+> The built-in Windows *OpenSSH Authentication Agent* service uses the same pipe. If it is
+> running, VaultType cannot bind and will tell you - stop it once with
+> `Stop-Service ssh-agent` (and set it to *Disabled* so it stays off).
+
+## Passkeys (experimental)
+
+VaultType can register as a **Windows 11 passkey provider**: passkeys stored in your vault then
+show up in the native Windows passkey dialog, and websites can create new passkeys directly into
+your vault. Use is gated behind **Windows Hello** by default (or an explicit confirmation dialog
+without it), and passkeys in locked vaults trigger the unlock window first - just like the SSH
+agent.
+
+> [!IMPORTANT]
+> **Passkeys only work in the packaged edition.** Windows activates passkey providers exclusively
+> for apps with a package identity (MSIX), which the regular installer and portable builds do not
+> have - in those builds the toggle under *Settings -> Integration* is greyed out with a note
+> saying exactly that. A Microsoft Store release of the packaged edition is planned; until then
+> the only way to try passkeys is the self-built, dev-signed MSIX package
+> (`packaging/msix/build-msix.ps1`). Windows 11 24H2 or later is required either way.
+
 ## Languages
 
 VaultType is available in: **English, Deutsch, Español, Français, Italiano, 日本語, Nederlands,
 Polski, Português (Brasil), Русский, 简体中文.** By default the interface follows your Windows
 display language (falling back to English), or you can pick a language explicitly under
-**Settings -> Language**. Changing the language restarts VaultType so the new strings take effect.
+**Settings -> General -> Language**. Changing the language restarts VaultType so the new strings
+take effect.
 
 ## Building from source
 
-Needs the [.NET 9 SDK](https://dotnet.microsoft.com/download/dotnet/9.0).
+Needs the [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0).
 
 ```powershell
 dotnet publish src/VaultType/VaultType.csproj -c Release -o dist
@@ -280,7 +372,8 @@ dotnet publish src/VaultType/VaultType.csproj -c Release -r win-x64 --self-conta
   -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:EnableCompressionInSingleFile=true
 ```
 
-The Bitwarden CLI is fetched automatically on first launch.
+To try the [passkey provider](#passkeys-experimental), build and install the dev-signed MSIX
+package with `packaging/msix/build-msix.ps1` (needs the Windows SDK).
 
 ## Contributing
 
@@ -299,3 +392,7 @@ If VaultType is useful to you, you can support development on Ko-fi:
 
 Apache License 2.0 **with the Commons Clause** (you may use, modify and share it freely, but not
 sell it). See [LICENSE](LICENSE).
+
+Bundled third-party components (fonts, one Microsoft NuGet package) are listed with their
+licenses in [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md). VaultType collects no data -
+see the [privacy policy](PRIVACY.md).
