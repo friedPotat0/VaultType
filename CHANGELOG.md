@@ -1,6 +1,38 @@
 # Changelog
 
 All notable changes to this project are documented here.
+## [1.2.0] - 2026-07-21
+
+### Features
+
+- Add a default URL match setting (base domain or host)
+- Add Bitwarden cloud region selection (US / EU)
+- Add a built-in Bitwarden vault client
+- Serve vault SSH keys over a built-in SSH agent
+- Register as a Windows passkey provider
+- Replace the Bitwarden CLI with the built-in vault client
+- *(store)* Add store edition support and remove auto-update setting
+
+### Documentation
+
+- Update changelog for v1.1.0 [skip ci]
+- Note the Bitwarden CLI signature check in the security model
+- Document the URL match setting and refresh the settings screenshot
+- Document the Bitwarden cloud regions and refresh the sign-in screenshot
+- Add a privacy policy and third-party notices
+- Rewrite the README for the built-in vault client and refresh the screenshots
+- *(store)* Add store installation guide and listing assets
+
+### Miscellaneous
+
+- Target .NET 10
+- Add an MSIX package build
+- Pin the release actions and stop inlining workflow inputs
+- Redraw the logo with a check mark
+- *(store)* Add store job to release workflow
+- *(msix)* Add -Store mode for partner center signing
+- *(store)* Allow skipping the submission via [skip store] in the tagged commit
+
 ## [1.1.0] - 2026-07-12
 
 ### Features
