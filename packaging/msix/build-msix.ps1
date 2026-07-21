@@ -13,9 +13,18 @@
 [CmdletBinding()]
 param(
   [string]$Configuration = "Release",
-  [string]$Runtime = "win-x64"
+  [string]$Runtime = "win-x64",
+  # Store mode: stamp the Partner Center product identity into the manifest and leave the
+  # package unsigned - the Microsoft Store signs it during certification.
+  [switch]$Store,
+  # Package version (x.y.z.n); the Store requires the fourth part to be 0.
+  [string]$Version = ""
 )
 $ErrorActionPreference = "Stop"
+# Fail fast, before the (slow) publish: the Store only accepts x.y.z.0 package versions.
+if ($Store -and $Version -and $Version -notmatch '^\d+\.\d+\.\d+\.0$') {
+  throw "Store packages need a version of the form x.y.z.0 (got '$Version')."
+}
 $root      = (Resolve-Path "$PSScriptRoot\..\..").Path
 $proj      = Join-Path $root "src\VaultType\VaultType.csproj"
 $stage     = Join-Path $PSScriptRoot "stage"
@@ -39,14 +48,30 @@ if (-not $makeappx) { throw "makeappx.exe not found - install the Windows SDK." 
 Write-Host "Publishing $Runtime ($Configuration)..."
 if (Test-Path $stage) { Remove-Item $stage -Recurse -Force }
 New-Item -ItemType Directory -Force -Path $stage, $out | Out-Null
+# Stamp the assembly version too (x.y.z of the package version) so the in-app version matches.
+$asmVersion = if ($Version) { ($Version -split '\.')[0..2] -join '.' } else { $null }
+$versionArg = if ($asmVersion) { "-p:Version=$asmVersion" } else { $null }
 dotnet publish $proj -c $Configuration -r $Runtime --self-contained true `
-  -p:PublishSingleFile=false -o $stage | Out-Null
+  -p:PublishSingleFile=false $versionArg -o $stage | Out-Null
 
 # --- manifest + assets ---
 Copy-Item $manifest (Join-Path $stage "AppxManifest.xml") -Force
 # license + third-party notices ship in every distributed copy (OFL/MIT requirement)
 Copy-Item (Join-Path $root "LICENSE") $stage -Force
 Copy-Item (Join-Path $root "THIRD-PARTY-NOTICES.md") $stage -Force
+
+# --- stamp identity ---
+$stagedManifest = Join-Path $stage "AppxManifest.xml"
+$doc = [xml](Get-Content $stagedManifest -Raw)
+if ($Store) {
+  # Partner Center product identity (Apps and Games > VaultType > Product identity).
+  # These are public identifiers, not secrets.
+  $doc.Package.Identity.Name = "friedPotat0.VaultType"
+  $doc.Package.Identity.Publisher = "CN=4B8578C4-7424-4939-B9D2-9E164B6F10A5"
+  $doc.Package.Properties.PublisherDisplayName = "friedPotat0"
+}
+if ($Version) { $doc.Package.Identity.Version = $Version }
+$doc.Save($stagedManifest)
 $assets = Join-Path $stage "Assets"
 New-Item -ItemType Directory -Force -Path $assets | Out-Null
 # reuse the existing app icons for the required tile logos (dev packaging; exact sizes not enforced)
@@ -61,10 +86,18 @@ $map = @{
 foreach ($k in $map.Keys) { Copy-Item (Join-Path $assetsSrc $map[$k]) (Join-Path $assets $k) -Force }
 
 # --- pack ---
-$msix = Join-Path $out "VaultType.msix"
+$msix = Join-Path $out $(if ($Store) { "VaultType-Store.msix" } else { "VaultType.msix" })
 if (Test-Path $msix) { Remove-Item $msix -Force }
 Write-Host "Packing MSIX..."
 & $makeappx pack /o /d $stage /p $msix | Out-Null
+
+if ($Store) {
+  Write-Host ""
+  Write-Host "Done (Store mode, unsigned):"
+  Write-Host "  Package: $msix"
+  Write-Host "  Upload via Partner Center or 'msstore publish'."
+  return
+}
 
 # --- self-signed dev cert (subject must equal the manifest Publisher) ---
 $subject = "CN=VaultType Dev"
