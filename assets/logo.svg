@@ -1,13 +1,16 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" role="img" aria-label="VaultType logo">
   <defs>
-    <linearGradient id="gTop" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#6AD59A"/><stop offset="1" stop-color="#4ABB82"/></linearGradient>
-    <linearGradient id="gSide" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#359C6B"/><stop offset="1" stop-color="#207048"/></linearGradient>
+    <linearGradient id="gTop" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#57D36A"/><stop offset="1" stop-color="#2FA847"/></linearGradient>
+    <linearGradient id="gSide" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2A9A41"/><stop offset="1" stop-color="#14682B"/></linearGradient>
+    <linearGradient id="gCheck" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#6EE07F"/><stop offset="1" stop-color="#45C25E"/></linearGradient>
     <mask id="mDeb" maskUnits="userSpaceOnUse" x="0" y="0" width="512" height="512">
       <rect x="116" y="100" width="280" height="284" rx="54" fill="#fff"/>
-      <path d="M256 170 L320 194 Q329 197 329 206 L329 256 Q329 308 256 340 Q183 308 183 256 L183 206 Q183 197 192 194 Z" fill="#000"/>
+      <path d="M256 170 L320 194 Q329 197 329 206 L329 256 Q329 308 256 340 Q183 308 183 256 L183 206 Q183 197 192 194 Z" fill="#000" transform="translate(0 -13)"/>
+      <path d="M223 256 L247 281 L294 223" fill="none" stroke="#fff" stroke-width="22" stroke-linecap="round" stroke-linejoin="round" transform="translate(0 -13)"/>
     </mask>
   </defs>
   <rect x="84" y="100" width="344" height="332" rx="78" fill="url(#gSide)"/>
   <rect x="116" y="100" width="280" height="284" rx="54" fill="url(#gTop)" mask="url(#mDeb)"/>
-  <path d="M256 170 L320 194 Q329 197 329 206 L329 256 Q329 308 256 340 Q183 308 183 256 L183 206 Q183 197 192 194 Z" fill="none" stroke="#1C6B48" stroke-width="7" opacity="0.55"/>
+  <path d="M256 170 L320 194 Q329 197 329 206 L329 256 Q329 308 256 340 Q183 308 183 256 L183 206 Q183 197 192 194 Z" fill="none" stroke="#0F5C27" stroke-width="7" opacity="0.5" transform="translate(0 -13)"/>
+  <path d="M223 256 L247 281 L294 223" fill="none" stroke="url(#gCheck)" stroke-width="22" stroke-linecap="round" stroke-linejoin="round" transform="translate(0 -13)"/>
 </svg>
