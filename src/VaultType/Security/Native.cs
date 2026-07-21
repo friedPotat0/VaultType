@@ -80,6 +80,8 @@ internal static class Native
     [DllImport("user32.dll", SetLastError = true)] public static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint lpdwProcessId);
     [DllImport("user32.dll", CharSet = CharSet.Unicode)] public static extern int GetWindowText(IntPtr hWnd, char[] lpString, int nMaxCount);
     [DllImport("user32.dll")] public static extern int GetWindowTextLength(IntPtr hWnd);
+    [DllImport("user32.dll")] public static extern bool AttachThreadInput(uint idAttach, uint idAttachTo, bool fAttach);
+    [DllImport("kernel32.dll")] public static extern uint GetCurrentThreadId();
 
     // Anti-screenshot: WDA_EXCLUDEFROMCAPTURE (Win10 2004+) hides the window from screen captures.
     public const uint WDA_EXCLUDEFROMCAPTURE = 0x11;
@@ -121,6 +123,10 @@ internal static class Native
     public delegate void WinEventDelegate(IntPtr hWinEventHook, uint eventType, IntPtr hwnd,
         int idObject, int idChild, uint dwEventThread, uint dwmsEventTime);
 
+    // IMPORTANT: the caller MUST keep the WinEventDelegate instance alive in a field for as long
+    // as the hook is installed. Marshalling creates an unmanaged thunk over the delegate; if the
+    // delegate is only held in a local, the GC collects it, the thunk is torn down, and the next
+    // callback jumps into freed memory (crash). Store the delegate, then call UnhookWinEvent.
     [DllImport("user32.dll")]
     public static extern IntPtr SetWinEventHook(uint eventMin, uint eventMax, IntPtr hmodWinEventProc,
         WinEventDelegate lpfnWinEventProc, uint idProcess, uint idThread, uint dwFlags);

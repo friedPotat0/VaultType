@@ -8,6 +8,10 @@ namespace VaultType.Security;
 public sealed class SecretProtector : IDisposable
 {
     private const int KeyLen = 32, NonceLen = 12, TagLen = 16;
+    // Guards every access to _key so Protect/Reveal can't race Dispose into a
+    // use-after-free / NullReferenceException. The crypto inside is short, so holding
+    // this lock never causes a meaningful UI stall.
+    private readonly object _gate = new();
     private LockedBuffer? _key;
 
     public SecretProtector()
@@ -16,32 +20,64 @@ public sealed class SecretProtector : IDisposable
         RandomNumberGenerator.Fill(_key.Span);
     }
 
-    public bool IsActive => _key != null;
+    public bool IsActive { get { lock (_gate) { return _key != null; } } }
 
     // encrypt plaintext bytes coming out of a locked buffer
     public SecretBox Protect(ReadOnlySpan<byte> plaintext)
     {
-        if (_key == null) throw new InvalidOperationException("Protector is locked");
-        var nonce = new byte[NonceLen];
-        RandomNumberGenerator.Fill(nonce);
-        var cipher = new byte[plaintext.Length];
-        var tag = new byte[TagLen];
-        using var gcm = new AesGcm(_key.Span, TagLen);
-        gcm.Encrypt(nonce, plaintext, cipher, tag);
-        return new SecretBox(nonce, cipher, tag);
+        lock (_gate)
+        {
+            if (_key == null) throw new InvalidOperationException("Protector is locked");
+            var nonce = new byte[NonceLen];
+            RandomNumberGenerator.Fill(nonce);
+            var cipher = new byte[plaintext.Length];
+            var tag = new byte[TagLen];
+            using var gcm = new AesGcm(_key.Span, TagLen);
+            gcm.Encrypt(nonce, plaintext, cipher, tag);
+            return new SecretBox(nonce, cipher, tag);
+        }
     }
 
     // decrypt into a locked buffer - caller has to dispose it
     public LockedBuffer Reveal(SecretBox box)
     {
-        if (_key == null) throw new InvalidOperationException("Protector is locked");
-        var outBuf = new LockedBuffer(Math.Max(1, box.Cipher.Length));
-        using var gcm = new AesGcm(_key.Span, TagLen);
-        gcm.Decrypt(box.Nonce, box.Cipher, box.Tag, outBuf.Span.Slice(0, box.Cipher.Length));
-        return outBuf;
+        lock (_gate)
+        {
+            if (_key == null) throw new InvalidOperationException("Protector is locked");
+            var outBuf = new LockedBuffer(Math.Max(1, box.Cipher.Length));
+            try
+            {
+                using var gcm = new AesGcm(_key.Span, TagLen);
+                gcm.Decrypt(box.Nonce, box.Cipher, box.Tag, outBuf.Span.Slice(0, box.Cipher.Length));
+            }
+            catch
+            {
+                // A tag mismatch (or any decrypt failure) throws before we hand outBuf back;
+                // dispose it here so the VirtualLock-pinned page doesn't leak.
+                outBuf.Dispose();
+                throw;
+            }
+            return outBuf;
+        }
     }
 
-    public void Dispose() { _key?.Dispose(); _key = null; }
+    public void Dispose()
+    {
+        Dispose(true);
+        GC.SuppressFinalize(this);
+    }
+
+    // Backstop: wipe/free the key buffer even if Dispose() was never called.
+    ~SecretProtector() => Dispose(false);
+
+    private void Dispose(bool disposing)
+    {
+        lock (_gate)
+        {
+            _key?.Dispose();
+            _key = null;
+        }
+    }
 }
 
 // Ciphertext blob - meaningless without the ephemeral key.

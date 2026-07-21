@@ -11,6 +11,9 @@
     <RootNamespace>VaultType</RootNamespace>
     <LangVersion>latest</LangVersion>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <!-- The passkey plugin serves a classic COM object (IPluginAuthenticator) via
+         CoRegisterClassObject; .NET only builds COM callable wrappers when this is on. -->
+    <BuiltInComInteropSupport>true</BuiltInComInteropSupport>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <ApplicationIcon>Assets\vaulttype.ico</ApplicationIcon>
     <Product>VaultType</Product>
@@ -23,6 +26,27 @@
   <ItemGroup>
     <EmbeddedResource Include="Assets\vaulttype.ico" />
     <EmbeddedResource Include="Localization\*.json" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- The design's typefaces (OFL / Public Sans SIL-OFL), embedded so the UI matches the design
+         1:1 across machines without depending on installed fonts. -->
+    <Resource Include="Assets\Fonts\PublicSans-Regular.ttf" />
+    <Resource Include="Assets\Fonts\PublicSans-Medium.ttf" />
+    <Resource Include="Assets\Fonts\PublicSans-SemiBold.ttf" />
+    <Resource Include="Assets\Fonts\PublicSans-Bold.ttf" />
+    <Resource Include="Assets\Fonts\JetBrainsMono-Regular.ttf" />
+    <Resource Include="Assets\Fonts\JetBrainsMono-SemiBold.ttf" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- CTAP2 messages are CBOR; the passkey plugin speaks them in both directions. This is a
+         Microsoft-published package, so it loads under a WDAC "Microsoft signing level" policy.
+         Argon2id (Bitwarden KDF) and Ed25519 (SSH agent signatures) - the two primitives missing
+         from the .NET BCL - are implemented in our own assembly (Vault/Crypto/) rather than pulled
+         from a third-party DLL, precisely so the app runs on WDAC-locked machines that block
+         non-Microsoft-signed binaries. -->
+    <PackageReference Include="System.Formats.Cbor" Version="9.0.0" />
   </ItemGroup>
 
 </Project>

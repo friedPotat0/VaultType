@@ -16,3 +16,4 @@ global using Size = System.Windows.Size;
 global using KeyEventArgs = System.Windows.Input.KeyEventArgs;
 global using MouseEventArgs = System.Windows.Input.MouseEventArgs;
 global using MouseButtonEventArgs = System.Windows.Input.MouseButtonEventArgs;
+global using MenuItem = System.Windows.Controls.MenuItem;

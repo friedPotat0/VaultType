@@ -8,10 +8,11 @@ _run/
 # transient CI file (release notes are generated per run)
 RELEASE_NOTES.md
 
-# bw.exe is not committed - grab it from the official source (~125 MB)
-bw.exe
-**/bw.exe
-
 # IDE
 .vs/
 *.user
+
+# local tooling artifacts (Claude Code / Playwright MCP)
+.playwright-mcp/
+.claude/visual/
+.claude/settings.local.json

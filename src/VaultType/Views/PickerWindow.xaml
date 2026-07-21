@@ -3,8 +3,8 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:local="clr-namespace:VaultType"
         WindowStyle="None" AllowsTransparency="True" Background="Transparent"
-        ResizeMode="NoResize" ShowInTaskbar="False" Topmost="True"
-        Width="480" Height="560" WindowStartupLocation="CenterScreen"
+        ResizeMode="NoResize" ShowInTaskbar="False" Topmost="True" Title="VaultType"
+        SizeToContent="WidthAndHeight" WindowStartupLocation="CenterScreen"
         UseLayoutRounding="True" SnapsToDevicePixels="True"
         FontFamily="{StaticResource AppFont}">
 
@@ -18,110 +18,158 @@
                 </Grid.ColumnDefinitions>
 
                 <!-- Icon: favicon tile, or letter avatar as a fallback -->
-                <Grid Grid.Column="0" Width="34" Height="34">
-                    <Border CornerRadius="8" Background="{Binding Name, Converter={StaticResource AvatarBrush}}"
+                <Grid Grid.Column="0" Width="40" Height="40">
+                    <Border CornerRadius="12" Background="{Binding Name, Converter={StaticResource AvatarGradientBrush}}"
                             Visibility="{Binding AvatarVisibility}">
                         <TextBlock Text="{Binding Name, Converter={StaticResource Initial}}" Foreground="White"
-                                   FontSize="15" FontWeight="SemiBold" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                   FontSize="17" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center" />
                     </Border>
-                    <Border CornerRadius="8" Background="White" Visibility="{Binding IconVisibility}">
-                        <Image Source="{Binding Icon}" Width="20" Height="20" Stretch="Uniform"
+                    <Border CornerRadius="12" Background="White" Visibility="{Binding IconVisibility}">
+                        <Image Source="{Binding Icon}" Width="22" Height="22" Stretch="Uniform"
                                HorizontalAlignment="Center" VerticalAlignment="Center" />
                     </Border>
                 </Grid>
 
-                <StackPanel Grid.Column="1" Margin="12,0,8,0" VerticalAlignment="Center">
-                    <TextBlock Text="{Binding Name}" Foreground="{StaticResource TextPrimary}" FontSize="14"
-                               FontWeight="Medium" TextTrimming="CharacterEllipsis" />
-                    <TextBlock Text="{Binding Username}" Foreground="{StaticResource TextSecondary}" FontSize="12"
-                               TextTrimming="CharacterEllipsis" Margin="0,1,0,0" />
+                <StackPanel Grid.Column="1" Margin="13,0,8,0" VerticalAlignment="Center">
+                    <TextBlock Text="{Binding Name}" Foreground="{StaticResource TextPrimary}" FontSize="14.5"
+                               FontWeight="Bold" TextTrimming="CharacterEllipsis" />
+                    <TextBlock Text="{Binding Username}" Foreground="{StaticResource TextSub}" FontSize="12.5"
+                               TextTrimming="CharacterEllipsis" Margin="0,1,0,0"
+                               Visibility="{Binding HasUsername, Converter={StaticResource BoolToVis}}" />
+                    <!-- auto-type sequence preview: shown on the selected row (matches the design) -->
+                    <ItemsControl ItemsSource="{Binding SequenceTokens}" Margin="0,5,0,0"
+                                  Visibility="{Binding IsSelected, RelativeSource={RelativeSource AncestorType=ListBoxItem}, Converter={StaticResource BoolToVis}}">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate><StackPanel Orientation="Horizontal" /></ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <TextBlock Text="{Binding Text}" Foreground="{Binding Brush}" FontSize="10"
+                                           FontWeight="SemiBold" Margin="0,0,6,0" VerticalAlignment="Center" />
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
                 </StackPanel>
 
-                <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
-                    <Border Background="{StaticResource SurfaceHover}" CornerRadius="5" Padding="6,3" Margin="0,0,6,0"
-                            Visibility="{Binding HasSequence, Converter={StaticResource BoolToVis}}"
-                            ToolTip="{Binding SequenceHint}">
-                        <TextBlock FontFamily="Segoe MDL2 Assets" Text="&#xE765;" Foreground="{StaticResource TextSecondary}" FontSize="11" VerticalAlignment="Center" />
-                    </Border>
-                    <Border Background="#2257C98A" CornerRadius="5" Padding="7,3"
-                            Visibility="{Binding HasTotp, Converter={StaticResource BoolToVis}}">
-                        <TextBlock Text="TOTP" Foreground="{StaticResource Accent}" FontSize="10.5" FontWeight="SemiBold" />
-                    </Border>
-                </StackPanel>
+                <!-- neutral account badge (Privat / Cloud …), like the design -->
+                <Border Grid.Column="2" Background="#0FFFFFFF" CornerRadius="6" Padding="9,3" VerticalAlignment="Center"
+                        Visibility="{Binding BadgeVisibility}">
+                    <TextBlock Text="{Binding BadgeText}" Foreground="{StaticResource TextSub}" FontSize="11" />
+                </Border>
             </Grid>
         </DataTemplate>
     </Window.Resources>
 
-    <Border Margin="16" Background="{StaticResource WindowBg}" CornerRadius="12" BorderBrush="{StaticResource Border}" BorderThickness="1">
+    <Border x:Name="Card" Width="480" Background="{StaticResource WindowBg}" CornerRadius="13" BorderBrush="#1FFFFFFF" BorderThickness="1" Margin="16">
         <Border.Effect>
-            <DropShadowEffect BlurRadius="18" ShadowDepth="0" Opacity="0.5" Color="#000000" />
+            <DropShadowEffect BlurRadius="16" ShadowDepth="0" Opacity="0.35" Color="#000000" />
         </Border.Effect>
 
-        <Grid Margin="18,16,18,14">
-            <Grid.RowDefinitions>
-                <RowDefinition Height="Auto" />
-                <RowDefinition Height="Auto" />
-                <RowDefinition Height="Auto" />
-                <RowDefinition Height="Auto" />
-                <RowDefinition Height="*" />
-                <RowDefinition Height="Auto" />
-            </Grid.RowDefinitions>
-
-            <!-- Header -->
-            <Grid Grid.Row="0" x:Name="TitleBar" Background="Transparent">
-                <StackPanel Orientation="Horizontal">
-                    <Rectangle Width="22" Height="22" VerticalAlignment="Center" Fill="{StaticResource LogoBrush}" />
-                    <TextBlock Text="VaultType" Foreground="{StaticResource TextPrimary}"
-                               FontSize="14" FontWeight="SemiBold" VerticalAlignment="Center" Margin="9,0,0,0" />
+        <Grid>
+            <StackPanel>
+                <!-- Header: logo + title + subtitle (design: padding 18 20 10) -->
+                <StackPanel Margin="20,18,20,10">
+                    <StackPanel Orientation="Horizontal" Margin="0,0,46,0">
+                        <Rectangle Width="44" Height="44" VerticalAlignment="Center" Fill="{StaticResource LogoBrush}" />
+                        <TextBlock Text="{local:Tr picker.title}" Foreground="#FFFFFF" FontSize="17" FontWeight="Bold"
+                                   VerticalAlignment="Center" Margin="12,0,0,0" />
+                    </StackPanel>
+                    <TextBlock x:Name="ContextLabel" Foreground="{StaticResource TextHint}" FontSize="12"
+                               TextTrimming="CharacterEllipsis" Margin="0,10,0,0" />
                 </StackPanel>
-                <Button Style="{StaticResource IconButton}" Content="&#xE711;"
-                        HorizontalAlignment="Right" VerticalAlignment="Top" Click="Cancel_Click" />
-            </Grid>
 
-            <TextBlock Grid.Row="1" x:Name="ContextLabel" Foreground="{StaticResource TextMuted}" FontSize="11.5"
-                       TextTrimming="CharacterEllipsis" Margin="0,10,0,12" />
-
-            <!-- Search field (magnifier + borderless textbox + placeholder) -->
-            <Border Grid.Row="2" x:Name="SearchBorder" Height="40" CornerRadius="8" SnapsToDevicePixels="True"
-                    Background="{StaticResource Field}" BorderBrush="{StaticResource Border}" BorderThickness="1">
-                <Grid Margin="12,0,8,0">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="Auto" />
-                        <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="Auto" />
-                    </Grid.ColumnDefinitions>
-                    <TextBlock Grid.Column="0" FontFamily="Segoe MDL2 Assets" Text="&#xE721;"
-                               Foreground="{StaticResource TextMuted}" FontSize="14" VerticalAlignment="Center" Margin="0,0,10,0" />
-                    <Grid Grid.Column="1">
-                        <TextBox x:Name="Search" Style="{StaticResource PlainBox}" TextChanged="Search_TextChanged" />
-                        <TextBlock x:Name="Placeholder" Text="{local:Tr picker.search}" Foreground="{StaticResource TextMuted}"
-                                   FontSize="14" VerticalAlignment="Center" IsHitTestVisible="False" />
+                <!-- Search field (design: padding 4 20 15, field height 46 radius 13) -->
+                <Border x:Name="SearchBorder" Height="46" CornerRadius="13" SnapsToDevicePixels="True"
+                        Margin="20,4,20,15" Background="{StaticResource Field}" BorderBrush="{StaticResource Border}" BorderThickness="1">
+                    <Grid Margin="14,0,10,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <Viewbox Grid.Column="0" Width="15" Height="15" VerticalAlignment="Center" Margin="0,0,9,0">
+                            <Canvas Width="24" Height="24">
+                                <Path Data="{StaticResource IconSearch}" Stroke="{StaticResource TextMuted}"
+                                      StrokeThickness="1.8" StrokeStartLineCap="Round" StrokeEndLineCap="Round" />
+                            </Canvas>
+                        </Viewbox>
+                        <Grid Grid.Column="1">
+                            <TextBox x:Name="Search" Style="{StaticResource PlainBox}" FontSize="13" TextChanged="Search_TextChanged" />
+                            <TextBlock x:Name="Placeholder" Text="{local:Tr picker.search}" Foreground="{StaticResource TextSecondary}"
+                                       FontSize="13" VerticalAlignment="Center" IsHitTestVisible="False" />
+                        </Grid>
+                        <Button Grid.Column="2" x:Name="ClearBtn" Style="{StaticResource FlatIconButton}" Width="26" Height="26"
+                                VerticalAlignment="Center" Visibility="Collapsed" Click="Clear_Click" ToolTip="{local:Tr picker.clearSearch}">
+                            <Viewbox Width="12" Height="12">
+                                <Canvas Width="24" Height="24">
+                                    <Path Data="{StaticResource IconClose}" Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                          StrokeThickness="2" StrokeStartLineCap="Round" StrokeEndLineCap="Round" />
+                                </Canvas>
+                            </Viewbox>
+                        </Button>
                     </Grid>
-                    <Button Grid.Column="2" x:Name="ClearBtn" Style="{StaticResource IconButton}" Width="26" Height="26"
-                            Content="&#xE711;" FontSize="10" VerticalAlignment="Center" Visibility="Collapsed"
-                            Click="Clear_Click" ToolTip="{local:Tr picker.clearSearch}" />
+                </Border>
+
+                <!-- section label (design: "Alle Einträge für <host>") -->
+                <TextBlock x:Name="SectionLabel" Foreground="{StaticResource TextSecondary}" FontSize="12.5"
+                           FontWeight="SemiBold" Margin="20,0,20,0" TextTrimming="CharacterEllipsis" />
+
+                <!-- entry list -->
+                <ListBox x:Name="List" Style="{StaticResource ItemList}" MaxHeight="236"
+                         Margin="20,4,6,4"
+                         ItemContainerStyle="{StaticResource ItemContainer}" ItemTemplate="{StaticResource ItemTemplate}"
+                         MouseDoubleClick="List_DoubleClick" PreviewMouseRightButtonDown="List_RightDown"
+                         ContextMenuOpening="List_ContextMenuOpening">
+                    <ListBox.ContextMenu>
+                        <ContextMenu>
+                            <MenuItem Header="{local:Tr picker.copyUser}" InputGestureText="⌃U" Click="CopyUser_Click" />
+                            <MenuItem Header="{local:Tr picker.copyPass}" InputGestureText="⌃P" Click="CopyPass_Click" />
+                            <MenuItem Header="{local:Tr picker.copyTotp}" InputGestureText="⌃T" Click="CopyTotp_Click" />
+                        </ContextMenu>
+                    </ListBox.ContextMenu>
+                </ListBox>
+
+                <!-- empty / locked in-list state -->
+                <StackPanel x:Name="EmptyPanel" Visibility="Collapsed" Margin="20,4,20,4">
+                    <StackPanel x:Name="LockedState" Visibility="Collapsed" HorizontalAlignment="Center" Margin="0,20,0,16">
+                        <Border Width="44" Height="44" CornerRadius="12" HorizontalAlignment="Center"
+                                Background="#1AF85149" BorderBrush="#47F85149" BorderThickness="1">
+                            <Viewbox Width="20" Height="20">
+                                <Canvas Width="24" Height="24">
+                                    <Path Data="{StaticResource IconLock}" Stroke="#F85149" StrokeThickness="1.8"
+                                          StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round" />
+                                </Canvas>
+                            </Viewbox>
+                        </Border>
+                        <TextBlock x:Name="LockedTitle" Foreground="{StaticResource TextBody}" FontSize="13.5" FontWeight="SemiBold"
+                                   HorizontalAlignment="Center" TextAlignment="Center" Margin="0,10,0,0" />
+                        <TextBlock Text="{local:Tr picker.lockedMsg}" Foreground="{StaticResource TextHint}" FontSize="12"
+                                   MaxWidth="280" TextWrapping="Wrap" TextAlignment="Center" HorizontalAlignment="Center" Margin="0,6,0,0" />
+                    </StackPanel>
+                    <StackPanel x:Name="NoEntriesState" Visibility="Collapsed" HorizontalAlignment="Center" Margin="0,22,0,18">
+                        <TextBlock x:Name="EmptyTitle" Foreground="{StaticResource TextPrimary}" FontSize="13.5" FontWeight="SemiBold"
+                                   HorizontalAlignment="Center" TextAlignment="Center" />
+                        <TextBlock x:Name="EmptyMsg" Foreground="{StaticResource TextHint}" FontSize="12"
+                                   HorizontalAlignment="Center" TextAlignment="Center" Margin="0,8,0,0" />
+                    </StackPanel>
+                </StackPanel>
+
+                <!-- footer: locked-vault indicators, bottom-right -->
+                <Grid Margin="16,11,16,13">
+                    <StackPanel x:Name="LockedBar" Orientation="Horizontal" HorizontalAlignment="Right" Visibility="Collapsed" />
                 </Grid>
-            </Border>
+            </StackPanel>
 
-            <TextBlock Grid.Row="3" x:Name="SectionLabel" Foreground="{StaticResource TextMuted}" FontSize="11"
-                       FontWeight="SemiBold" Margin="2,14,0,6" />
-
-            <ListBox Grid.Row="4" x:Name="List" Style="{StaticResource ItemList}"
-                     ItemContainerStyle="{StaticResource ItemContainer}" ItemTemplate="{StaticResource ItemTemplate}"
-                     MouseDoubleClick="List_DoubleClick" PreviewMouseRightButtonDown="List_RightDown"
-                     ContextMenuOpening="List_ContextMenuOpening">
-                <ListBox.ContextMenu>
-                    <ContextMenu>
-                        <MenuItem Header="{local:Tr picker.copyUser}" Click="CopyUser_Click" />
-                        <MenuItem Header="{local:Tr picker.copyPass}" Click="CopyPass_Click" />
-                        <MenuItem Header="{local:Tr picker.copyTotp}" Click="CopyTotp_Click" />
-                    </ContextMenu>
-                </ListBox.ContextMenu>
-            </ListBox>
-
-            <TextBlock Grid.Row="5" x:Name="Hint" Foreground="{StaticResource TextMuted}" FontSize="10.5"
-                       TextWrapping="Wrap" Margin="2,10,0,0"
-                       Text="{local:Tr picker.hint}" />
+            <!-- close button: card top-right corner -->
+            <Button x:Name="CloseBtn" Style="{StaticResource CloseButton}"
+                    HorizontalAlignment="Right" VerticalAlignment="Top" Click="Cancel_Click">
+                <Viewbox Width="17" Height="17">
+                    <Canvas Width="24" Height="24">
+                        <Path Data="{StaticResource IconClose}" Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                              StrokeThickness="1.7" StrokeStartLineCap="Round" StrokeEndLineCap="Round" />
+                    </Canvas>
+                </Viewbox>
+            </Button>
         </Grid>
     </Border>
 </Window>

@@ -8,11 +8,8 @@ namespace VaultType.Config;
 // behaviour and addresses. Lives at %LOCALAPPDATA%\VaultType\config.json.
 public sealed class AppConfig
 {
-    // your (self-hosted) Vaultwarden/Bitwarden server URL
-    public string ServerUrl { get; set; } = "";
-
-    // last account email we used - just prefills the sign-in dialog, not a secret
-    public string AccountEmail { get; set; } = "";
+    // the configured vault accounts (one or more servers/logins). Empty on a fresh install.
+    public List<AccountConfig> Accounts { get; set; } = new();
 
     // global hotkey, e.g. "Ctrl+Alt+A"
     public string Hotkey { get; set; } = "Ctrl+Alt+A";
@@ -58,16 +55,41 @@ public sealed class AppConfig
     // honour the master-password reprompt flag on entries that ask for it
     public bool HonorMasterPasswordReprompt { get; set; } = true;
 
-    // set once the user has signed in successfully; lets first run go straight to the sign-in form
-    public bool SignedInBefore { get; set; } = false;
+    // what a left click on the tray icon does: 0 = open the menu, 1 = start auto-type,
+    // 2 = open the settings (design "Tray-Klick"; default)
+    public int TrayClickAction { get; set; } = 2;
+
+    // check for updates periodically and notify on a new release
+    public bool AutoUpdateCheck { get; set; } = true;
+
+    // the "VaultType is running" balloon is shown once after installation, not on every start
+    public bool FirstRunNotified { get; set; }
+
+    // ---- integration (design "Integration" section) ----
+
+    // serve vault SSH keys over the Windows OpenSSH agent named pipe
+    public bool SshAgentEnabled { get; set; }
+
+    // ask before every SSH signature request
+    public bool SshConfirmEachUse { get; set; } = true;
+
+    // register VaultType as a Windows 11 passkey provider (not functional yet - see docs)
+    public bool PasskeyProviderEnabled { get; set; }
+
+    // gate passkey use behind Windows Hello
+    public bool PasskeyRequireHello { get; set; } = true;
+
+    // cipher ids of SSH keys the user switched OFF in the agent (default: every key is served)
+    public List<string> SshDisabledKeys { get; set; } = new();
 
     [JsonIgnore]
     public static string DataDir { get; } = Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
         "VaultType");
 
+    // one sub-folder per account (its bw.exe session store + icon cache)
     [JsonIgnore]
-    public static string BwDataDir { get; } = Path.Combine(DataDir, "bw-data");
+    public static string AccountsDir { get; } = Path.Combine(DataDir, "accounts");
 
     [JsonIgnore]
     public static string ConfigPath { get; } = Path.Combine(DataDir, "config.json");
@@ -78,32 +100,95 @@ public sealed class AppConfig
         DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
     };
 
+    // Serialises config.json access so overlapping writes (idle-timer + settings window) never
+    // interleave. Monitor is reentrant, so Load -> Migrate -> Save on one thread is safe.
+    private static readonly object FileGate = new();
+
     public static AppConfig Load()
+    {
+        lock (FileGate)
+        {
+            try
+            {
+                Directory.CreateDirectory(DataDir);
+                Directory.CreateDirectory(AccountsDir);
+                RestrictAcl(DataDir);
+                if (File.Exists(ConfigPath))
+                {
+                    var json = File.ReadAllText(ConfigPath);
+                    var cfg = JsonSerializer.Deserialize<AppConfig>(json, JsonOpts);
+                    if (cfg != null)
+                    {
+                        if (cfg.Accounts.Count == 0) Migrate(cfg, json);
+                        foreach (var a in cfg.Accounts) { try { Directory.CreateDirectory(a.BwDataDir); } catch { } }
+                        return cfg;
+                    }
+                }
+            }
+            catch { /* fall back to defaults */ }
+            return new AppConfig();
+        }
+    }
+
+    // Pre-multi-account configs kept a single account in top-level ServerUrl/AccountEmail/
+    // SignedInBefore fields and a single global bw-data folder. Fold that into one AccountConfig
+    // and move the CLI's session store into the new per-account folder, so existing users stay
+    // signed in without touching their vault.
+    private static void Migrate(AppConfig cfg, string json)
     {
         try
         {
-            Directory.CreateDirectory(DataDir);
-            Directory.CreateDirectory(BwDataDir);
-            RestrictAcl(DataDir);
-            if (File.Exists(ConfigPath))
-            {
-                var json = File.ReadAllText(ConfigPath);
-                var cfg = JsonSerializer.Deserialize<AppConfig>(json, JsonOpts);
-                if (cfg != null) return cfg;
-            }
+            var legacy = JsonSerializer.Deserialize<LegacyConfig>(json, JsonOpts);
+            if (legacy == null) return;
+            if (!legacy.SignedInBefore && legacy.ServerUrl.Length == 0 && legacy.AccountEmail.Length == 0) return;
+
+            var acc = AccountConfig.CreateNew(cfg.Accounts);
+            acc.ServerUrl = legacy.ServerUrl;
+            acc.AccountEmail = legacy.AccountEmail;
+            acc.SignedInBefore = legacy.SignedInBefore;
+            acc.Kind = AccountConfig.KindFromServer(legacy.ServerUrl);
+            acc.Name = acc.DeriveName();
+            cfg.Accounts.Add(acc);
+
+            string oldBwData = Path.Combine(DataDir, "bw-data");
+            string oldIcons = Path.Combine(DataDir, "icons");
+            try { Directory.CreateDirectory(acc.DataDir); } catch { }
+            try { if (Directory.Exists(oldBwData) && !Directory.Exists(acc.BwDataDir)) Directory.Move(oldBwData, acc.BwDataDir); } catch { }
+            try { if (Directory.Exists(oldIcons) && !Directory.Exists(acc.IconCacheDir)) Directory.Move(oldIcons, acc.IconCacheDir); } catch { }
+
+            cfg.Save();
         }
-        catch { /* fall back to defaults */ }
-        return new AppConfig();
+        catch { /* leave the config as-is; the user just signs in again */ }
+    }
+
+    // Just the fields an old config.json carried for its single account.
+    private sealed class LegacyConfig
+    {
+        public string ServerUrl { get; set; } = "";
+        public string AccountEmail { get; set; } = "";
+        public bool SignedInBefore { get; set; }
     }
 
     public void Save()
     {
-        try
+        lock (FileGate)
         {
-            Directory.CreateDirectory(DataDir);
-            File.WriteAllText(ConfigPath, JsonSerializer.Serialize(this, JsonOpts));
+            try
+            {
+                Directory.CreateDirectory(DataDir);
+                string json = JsonSerializer.Serialize(this, JsonOpts);
+                // Write to a temp file in the same directory, then swap it into place, so a crash
+                // mid-write can never leave a half-written (and thus unreadable) config.json that
+                // would make Load() fall back to defaults and drop every configured account.
+                string tmp = ConfigPath + ".tmp";
+                File.WriteAllText(tmp, json);
+                if (File.Exists(ConfigPath))
+                    File.Replace(tmp, ConfigPath, null);
+                else
+                    File.Move(tmp, ConfigPath, overwrite: true);
+            }
+            catch { /* not critical */ }
         }
-        catch { /* not critical */ }
     }
 
     // lock the data dir down to the current user and kill ACL inheritance

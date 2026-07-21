@@ -7,7 +7,6 @@ namespace VaultType.Services;
 // it only reads the latest release tag and compares it to the running version.
 public static class UpdateService
 {
-    // adjust if the repository is named differently
     private const string Repo = "friedPotat0/VaultType";
     private static readonly HttpClient Http = new() { Timeout = TimeSpan.FromSeconds(10) };
 
@@ -38,6 +37,12 @@ public static class UpdateService
                       && lv > cv;
             return new UpdateInfo(newer, latest, url);
         }
-        catch { return null; }
+        catch (Exception ex)
+        {
+            // e.g. GitHub 403 rate-limit or no network. The caller only sees "no update", so leave
+            // a trace to tell an actual failure apart from genuinely being up to date.
+            System.Diagnostics.Debug.WriteLine($"UpdateService.CheckAsync failed: {ex.Message}");
+            return null;
+        }
     }
 }

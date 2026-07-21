@@ -1,4 +1,5 @@
 using System.Runtime.InteropServices;
+using System.Security.Cryptography;
 using System.Text;
 using System.Windows.Threading;
 using VaultType.Models;
@@ -12,6 +13,11 @@ namespace VaultType.Services;
 public static class ClipboardService
 {
     private static DispatcherTimer? _timer;
+
+    // SHA-256 of the text we last put on the clipboard. We keep only the hash (never the
+    // plaintext) so the auto-clear can tell "our" secret apart from whatever the user might
+    // have copied in the meantime, without holding the secret around past the copy.
+    private static byte[]? _lastHash;
 
     public static void CopyUsername(VaultItem item, int clearSeconds) => Set(item.Username, clearSeconds);
 
@@ -38,25 +44,72 @@ public static class ClipboardService
         if (code != null) Set(code, clearSeconds);
     }
 
+    // The clipboard and the auto-clear timer must live on the UI/STA dispatcher, otherwise
+    // Clipboard.SetText can throw and a DispatcherTimer created off the UI thread would bind to
+    // a dispatcher whose Tick never fires - leaving the secret on the clipboard forever.
+    private static Dispatcher? Ui => Application.Current?.Dispatcher;
+
     private static void Set(string text, int clearSeconds)
     {
         if (string.IsNullOrEmpty(text)) return;
-        try { Clipboard.SetText(text); } catch { return; }
+        var ui = Ui;
+        if (ui == null) return;               // no UI thread -> nowhere safe to touch the clipboard
+        if (ui.CheckAccess()) SetCore(text, clearSeconds);
+        else ui.Invoke(() => SetCore(text, clearSeconds));
+    }
+
+    // Always runs on the UI/STA thread.
+    private static void SetCore(string text, int clearSeconds)
+    {
+        try { Clipboard.SetText(text); }
+        catch { return; }
+        _lastHash = Hash(text);
         ScheduleClear(clearSeconds);
     }
 
     private static void ScheduleClear(int seconds)
     {
         _timer?.Stop();
+        _timer = null;
         if (seconds <= 0) return;
-        _timer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(seconds) };
-        _timer.Tick += (_, __) => { _timer!.Stop(); ClearNow(); };
+        var ui = Ui;
+        if (ui == null) return;
+        // Bind the timer explicitly to the UI dispatcher so Tick fires regardless of which
+        // thread asked for the copy.
+        _timer = new DispatcherTimer(DispatcherPriority.Normal, ui) { Interval = TimeSpan.FromSeconds(seconds) };
+        _timer.Tick += (_, __) => { _timer?.Stop(); ClearNow(); };
         _timer.Start();
     }
 
     public static void ClearNow()
     {
+        var ui = Ui;
+        if (ui != null && !ui.CheckAccess()) { ui.Invoke(ClearNow); return; }
+
         _timer?.Stop();
-        try { Clipboard.Clear(); } catch { }
+        _timer = null;
+
+        byte[]? expected = _lastHash;
+        _lastHash = null;
+        if (expected == null) return;         // nothing of ours to clear
+
+        try
+        {
+            // Only wipe if the clipboard still holds exactly what we put there. If the user
+            // copied something else in the meantime, its hash won't match and we leave it alone.
+            if (!Clipboard.ContainsText()) return;
+            byte[] current = Hash(Clipboard.GetText());
+            if (CryptographicOperations.FixedTimeEquals(current, expected))
+                Clipboard.Clear();
+        }
+        catch { }
+    }
+
+    // SHA-256 of the UTF-8 text; the transient plaintext byte buffer is zeroed straight after.
+    private static byte[] Hash(string text)
+    {
+        byte[] bytes = Encoding.UTF8.GetBytes(text);
+        try { return SHA256.HashData(bytes); }
+        finally { Array.Clear(bytes); }
     }
 }

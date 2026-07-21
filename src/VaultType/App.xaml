@@ -7,10 +7,20 @@
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
                 <ResourceDictionary Source="Themes/Bitwarden.xaml" />
+                <ResourceDictionary Source="Themes/Icons.xaml" />
             </ResourceDictionary.MergedDictionaries>
             <local:InitialConverter x:Key="Initial" />
             <local:AvatarBrushConverter x:Key="AvatarBrush" />
+            <local:AvatarGradientBrushConverter x:Key="AvatarGradientBrush" />
             <BooleanToVisibilityConverter x:Key="BoolToVis" />
+
+            <!-- Transparent (borderless) windows disable ClearType, so text is grayscale. "Display"
+                 formatting snaps glyph edges to the pixel grid, making that grayscale text noticeably
+                 crisper/calmer at small sizes (as close to the subpixel look as transparency allows). -->
+            <Style TargetType="{x:Type Window}">
+                <Setter Property="TextOptions.TextFormattingMode" Value="Display" />
+                <Setter Property="TextOptions.TextRenderingMode" Value="ClearType" />
+            </Style>
         </ResourceDictionary>
     </Application.Resources>
 </Application>

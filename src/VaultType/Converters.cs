@@ -15,22 +15,43 @@ public sealed class InitialConverter : IValueConverter
     public object ConvertBack(object? v, Type t, object? p, CultureInfo c) => throw new NotSupportedException();
 }
 
-// Stable per-name avatar colour, same idea as Bitwarden's letter avatars.
-public sealed class AvatarBrushConverter : IValueConverter
+// Stable per-name avatar colour, same idea as Bitwarden's letter avatars. The design's vivid palette.
+public static class AvatarPalette
 {
-    private static readonly Color[] Palette =
+    public static readonly Color[] Colours =
     {
-        Color.FromRgb(0x17,0x5D,0xDC), Color.FromRgb(0x00,0x9E,0x74), Color.FromRgb(0xB3,0x5A,0x00),
-        Color.FromRgb(0x8B,0x3F,0xD6), Color.FromRgb(0xC0,0x37,0x5B), Color.FromRgb(0x0E,0x86,0x9E),
-        Color.FromRgb(0xB0,0x8A,0x00), Color.FromRgb(0x4A,0x6B,0x2A),
+        Color.FromRgb(0xA3,0x71,0xF7), Color.FromRgb(0x2E,0xA0,0x43), Color.FromRgb(0x1A,0xBC,0x9C),
+        Color.FromRgb(0xE5,0x48,0x6F), Color.FromRgb(0xE0,0x8E,0x0B), Color.FromRgb(0x3D,0x7F,0xC0),
+        Color.FromRgb(0x6B,0x7B,0xFF), Color.FromRgb(0x8A,0xA6,0x4A),
     };
 
-    public object Convert(object? value, Type t, object? p, CultureInfo c)
+    public static Color For(string? name)
     {
-        var s = value as string ?? "";
+        var s = name ?? "";
         int h = 0;
         foreach (char ch in s) h = (h * 31 + ch) & 0x7fffffff;
-        return new SolidColorBrush(Palette[h % Palette.Length]);
+        return Colours[h % Colours.Length];
     }
+
+    // A top-left-light to bottom-right-dark gradient, like the design avatars.
+    public static Brush Gradient(Color c)
+    {
+        var dark = Color.FromRgb((byte)(c.R * 0.62), (byte)(c.G * 0.62), (byte)(c.B * 0.62));
+        return new LinearGradientBrush(c, dark, new System.Windows.Point(0.12, 0), new System.Windows.Point(0.88, 1));
+    }
+}
+
+public sealed class AvatarBrushConverter : IValueConverter
+{
+    public object Convert(object? value, Type t, object? p, CultureInfo c)
+        => new SolidColorBrush(AvatarPalette.For(value as string));
+    public object ConvertBack(object? v, Type t, object? p, CultureInfo c) => throw new NotSupportedException();
+}
+
+// Gradient variant used for the letter avatars (matches the design).
+public sealed class AvatarGradientBrushConverter : IValueConverter
+{
+    public object Convert(object? value, Type t, object? p, CultureInfo c)
+        => AvatarPalette.Gradient(AvatarPalette.For(value as string));
     public object ConvertBack(object? v, Type t, object? p, CultureInfo c) => throw new NotSupportedException();
 }

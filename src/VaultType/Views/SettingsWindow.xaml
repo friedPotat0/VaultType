@@ -3,122 +3,510 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:local="clr-namespace:VaultType"
         WindowStyle="None" AllowsTransparency="True" Background="Transparent"
-        ResizeMode="NoResize" ShowInTaskbar="True" Title="VaultType"
-        SizeToContent="Height" Width="460" WindowStartupLocation="CenterScreen"
+        ResizeMode="NoResize" ShowInTaskbar="False" Topmost="True" Title="VaultType"
+        SizeToContent="WidthAndHeight" WindowStartupLocation="CenterScreen"
         UseLayoutRounding="True" SnapsToDevicePixels="True"
         FontFamily="{StaticResource AppFont}">
 
-    <Border Margin="16" Background="{StaticResource WindowBg}" CornerRadius="12" BorderBrush="{StaticResource Border}" BorderThickness="1">
+    <Window.Resources>
+        <!-- one settings row: title + sub left, widget right (design: padding 14px 0, gap 16) -->
+        <Style x:Key="RowTitle" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="13" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Foreground" Value="{StaticResource TextBody}" />
+        </Style>
+        <Style x:Key="RowSub" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="11.5" />
+            <Setter Property="Foreground" Value="{StaticResource TextHint}" />
+            <Setter Property="Margin" Value="0,2,0,0" />
+            <Setter Property="TextWrapping" Value="Wrap" />
+        </Style>
+        <Style x:Key="SecTitle" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="13" />
+            <Setter Property="FontWeight" Value="Bold" />
+            <Setter Property="Foreground" Value="#FFFFFF" />
+        </Style>
+        <Style x:Key="SecDesc" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="11.5" />
+            <Setter Property="Foreground" Value="{StaticResource TextHint}" />
+            <Setter Property="Margin" Value="0,4,0,6" />
+        </Style>
+        <Style x:Key="NavIcon" TargetType="Viewbox">
+            <Setter Property="Width" Value="16" />
+            <Setter Property="Height" Value="16" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+        </Style>
+    </Window.Resources>
+
+    <Border x:Name="Card" Width="640" Margin="16" Background="{StaticResource WindowBg}" CornerRadius="13" BorderBrush="#1FFFFFFF" BorderThickness="1">
         <Border.Effect>
-            <DropShadowEffect BlurRadius="18" ShadowDepth="0" Opacity="0.5" Color="#000000" />
+            <DropShadowEffect BlurRadius="16" ShadowDepth="0" Opacity="0.35" Color="#000000" />
         </Border.Effect>
 
-        <StackPanel Margin="26,20,26,22">
-            <!-- Header -->
-            <Grid x:Name="TitleBar" Background="Transparent">
-                <StackPanel Orientation="Horizontal">
-                    <Rectangle Width="24" Height="24" VerticalAlignment="Center" Fill="{StaticResource LogoBrush}" />
-                    <TextBlock VerticalAlignment="Center" Margin="9,0,0,0">
-                        <Run Text="VaultType" Foreground="{StaticResource TextPrimary}" FontSize="14" FontWeight="SemiBold" />
-                        <Run Text=" " />
-                        <Run x:Name="VersionRun" Foreground="{StaticResource TextMuted}" FontSize="11" />
-                    </TextBlock>
-                </StackPanel>
-                <Button Style="{StaticResource IconButton}" Content="&#xE711;" HorizontalAlignment="Right" VerticalAlignment="Top" Click="Cancel_Click" />
+        <Grid>
+            <StackPanel>
+                <!-- header: logo 40 + "VaultType" + version -->
+                <Grid Margin="22,18,22,16">
+                    <StackPanel Orientation="Horizontal">
+                        <Rectangle Width="40" Height="40" VerticalAlignment="Center" Fill="{StaticResource LogoBrush}" />
+                        <TextBlock Text="VaultType" Foreground="#FFFFFF" FontSize="17" FontWeight="Bold" VerticalAlignment="Center" Margin="12,0,0,0" />
+                    </StackPanel>
+                </Grid>
+
+                <!-- body: sidebar 186 + content (height 340, scrolls) -->
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="186" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+
+                    <StackPanel Grid.Column="0" Margin="12,0,12,12">
+                        <RadioButton x:Name="NavVaults" Style="{StaticResource NavRadio}" GroupName="nav" Tag="vaults" Checked="Nav_Checked">
+                            <StackPanel Orientation="Horizontal">
+                                <Viewbox Style="{StaticResource NavIcon}">
+                                    <Canvas Width="24" Height="24">
+                                        <Path Data="{StaticResource IconUser}" Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=RadioButton}}"
+                                              StrokeThickness="1.7" StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round" />
+                                    </Canvas>
+                                </Viewbox>
+                                <TextBlock Text="{local:Tr settings.navVaults}" FontSize="13" FontWeight="SemiBold" Margin="11,0,0,0" VerticalAlignment="Center" />
+                            </StackPanel>
+                        </RadioButton>
+                        <RadioButton x:Name="NavAutoType" Style="{StaticResource NavRadio}" GroupName="nav" Tag="autotype" Checked="Nav_Checked">
+                            <StackPanel Orientation="Horizontal">
+                                <Viewbox Style="{StaticResource NavIcon}">
+                                    <Canvas Width="24" Height="24">
+                                        <Path Data="{StaticResource IconKeyboard}" Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=RadioButton}}"
+                                              StrokeThickness="1.7" StrokeStartLineCap="Round" StrokeEndLineCap="Round" />
+                                    </Canvas>
+                                </Viewbox>
+                                <TextBlock Text="{local:Tr settings.navAutotype}" FontSize="13" FontWeight="SemiBold" Margin="11,0,0,0" VerticalAlignment="Center" />
+                            </StackPanel>
+                        </RadioButton>
+                        <RadioButton x:Name="NavSecurity" Style="{StaticResource NavRadio}" GroupName="nav" Tag="security" Checked="Nav_Checked">
+                            <StackPanel Orientation="Horizontal">
+                                <Viewbox Style="{StaticResource NavIcon}">
+                                    <Canvas Width="24" Height="24">
+                                        <Path Data="{StaticResource IconShield}" Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=RadioButton}}"
+                                              StrokeThickness="1.7" StrokeLineJoin="Round" />
+                                    </Canvas>
+                                </Viewbox>
+                                <TextBlock Text="{local:Tr settings.navSecurity}" FontSize="13" FontWeight="SemiBold" Margin="11,0,0,0" VerticalAlignment="Center" />
+                            </StackPanel>
+                        </RadioButton>
+                        <RadioButton x:Name="NavIntegration" Style="{StaticResource NavRadio}" GroupName="nav" Tag="integration" Checked="Nav_Checked">
+                            <StackPanel Orientation="Horizontal">
+                                <Viewbox Style="{StaticResource NavIcon}">
+                                    <Canvas Width="24" Height="24">
+                                        <Path Data="{StaticResource IconKey}" Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=RadioButton}}"
+                                              StrokeThickness="1.7" StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round" />
+                                        <Path Data="{StaticResource IconKeyDot}" Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=RadioButton}}" />
+                                    </Canvas>
+                                </Viewbox>
+                                <TextBlock Text="{local:Tr settings.navIntegration}" FontSize="13" FontWeight="SemiBold" Margin="11,0,0,0" VerticalAlignment="Center" />
+                            </StackPanel>
+                        </RadioButton>
+                        <RadioButton x:Name="NavGeneral" Style="{StaticResource NavRadio}" GroupName="nav" Tag="general" Checked="Nav_Checked">
+                            <StackPanel Orientation="Horizontal">
+                                <Viewbox Style="{StaticResource NavIcon}">
+                                    <Canvas Width="24" Height="24">
+                                        <Path Data="{StaticResource IconSliders}" Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=RadioButton}}"
+                                              StrokeThickness="1.7" StrokeStartLineCap="Round" StrokeEndLineCap="Round" />
+                                    </Canvas>
+                                </Viewbox>
+                                <TextBlock Text="{local:Tr settings.navGeneral}" FontSize="13" FontWeight="SemiBold" Margin="11,0,0,0" VerticalAlignment="Center" />
+                            </StackPanel>
+                        </RadioButton>
+                    </StackPanel>
+
+                    <ScrollViewer Grid.Column="1" x:Name="ContentScroll" Height="340" VerticalScrollBarVisibility="Auto"
+                                  Padding="22,18,18,18" HorizontalScrollBarVisibility="Disabled">
+                        <StackPanel>
+                            <!-- ===== Vaults ===== -->
+                            <StackPanel x:Name="PanelVaults">
+                                <TextBlock Style="{StaticResource SecTitle}" Text="{local:Tr settings.vaultsTitle}" />
+                                <TextBlock Style="{StaticResource SecDesc}" Text="{local:Tr settings.vaultsDesc}" Margin="0,4,0,14" />
+                                <StackPanel x:Name="AccountsPanel" />
+                                <Button x:Name="AddVaultBtn" Click="AddAccount_Click" Cursor="Hand" Margin="0,8,0,0">
+                                    <Button.Template>
+                                        <ControlTemplate TargetType="Button">
+                                            <Grid>
+                                                <Border x:Name="b" Background="Transparent" CornerRadius="12" Padding="11">
+                                                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                                                        <Viewbox Width="16" Height="16" VerticalAlignment="Center">
+                                                            <Canvas Width="24" Height="24">
+                                                                <Path Data="{StaticResource IconPlus}" Stroke="{StaticResource TextMuted}" StrokeThickness="1.9"
+                                                                      StrokeStartLineCap="Round" StrokeEndLineCap="Round" />
+                                                            </Canvas>
+                                                        </Viewbox>
+                                                        <TextBlock Text="{local:Tr settings.addVault}" Foreground="{StaticResource TextMuted}" FontSize="13" FontWeight="SemiBold"
+                                                                   Margin="8,0,0,0" VerticalAlignment="Center" />
+                                                    </StackPanel>
+                                                </Border>
+                                                <Rectangle RadiusX="12" RadiusY="12" Stroke="#2EFFFFFF" StrokeThickness="1"
+                                                           StrokeDashArray="3 3" SnapsToDevicePixels="True" IsHitTestVisible="False" />
+                                            </Grid>
+                                            <ControlTemplate.Triggers>
+                                                <Trigger Property="IsMouseOver" Value="True">
+                                                    <Setter TargetName="b" Property="Background" Value="{StaticResource SurfaceHover}" />
+                                                </Trigger>
+                                            </ControlTemplate.Triggers>
+                                        </ControlTemplate>
+                                    </Button.Template>
+                                </Button>
+                            </StackPanel>
+
+                            <!-- ===== Auto-Type ===== -->
+                            <StackPanel x:Name="PanelAutoType" Visibility="Collapsed">
+                                <TextBlock Style="{StaticResource SecTitle}" Text="{local:Tr settings.autotypeTitle}" />
+                                <TextBlock Style="{StaticResource SecDesc}" Text="{local:Tr settings.autotypeDesc}" />
+                                <Grid Margin="0,14,0,14">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" /><ColumnDefinition Width="16" /><ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel VerticalAlignment="Center">
+                                        <TextBlock Style="{StaticResource RowTitle}" Text="{local:Tr settings.hotkey}" />
+                                        <TextBlock Style="{StaticResource RowSub}" Text="{local:Tr settings.hotkeyHint}" />
+                                    </StackPanel>
+                                    <Border Grid.Column="2" Style="{StaticResource SmallFieldBorder}" Width="180" VerticalAlignment="Center">
+                                        <TextBox x:Name="HotkeyBox" Style="{StaticResource PlainBox}" FontSize="13" Margin="12,0" IsReadOnly="True" Cursor="Hand" />
+                                    </Border>
+                                </Grid>
+                                <Grid Margin="0,0,0,14">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" /><ColumnDefinition Width="16" /><ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel VerticalAlignment="Center">
+                                        <TextBlock Style="{StaticResource RowTitle}" Text="{local:Tr settings.typedelay}" />
+                                        <TextBlock Style="{StaticResource RowSub}" Text="{local:Tr settings.typedelayHint}" />
+                                    </StackPanel>
+                                    <Border Grid.Column="2" Style="{StaticResource SmallFieldBorder}" Width="84" VerticalAlignment="Center">
+                                        <Grid Margin="12,0">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+                                            <TextBox x:Name="DelayBox" Style="{StaticResource PlainBox}" FontSize="13" HorizontalContentAlignment="Right" />
+                                            <TextBlock Grid.Column="1" Text="ms" Foreground="{StaticResource TextHint}" FontSize="11.5" VerticalAlignment="Center" Margin="7,0,0,0" />
+                                        </Grid>
+                                    </Border>
+                                </Grid>
+                                <Grid Margin="0,0,0,14">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" /><ColumnDefinition Width="16" /><ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel VerticalAlignment="Center">
+                                        <TextBlock Style="{StaticResource RowTitle}" Text="{local:Tr settings.uriMatch}" />
+                                        <TextBlock Style="{StaticResource RowSub}" Text="{local:Tr settings.uriMatchHint}" />
+                                    </StackPanel>
+                                    <ToggleButton Grid.Column="2" x:Name="UriMatchTrigger" Style="{StaticResource DropdownTriggerSmall}" Width="180"
+                                                  VerticalAlignment="Center" Click="Dropdown_Click" Tag="urimatch">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock x:Name="UriMatchLabel" Foreground="{StaticResource TextPrimary}" FontSize="13" VerticalAlignment="Center" />
+                                            <Viewbox Grid.Column="1" Width="16" Height="16" VerticalAlignment="Center">
+                                                <Canvas Width="24" Height="24">
+                                                    <Path Data="{StaticResource IconChevronDown}" Stroke="{StaticResource TextHint}" StrokeThickness="1.8"
+                                                          StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round" />
+                                                </Canvas>
+                                            </Viewbox>
+                                        </Grid>
+                                    </ToggleButton>
+                                </Grid>
+                                <Grid Margin="0,0,0,14">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" /><ColumnDefinition Width="16" /><ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel VerticalAlignment="Center">
+                                        <TextBlock Style="{StaticResource RowTitle}" Text="{local:Tr settings.clearField}" />
+                                        <TextBlock Style="{StaticResource RowSub}" Text="{local:Tr settings.clearFieldHint}" />
+                                    </StackPanel>
+                                    <ToggleButton Grid.Column="2" x:Name="ClearFieldTgl" Style="{StaticResource ToggleSwitch}" VerticalAlignment="Center" />
+                                </Grid>
+                                <Grid Margin="0,0,0,14">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" /><ColumnDefinition Width="16" /><ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel VerticalAlignment="Center">
+                                        <TextBlock Style="{StaticResource RowTitle}" Text="{local:Tr settings.trayClick}" />
+                                        <TextBlock Style="{StaticResource RowSub}" Text="{local:Tr settings.trayClickHint}" />
+                                    </StackPanel>
+                                    <ToggleButton Grid.Column="2" x:Name="TrayClickTrigger" Style="{StaticResource DropdownTriggerSmall}" Width="180"
+                                                  VerticalAlignment="Center" Click="Dropdown_Click" Tag="trayclick">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock x:Name="TrayClickLabel" Foreground="{StaticResource TextPrimary}" FontSize="13" VerticalAlignment="Center" />
+                                            <Viewbox Grid.Column="1" Width="16" Height="16" VerticalAlignment="Center">
+                                                <Canvas Width="24" Height="24">
+                                                    <Path Data="{StaticResource IconChevronDown}" Stroke="{StaticResource TextHint}" StrokeThickness="1.8"
+                                                          StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round" />
+                                                </Canvas>
+                                            </Viewbox>
+                                        </Grid>
+                                    </ToggleButton>
+                                </Grid>
+                            </StackPanel>
+
+                            <!-- ===== Sicherheit ===== -->
+                            <StackPanel x:Name="PanelSecurity" Visibility="Collapsed">
+                                <TextBlock Style="{StaticResource SecTitle}" Text="{local:Tr settings.securityTitle}" />
+                                <TextBlock Style="{StaticResource SecDesc}" Text="{local:Tr settings.securityDesc}" />
+                                <Grid Margin="0,14,0,14">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" /><ColumnDefinition Width="16" /><ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel VerticalAlignment="Center">
+                                        <TextBlock Style="{StaticResource RowTitle}" Text="{local:Tr settings.autolock}" />
+                                        <TextBlock Style="{StaticResource RowSub}" Text="{local:Tr settings.autolockHint}" />
+                                    </StackPanel>
+                                    <Border Grid.Column="2" Style="{StaticResource SmallFieldBorder}" Width="84" VerticalAlignment="Center">
+                                        <Grid Margin="12,0">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+                                            <TextBox x:Name="IdleBox" Style="{StaticResource PlainBox}" FontSize="13" HorizontalContentAlignment="Right" />
+                                            <TextBlock Grid.Column="1" Text="min" Foreground="{StaticResource TextHint}" FontSize="11.5" VerticalAlignment="Center" Margin="7,0,0,0" />
+                                        </Grid>
+                                    </Border>
+                                </Grid>
+                                <Grid Margin="0,0,0,14">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" /><ColumnDefinition Width="16" /><ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel VerticalAlignment="Center">
+                                        <TextBlock Style="{StaticResource RowTitle}" Text="{local:Tr settings.clipclear}" />
+                                        <TextBlock Style="{StaticResource RowSub}" Text="{local:Tr settings.clipclearHint}" />
+                                    </StackPanel>
+                                    <Border Grid.Column="2" Style="{StaticResource SmallFieldBorder}" Width="84" VerticalAlignment="Center">
+                                        <Grid Margin="12,0">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+                                            <TextBox x:Name="ClipBox" Style="{StaticResource PlainBox}" FontSize="13" HorizontalContentAlignment="Right" />
+                                            <TextBlock Grid.Column="1" Text="Sek." Foreground="{StaticResource TextHint}" FontSize="11.5" VerticalAlignment="Center" Margin="7,0,0,0" />
+                                        </Grid>
+                                    </Border>
+                                </Grid>
+                                <Grid Margin="0,0,0,14">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" /><ColumnDefinition Width="16" /><ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel VerticalAlignment="Center">
+                                        <TextBlock Style="{StaticResource RowTitle}" Text="{local:Tr settings.hideCapture}" />
+                                        <TextBlock Style="{StaticResource RowSub}" Text="{local:Tr settings.hideCaptureHint}" />
+                                    </StackPanel>
+                                    <ToggleButton Grid.Column="2" x:Name="HideCaptureTgl" Style="{StaticResource ToggleSwitch}" VerticalAlignment="Center" />
+                                </Grid>
+                                <Grid Margin="0,0,0,14">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" /><ColumnDefinition Width="16" /><ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel VerticalAlignment="Center">
+                                        <TextBlock Style="{StaticResource RowTitle}" Text="{local:Tr settings.antiDebug}" />
+                                        <TextBlock Style="{StaticResource RowSub}" Text="{local:Tr settings.antiDebugHint}" />
+                                    </StackPanel>
+                                    <ToggleButton Grid.Column="2" x:Name="AntiDbgTgl" Style="{StaticResource ToggleSwitch}" VerticalAlignment="Center" />
+                                </Grid>
+                            </StackPanel>
+
+                            <!-- ===== Integration ===== -->
+                            <StackPanel x:Name="PanelIntegration" Visibility="Collapsed">
+                                <TextBlock Style="{StaticResource SecTitle}" Text="{local:Tr settings.integrationTitle}" />
+                                <TextBlock Style="{StaticResource SecDesc}" Text="{local:Tr settings.integrationDesc}" />
+                                <Grid Margin="0,14,0,14">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" /><ColumnDefinition Width="16" /><ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel VerticalAlignment="Center">
+                                        <TextBlock Style="{StaticResource RowTitle}" Text="{local:Tr settings.sshAgent}" />
+                                        <TextBlock Style="{StaticResource RowSub}" Text="{local:Tr settings.sshAgentHint}" />
+                                    </StackPanel>
+                                    <ToggleButton Grid.Column="2" x:Name="SshAgentTgl" Style="{StaticResource ToggleSwitch}" VerticalAlignment="Center"
+                                                  Checked="SshAgent_Toggled" Unchecked="SshAgent_Toggled" />
+                                </Grid>
+                                <StackPanel x:Name="SshAgentRows">
+                                    <Grid Margin="0,0,0,14">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" /><ColumnDefinition Width="16" /><ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <StackPanel VerticalAlignment="Center">
+                                            <TextBlock Style="{StaticResource RowTitle}" Text="{local:Tr settings.sshConfirm}" />
+                                            <TextBlock Style="{StaticResource RowSub}" Text="{local:Tr settings.sshConfirmHint}" />
+                                        </StackPanel>
+                                        <ToggleButton Grid.Column="2" x:Name="SshConfirmTgl" Style="{StaticResource ToggleSwitch}" VerticalAlignment="Center" />
+                                    </Grid>
+                                    <Grid Margin="0,0,0,8">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" /><ColumnDefinition Width="16" /><ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <StackPanel VerticalAlignment="Center">
+                                            <TextBlock Style="{StaticResource RowTitle}" Text="{local:Tr settings.sshKeys}" />
+                                            <TextBlock x:Name="SshKeyStatus" Style="{StaticResource RowSub}" />
+                                        </StackPanel>
+                                        <Button Grid.Column="2" x:Name="SshManageBtn" Style="{StaticResource OutlineButton}" VerticalAlignment="Center"
+                                                Content="{local:Tr settings.sshManage}" Click="SshManage_Click" />
+                                    </Grid>
+                                </StackPanel>
+                                <Grid Margin="0,0,0,14">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" /><ColumnDefinition Width="16" /><ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel VerticalAlignment="Center">
+                                        <TextBlock Style="{StaticResource RowTitle}" Text="{local:Tr settings.pkProvider}" />
+                                        <TextBlock Style="{StaticResource RowSub}" Text="{local:Tr settings.pkProviderHint}" />
+                                    </StackPanel>
+                                    <ToggleButton Grid.Column="2" x:Name="PkProviderTgl" Style="{StaticResource ToggleSwitch}" VerticalAlignment="Center"
+                                                  Checked="PkProvider_Toggled" Unchecked="PkProvider_Toggled" />
+                                </Grid>
+                                <!-- Shown instead of the Hello row when the passkey plugin can't work
+                                     here (unpackaged build, or Windows older than 11 24H2). -->
+                                <Border x:Name="PkUnavailableBox" Margin="0,0,0,14" CornerRadius="10" Padding="12,10"
+                                        Background="#1AD29922" BorderBrush="#47D29922" BorderThickness="1" Visibility="Collapsed">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto" />
+                                            <ColumnDefinition Width="*" />
+                                        </Grid.ColumnDefinitions>
+                                        <Viewbox Width="16" Height="16" VerticalAlignment="Top" Margin="0,1,9,0">
+                                            <Canvas Width="24" Height="24">
+                                                <Path Data="M12 3 2 20 H22 Z" Stroke="#E3B341" StrokeThickness="1.7" StrokeLineJoin="Round" />
+                                                <Path Data="M12 10 V14" Stroke="#E3B341" StrokeThickness="1.8" StrokeStartLineCap="Round" StrokeEndLineCap="Round" />
+                                                <Ellipse Canvas.Left="10.95" Canvas.Top="15.95" Width="2.1" Height="2.1" Fill="#E3B341" />
+                                            </Canvas>
+                                        </Viewbox>
+                                        <TextBlock Grid.Column="1" x:Name="PkUnavailableText" Foreground="#D9A441" FontSize="12"
+                                                   TextWrapping="Wrap" LineHeight="17.4" />
+                                    </Grid>
+                                </Border>
+                                <Grid x:Name="PkHelloRow" Margin="0,0,0,14">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" /><ColumnDefinition Width="16" /><ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel VerticalAlignment="Center">
+                                        <TextBlock Style="{StaticResource RowTitle}" Text="{local:Tr settings.pkHello}" />
+                                        <TextBlock Style="{StaticResource RowSub}" Text="{local:Tr settings.pkHelloHint}" />
+                                    </StackPanel>
+                                    <ToggleButton Grid.Column="2" x:Name="PkHelloTgl" Style="{StaticResource ToggleSwitch}" VerticalAlignment="Center" />
+                                </Grid>
+                            </StackPanel>
+
+                            <!-- ===== Allgemein ===== -->
+                            <StackPanel x:Name="PanelGeneral" Visibility="Collapsed">
+                                <TextBlock Style="{StaticResource SecTitle}" Text="{local:Tr settings.generalTitle}" />
+                                <TextBlock Style="{StaticResource SecDesc}" Text="{local:Tr settings.generalDesc}" />
+                                <Grid Margin="0,14,0,14">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" /><ColumnDefinition Width="16" /><ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel VerticalAlignment="Center">
+                                        <TextBlock Style="{StaticResource RowTitle}" Text="{local:Tr settings.autostart}" />
+                                        <TextBlock Style="{StaticResource RowSub}" Text="{local:Tr settings.autostartHint}" />
+                                    </StackPanel>
+                                    <ToggleButton Grid.Column="2" x:Name="AutostartTgl" Style="{StaticResource ToggleSwitch}" VerticalAlignment="Center" />
+                                </Grid>
+                                <Grid Margin="0,0,0,14">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" /><ColumnDefinition Width="16" /><ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel VerticalAlignment="Center">
+                                        <TextBlock Style="{StaticResource RowTitle}" Text="{local:Tr settings.language}" />
+                                        <TextBlock Style="{StaticResource RowSub}" Text="{local:Tr settings.languageHint}" />
+                                    </StackPanel>
+                                    <ToggleButton Grid.Column="2" x:Name="LangTrigger" Style="{StaticResource DropdownTriggerSmall}" Width="180"
+                                                  VerticalAlignment="Center" Click="Dropdown_Click" Tag="lang">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock x:Name="LangLabel" Foreground="{StaticResource TextPrimary}" FontSize="13" VerticalAlignment="Center" />
+                                            <Viewbox Grid.Column="1" Width="16" Height="16" VerticalAlignment="Center">
+                                                <Canvas Width="24" Height="24">
+                                                    <Path Data="{StaticResource IconChevronDown}" Stroke="{StaticResource TextHint}" StrokeThickness="1.8"
+                                                          StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round" />
+                                                </Canvas>
+                                            </Viewbox>
+                                        </Grid>
+                                    </ToggleButton>
+                                </Grid>
+                                <Grid Margin="0,0,0,14">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" /><ColumnDefinition Width="16" /><ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel VerticalAlignment="Center">
+                                        <TextBlock Style="{StaticResource RowTitle}" Text="{local:Tr settings.updates}" />
+                                        <TextBlock x:Name="UpdStatus" Style="{StaticResource RowSub}" />
+                                    </StackPanel>
+                                    <Button Grid.Column="2" x:Name="UpdBtn" VerticalAlignment="Center" Click="CheckUpdates_Click" Cursor="Hand">
+                                        <Button.Template>
+                                            <ControlTemplate TargetType="Button">
+                                                <Border x:Name="b" Background="{StaticResource Field}" BorderBrush="{StaticResource Border}"
+                                                        BorderThickness="1" CornerRadius="10" Height="36" Padding="16,0" SnapsToDevicePixels="True">
+                                                    <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                                </Border>
+                                                <ControlTemplate.Triggers>
+                                                    <Trigger Property="IsMouseOver" Value="True">
+                                                        <Setter TargetName="b" Property="Background" Value="{StaticResource SurfaceHover}" />
+                                                        <Setter TargetName="b" Property="BorderBrush" Value="{StaticResource BorderStrong}" />
+                                                    </Trigger>
+                                                </ControlTemplate.Triggers>
+                                            </ControlTemplate>
+                                        </Button.Template>
+                                        <TextBlock x:Name="UpdBtnLabel" Foreground="{StaticResource TextBody}" FontSize="12.5" FontWeight="SemiBold" />
+                                    </Button>
+                                </Grid>
+                                <Grid Margin="0,0,0,14">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" /><ColumnDefinition Width="16" /><ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel VerticalAlignment="Center">
+                                        <TextBlock Style="{StaticResource RowTitle}" Text="{local:Tr settings.autoUpdate}" />
+                                        <TextBlock Style="{StaticResource RowSub}" Text="{local:Tr settings.autoUpdateHint}" />
+                                    </StackPanel>
+                                    <ToggleButton Grid.Column="2" x:Name="AutoUpdateTgl" Style="{StaticResource ToggleSwitch}" VerticalAlignment="Center" />
+                                </Grid>
+                            </StackPanel>
+                        </StackPanel>
+                    </ScrollViewer>
+                </Grid>
+
+                <!-- footer -->
+                <Grid Margin="22,14,22,22">
+                    <Button x:Name="SaveBtn" Style="{StaticResource PrimaryButton}" HorizontalAlignment="Right"
+                            Content="{local:Tr common.save}" Click="Save_Click" />
+                </Grid>
+            </StackPanel>
+
+            <!-- close button: card top-right corner (like the unlock dialog) -->
+            <Button x:Name="CloseBtn" Style="{StaticResource CloseButton}"
+                    HorizontalAlignment="Right" VerticalAlignment="Top" Click="Cancel_Click">
+                <Viewbox Width="17" Height="17">
+                    <Canvas Width="24" Height="24">
+                        <Path Data="{StaticResource IconClose}" Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                              StrokeThickness="1.7" StrokeStartLineCap="Round" StrokeEndLineCap="Round" />
+                    </Canvas>
+                </Viewbox>
+            </Button>
+
+            <!-- dropdown overlay; the Canvas keeps the menu out of the layout measure, so an open
+                 dropdown overflows the content instead of growing the window -->
+            <Grid x:Name="Overlay" Visibility="Collapsed">
+                <Rectangle Fill="Transparent" MouseDown="Backdrop_Click" />
+                <Canvas>
+                <Border x:Name="DropdownMenu" VerticalAlignment="Top" HorizontalAlignment="Left"
+                        Background="{StaticResource WindowBg}" BorderBrush="{StaticResource PopupBorder}" BorderThickness="1"
+                        CornerRadius="12" Padding="5" SnapsToDevicePixels="True">
+                    <Border.Effect>
+                        <DropShadowEffect BlurRadius="18" ShadowDepth="4" Direction="270" Opacity="0.45" Color="#000000" />
+                    </Border.Effect>
+                    <ScrollViewer VerticalScrollBarVisibility="Auto">
+                        <StackPanel x:Name="DropdownItems" />
+                    </ScrollViewer>
+                </Border>
+                </Canvas>
             </Grid>
-
-            <Grid Margin="0,16,0,4">
-                <TextBlock Text="{local:Tr settings.title}" Foreground="{StaticResource TextPrimary}" FontSize="22" FontWeight="SemiBold" VerticalAlignment="Center" />
-                <Button Content="{local:Tr settings.reset}" Style="{StaticResource GhostButton}" Click="Reset_Click"
-                        HorizontalAlignment="Right" VerticalAlignment="Center" Height="30" FontSize="11.5" />
-            </Grid>
-
-            <!-- Connection -->
-            <TextBlock Text="{local:Tr settings.connection}" Foreground="{StaticResource TextMuted}" FontSize="10.5" FontWeight="SemiBold" Margin="0,14,0,8" />
-            <Button Content="{local:Tr settings.changeLogin}" Style="{StaticResource GhostButton}" Click="ChangeLogin_Click"
-                    HorizontalAlignment="Left" Height="34" />
-            <TextBlock Text="{local:Tr settings.changeLoginHint}" Foreground="{StaticResource TextMuted}" FontSize="11" Margin="2,5,0,0" />
-            <TextBlock Text="{local:Tr settings.hotkey}" Foreground="{StaticResource TextSecondary}" FontSize="12" Margin="2,12,0,5" />
-            <Border Style="{StaticResource FieldBorder}">
-                <TextBox x:Name="HotkeyBox" Style="{StaticResource PlainBox}" IsReadOnly="True" Margin="12,0" />
-            </Border>
-            <TextBlock Text="{local:Tr settings.hotkeyHint}" Foreground="{StaticResource TextMuted}" FontSize="11" Margin="2,4,0,0" />
-
-            <!-- Behavior -->
-            <TextBlock Text="{local:Tr settings.behavior}" Foreground="{StaticResource TextMuted}" FontSize="10.5" FontWeight="SemiBold" Margin="0,20,0,8" />
-            <Grid>
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="14" />
-                    <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="14" />
-                    <ColumnDefinition Width="*" />
-                </Grid.ColumnDefinitions>
-
-                <StackPanel Grid.Column="0">
-                    <TextBlock Text="{local:Tr settings.autolock}" Foreground="{StaticResource TextSecondary}" FontSize="12" Margin="2,0,0,5" TextTrimming="CharacterEllipsis" />
-                    <Border Style="{StaticResource FieldBorder}">
-                        <Grid Margin="12,0,12,0">
-                            <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
-                            <TextBox x:Name="IdleBox" Grid.Column="0" Style="{StaticResource PlainBox}" />
-                            <TextBlock Grid.Column="1" Text="min" Foreground="{StaticResource TextMuted}" FontSize="12" VerticalAlignment="Center" Margin="6,0,0,0" />
-                        </Grid>
-                    </Border>
-                </StackPanel>
-
-                <StackPanel Grid.Column="2">
-                    <TextBlock Text="{local:Tr settings.clipclear}" Foreground="{StaticResource TextSecondary}" FontSize="12" Margin="2,0,0,5" TextTrimming="CharacterEllipsis" />
-                    <Border Style="{StaticResource FieldBorder}">
-                        <Grid Margin="12,0,12,0">
-                            <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
-                            <TextBox x:Name="ClipBox" Grid.Column="0" Style="{StaticResource PlainBox}" />
-                            <TextBlock Grid.Column="1" Text="s" Foreground="{StaticResource TextMuted}" FontSize="12" VerticalAlignment="Center" Margin="6,0,0,0" />
-                        </Grid>
-                    </Border>
-                </StackPanel>
-
-                <StackPanel Grid.Column="4">
-                    <TextBlock Text="{local:Tr settings.typedelay}" Foreground="{StaticResource TextSecondary}" FontSize="12" Margin="2,0,0,5" TextTrimming="CharacterEllipsis" />
-                    <Border Style="{StaticResource FieldBorder}">
-                        <Grid Margin="12,0,12,0">
-                            <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
-                            <TextBox x:Name="DelayBox" Grid.Column="0" Style="{StaticResource PlainBox}" />
-                            <TextBlock Grid.Column="1" Text="ms" Foreground="{StaticResource TextMuted}" FontSize="12" VerticalAlignment="Center" Margin="6,0,0,0" />
-                        </Grid>
-                    </Border>
-                </StackPanel>
-            </Grid>
-
-            <CheckBox x:Name="ClearFieldChk" Content="{local:Tr settings.clearField}" Margin="0,16,0,0" />
-            <CheckBox x:Name="AutostartChk" Content="{local:Tr settings.autostart}" Margin="0,12,0,0" />
-            <CheckBox x:Name="TrayClickChk" Content="{local:Tr settings.trayClick}" Margin="0,12,0,0"
-                      ToolTip="{local:Tr settings.trayClickHint}" />
-
-            <!-- URL match -->
-            <TextBlock Text="{local:Tr settings.uriMatch}" Foreground="{StaticResource TextSecondary}" FontSize="12" Margin="2,18,0,5" />
-            <ComboBox x:Name="UriMatchBox" />
-            <TextBlock Text="{local:Tr settings.uriMatchHint}" Foreground="{StaticResource TextMuted}" FontSize="11" Margin="2,5,0,0" />
-
-            <!-- Language -->
-            <TextBlock Text="{local:Tr settings.language}" Foreground="{StaticResource TextSecondary}" FontSize="12" Margin="2,18,0,5" />
-            <ComboBox x:Name="LangBox" />
-
-            <!-- Security -->
-            <TextBlock Text="{local:Tr settings.security}" Foreground="{StaticResource TextMuted}" FontSize="10.5" FontWeight="SemiBold" Margin="0,20,0,8" />
-            <CheckBox x:Name="ExcludeCapChk" Content="{local:Tr settings.hideCapture}" />
-            <CheckBox x:Name="AntiDbgChk" Content="{local:Tr settings.antiDebug}" Margin="0,12,0,0" />
-
-            <!-- Footer -->
-            <Grid Margin="0,24,0,0">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="Auto" />
-                    <ColumnDefinition Width="10" />
-                    <ColumnDefinition Width="Auto" />
-                </Grid.ColumnDefinitions>
-                <Button Grid.Column="1" Content="{local:Tr common.cancel}" Style="{StaticResource GhostButton}" Click="Cancel_Click" MinWidth="96" />
-                <Button Grid.Column="3" Content="{local:Tr common.save}" Style="{StaticResource PrimaryButton}" IsDefault="True" Click="Save_Click" MinWidth="120" />
-            </Grid>
-        </StackPanel>
+        </Grid>
     </Border>
 </Window>

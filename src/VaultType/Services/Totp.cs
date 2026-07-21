@@ -43,7 +43,9 @@ public static class Totp
                 secret = secret["steam://".Length..];
             }
 
-            if (digits <= 0) digits = 6;
+            // RFC 6238 allows 6-8 digits. Anything outside that range (incl. <= 0, or values
+            // like 10 that would overflow the 10^digits modulus below) falls back to 6.
+            if (digits < 6 || digits > 8) digits = 6;
             if (period <= 0) period = 30;
 
             byte[] key = Base32Decode(secret);   // ignores spaces and padding on its own
@@ -74,7 +76,9 @@ public static class Totp
                 return new string(sb);
             }
 
-            int code = bin % (int)Math.Pow(10, digits);
+            int mod = 1;
+            for (int i = 0; i < digits; i++) mod *= 10;   // 10^digits; digits is clamped to 6-8, so it fits an int
+            int code = bin % mod;
             return code.ToString().PadLeft(digits, '0');
         }
         catch { return null; }
@@ -84,16 +88,23 @@ public static class Totp
     {
         const string alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
         if (s.IsEmpty) return Array.Empty<byte>();
-        int bits = 0, value = 0;
-        var output = new List<byte>(s.Length * 5 / 8 + 1);
+        int bits = 0, value = 0, count = 0;
+        // Pre-sized to the exact upper bound so the buffer never reallocates and can't leave
+        // copies of the decoded seed orphaned on the heap. Any unused tail is zeroed before
+        // the buffer is discarded.
+        var buf = new byte[s.Length * 5 / 8 + 1];
         foreach (char c in s)
         {
             int idx = alphabet.IndexOf(char.ToUpperInvariant(c));
             if (idx < 0) continue;   // spaces, '=' padding and stray characters are skipped
             value = (value << 5) | idx;
             bits += 5;
-            if (bits >= 8) { output.Add((byte)((value >> (bits - 8)) & 0xff)); bits -= 8; }
+            if (bits >= 8) { buf[count++] = (byte)((value >> (bits - 8)) & 0xff); bits -= 8; }
         }
-        return output.ToArray();
+        if (count == buf.Length) return buf;
+        var result = new byte[count];
+        Array.Copy(buf, result, count);
+        CryptographicOperations.ZeroMemory(buf);   // wipe the sensitive intermediate seed bytes
+        return result;
     }
 }

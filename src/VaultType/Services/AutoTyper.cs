@@ -24,9 +24,9 @@ public static class AutoTyper
             return;
         }
 
-        RestoreFocus(target);
         try
         {
+            RestoreFocus(target);   // aborts (FocusLost) if the target never comes to the foreground
             switch (action)
             {
                 case TypeAction.Username:
@@ -65,9 +65,9 @@ public static class AutoTyper
     // {SPACE}, {CLEARFIELD}, {DELAY n}; anything else is typed literally.
     private static void TypeSequence(IntPtr target, VaultItem item, SecretProtector protector, string template, int delayMs, bool clearField)
     {
-        RestoreFocus(target);
         try
         {
+            RestoreFocus(target);   // aborts (FocusLost) if the target never comes to the foreground
             int i = 0;
             while (i < template.Length)
             {
@@ -113,10 +113,25 @@ public static class AutoTyper
         }
     }
 
+    // Bring the target window back to the foreground and confirm it actually took focus before
+    // we send a single keystroke. SetForegroundWindow can silently fail (foreground lock, the
+    // window went away, focus-stealing prevention), so we don't trust its result blindly and we
+    // don't just sleep-and-hope: we poll GetForegroundWindow until the switch is confirmed or a
+    // short timeout elapses, and abort (FocusLost) rather than risk typing into the wrong window.
     private static void RestoreFocus(IntPtr target)
     {
-        if (target != IntPtr.Zero) Native.SetForegroundWindow(target);
-        Thread.Sleep(90); // give the target window time to take focus
+        if (target == IntPtr.Zero) throw new FocusLost();
+        if (Native.GetForegroundWindow() == target) return;
+
+        Native.SetForegroundWindow(target);
+
+        const int timeoutMs = 500, stepMs = 10;
+        for (int waited = 0; waited < timeoutMs; waited += stepMs)
+        {
+            if (Native.GetForegroundWindow() == target) return;
+            Thread.Sleep(stepMs);
+        }
+        throw new FocusLost();
     }
 
     // bail out the moment the foreground window isn't our target any more

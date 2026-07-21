@@ -1,0 +1,60 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!-- Lucide (MIT) icon geometries, 24x24 view box, drawn as strokes with rounded caps.
+         Render via a Viewbox + Path so they scale crisply and inherit a stroke colour. -->
+
+    <Geometry x:Key="IconClose">M18 6L6 18M6 6L18 18</Geometry>
+    <Geometry x:Key="IconChevronDown">M6 9L12 15L18 9</Geometry>
+    <Geometry x:Key="IconChevronUp">M18 15L12 9L6 15</Geometry>
+    <!-- up/down sort-style chevron used on the account switcher affordance -->
+    <Geometry x:Key="IconChevronExpand">M8 9L12 5L16 9 M8 15L12 19L16 15</Geometry>
+    <Geometry x:Key="IconCheck">M20 6L9 17L4 12</Geometry>
+    <GeometryGroup x:Key="IconSearch" FillRule="Nonzero">
+        <EllipseGeometry Center="11,11" RadiusX="7" RadiusY="7" />
+        <PathGeometry Figures="M20 20L16.5 16.5" />
+    </GeometryGroup>
+
+    <GeometryGroup x:Key="IconLockOpen" FillRule="Nonzero">
+        <RectangleGeometry Rect="3,11,18,11" RadiusX="2" RadiusY="2" />
+        <PathGeometry Figures="M7 11V7a5 5 0 0 1 9.9-1" />
+    </GeometryGroup>
+
+    <!-- closed padlock (used on the unlock button) -->
+    <GeometryGroup x:Key="IconLock" FillRule="Nonzero">
+        <RectangleGeometry Rect="5,11,14,9" RadiusX="2" RadiusY="2" />
+        <PathGeometry Figures="M8 11V8a4 4 0 0 1 8 0v3" />
+    </GeometryGroup>
+
+    <!-- keycap symbols -->
+    <Geometry x:Key="IconEnter">M9 10L4 15L9 20M20 4V11a4 4 0 0 1-4 4H4</Geometry>
+    <Geometry x:Key="IconArrowUp">M12 19V5M5 12L12 5L19 12</Geometry>
+    <Geometry x:Key="IconArrowDown">M12 5V19M19 12L12 19L5 12</Geometry>
+
+    <GeometryGroup x:Key="IconMouse" FillRule="Nonzero">
+        <RectangleGeometry Rect="5,2,14,20" RadiusX="7" RadiusY="7" />
+        <PathGeometry Figures="M12 6v4" />
+    </GeometryGroup>
+
+    <!-- design icons (settings sidebar, tray menu, SSH window) -->
+    <Geometry x:Key="IconUser">M5 20a7 7 0 0 1 14 0 M15.6 8a3.6 3.6 0 1 1-7.2 0 3.6 3.6 0 0 1 7.2 0</Geometry>
+    <GeometryGroup x:Key="IconKeyboard" FillRule="Nonzero">
+        <RectangleGeometry Rect="2.5,6.5,19,11" RadiusX="2.5" RadiusY="2.5" />
+        <PathGeometry Figures="M6 10.5h.01M9.5 10.5h.01M13 10.5h.01M16.5 10.5h.01M7.5 14h9" />
+    </GeometryGroup>
+    <Geometry x:Key="IconShield">M12 3.5l7 3v5c0 4.4-3 7.4-7 8.9-4-1.5-7-4.5-7-8.9v-5l7-3Z</Geometry>
+    <Geometry x:Key="IconKey">M2.6 17.4A2 2 0 0 0 2 18.8V21a1 1 0 0 0 1 1h3a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h1a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h.2a2 2 0 0 0 1.4-.6l.8-.8a6.5 6.5 0 1 0-4-4z</Geometry>
+    <Geometry x:Key="IconKeyDot">M17.6 7.5a1.1 1.1 0 1 1-2.2 0 1.1 1.1 0 0 1 2.2 0</Geometry>
+    <Geometry x:Key="IconSliders">M3 7.5h9 M17 7.5h4 M16.9 7.5a2.4 2.4 0 1 1-4.8 0 2.4 2.4 0 0 1 4.8 0 M3 16.5h5 M13 16.5h8 M12.9 16.5a2.4 2.4 0 1 1-4.8 0 2.4 2.4 0 0 1 4.8 0</Geometry>
+    <Geometry x:Key="IconPlus">M12 5v14M5 12h14</Geometry>
+    <Geometry x:Key="IconPencil">M4 20h4L18 10l-4-4L4 16v4Z M13.5 6.5l4 4</Geometry>
+    <Geometry x:Key="IconTrash">M5 7h14M10 7V5a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v2M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12</Geometry>
+    <GeometryGroup x:Key="IconCopy" FillRule="Nonzero">
+        <RectangleGeometry Rect="8,8,12,12" RadiusX="2.5" RadiusY="2.5" />
+        <PathGeometry Figures="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2" />
+    </GeometryGroup>
+    <Geometry x:Key="IconSync">M4.5 12a7.5 7.5 0 0 1 12.7-5.4L20 9 M20 4.5V9h-4.5 M19.5 12a7.5 7.5 0 0 1-12.7 5.4L4 15 M4 19.5V15h4.5</Geometry>
+    <Geometry x:Key="IconDownload">M12 3v10 M8 9.5l4 4 4-4 M5 19.5h14</Geometry>
+    <Geometry x:Key="IconPower">M12 3.5v8 M7.5 6.5a7 7 0 1 0 9 0</Geometry>
+
+</ResourceDictionary>

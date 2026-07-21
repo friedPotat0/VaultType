@@ -3,102 +3,123 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:local="clr-namespace:VaultType"
         WindowStyle="None" AllowsTransparency="True" Background="Transparent"
-        ResizeMode="NoResize" ShowInTaskbar="False" Topmost="True"
-        SizeToContent="Height" Width="400" WindowStartupLocation="CenterScreen"
+        ResizeMode="NoResize" ShowInTaskbar="False" Topmost="True" Title="VaultType"
+        SizeToContent="WidthAndHeight" WindowStartupLocation="CenterScreen"
         UseLayoutRounding="True" SnapsToDevicePixels="True"
         FontFamily="{StaticResource AppFont}">
 
-    <Border Margin="16" Background="{StaticResource WindowBg}" CornerRadius="12" BorderBrush="{StaticResource Border}" BorderThickness="1">
+    <Border x:Name="Card" Width="430" Margin="16" Background="{StaticResource WindowBg}" CornerRadius="13" BorderBrush="#1FFFFFFF" BorderThickness="1">
         <Border.Effect>
-            <DropShadowEffect BlurRadius="18" ShadowDepth="0" Opacity="0.5" Color="#000000" />
+            <DropShadowEffect BlurRadius="16" ShadowDepth="0" Opacity="0.35" Color="#000000" />
         </Border.Effect>
 
-        <StackPanel Margin="26,22,26,24">
-            <Grid x:Name="TitleBar" Background="Transparent">
-                <StackPanel Orientation="Horizontal">
-                    <Rectangle Width="26" Height="26" VerticalAlignment="Center" Fill="{StaticResource LogoBrush}" />
-                    <TextBlock Text="VaultType" Foreground="{StaticResource TextPrimary}"
-                               FontSize="15" FontWeight="SemiBold" VerticalAlignment="Center" Margin="10,0,0,0" />
+        <Grid>
+            <StackPanel Margin="22,18,22,24">
+                <!-- header: logo 44 + heading (close button overlays the card corner) -->
+                <StackPanel Orientation="Horizontal" Margin="0,0,46,0">
+                    <Rectangle Width="44" Height="44" VerticalAlignment="Center" Fill="{StaticResource LogoBrush}" />
+                    <TextBlock x:Name="Heading" Text="{local:Tr unlock.title}" Foreground="#FFFFFF"
+                               FontSize="17" FontWeight="Bold" VerticalAlignment="Center" Margin="12,0,0,0" />
                 </StackPanel>
-                <Button x:Name="CloseBtn" Style="{StaticResource IconButton}" Content="&#xE711;"
-                        HorizontalAlignment="Right" VerticalAlignment="Top" Click="Cancel_Click" />
-            </Grid>
 
-            <TextBlock x:Name="Heading" Text="Unlock vault" Foreground="{StaticResource TextPrimary}"
-                       FontSize="20" FontWeight="SemiBold" Margin="0,18,0,2" />
-            <TextBlock x:Name="Subtitle" Foreground="{StaticResource TextSecondary}" FontSize="12.5"
-                       TextWrapping="Wrap" Margin="0,0,0,18" />
+                <!-- method-dependent hint -->
+                <TextBlock x:Name="Subtitle" Foreground="{StaticResource TextHint}" FontSize="12"
+                           TextWrapping="Wrap" Margin="0,10,0,0" />
 
-            <StackPanel x:Name="AccountTypeGroup" Margin="0,0,0,14">
-                <ComboBox x:Name="AccountBox" SelectedIndex="0" SelectionChanged="Account_Changed">
-                    <ComboBoxItem Content="Vaultwarden (self-hosted)" />
-                    <ComboBoxItem Content="Bitwarden.com (US)" />
-                    <ComboBoxItem Content="Bitwarden.eu (EU)" />
-                </ComboBox>
-            </StackPanel>
+                <!-- Account row (avatar + name + server, dual-chevron when switchable) -->
+                <StackPanel x:Name="AccountArea" Margin="0,18,0,0" Visibility="Collapsed">
+                    <Button x:Name="AccountChip" Style="{StaticResource AccountRowChip}" Click="Chip_Click">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <Border x:Name="AvatarBorder" Grid.Column="0" Width="38" Height="38" CornerRadius="10" Background="{StaticResource AccentDim}" VerticalAlignment="Center">
+                                <TextBlock x:Name="AvatarText" Foreground="#F4F6F8" FontSize="12" FontWeight="Bold"
+                                           HorizontalAlignment="Center" VerticalAlignment="Center" />
+                            </Border>
+                            <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="13,0,0,0">
+                                <TextBlock x:Name="ChipEmail" Foreground="#F4F6F8" FontSize="14.5" FontWeight="SemiBold" />
+                                <TextBlock x:Name="ChipServer" Foreground="{StaticResource TextSecondary}" FontSize="12.5" FontWeight="SemiBold" Margin="0,1,0,0" />
+                            </StackPanel>
+                            <Grid x:Name="ChipChevron" Grid.Column="2" Width="28" Height="28" VerticalAlignment="Center">
+                                <Viewbox Width="16" Height="16" HorizontalAlignment="Center" VerticalAlignment="Center">
+                                    <Canvas Width="24" Height="24">
+                                        <Path Data="{StaticResource IconChevronExpand}" Stroke="{StaticResource TextHint}"
+                                              StrokeThickness="1.8" StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round" />
+                                    </Canvas>
+                                </Viewbox>
+                            </Grid>
+                        </Grid>
+                    </Button>
+                </StackPanel>
 
-            <StackPanel x:Name="ServerGroup">
-                <TextBlock Text="{local:Tr unlock.server}" Foreground="{StaticResource TextSecondary}" FontSize="12" Margin="2,0,0,6" />
-                <TextBox x:Name="ServerBox" Style="{StaticResource SearchBox}" />
-                <TextBlock Text="{local:Tr unlock.serverHint}" Foreground="{StaticResource TextMuted}" FontSize="11" Margin="2,4,0,14" />
-            </StackPanel>
-
-            <CheckBox x:Name="ApiKeyChk" Content="{local:Tr unlock.useApiKey}" Margin="0,0,0,14"
-                      Checked="ApiKey_Changed" Unchecked="ApiKey_Changed" />
-
-            <TextBlock x:Name="ApiHint" Foreground="{StaticResource TextMuted}" FontSize="11" TextWrapping="Wrap" Margin="2,0,0,14"
-                       Text="{local:Tr unlock.apiHint}" />
-
-            <StackPanel x:Name="EmailGroup">
-                <TextBlock Text="{local:Tr unlock.email}" Foreground="{StaticResource TextSecondary}" FontSize="12" Margin="2,0,0,6" />
-                <TextBox x:Name="EmailBox" Style="{StaticResource SearchBox}" Margin="0,0,0,14" />
-            </StackPanel>
-
-            <StackPanel x:Name="ClientIdGroup">
-                <TextBlock Text="{local:Tr unlock.clientId}" Foreground="{StaticResource TextSecondary}" FontSize="12" Margin="2,0,0,6" />
-                <TextBox x:Name="ClientIdBox" Style="{StaticResource SearchBox}" Margin="0,0,0,14" />
-            </StackPanel>
-
-            <StackPanel x:Name="ClientSecretGroup">
-                <TextBlock Text="{local:Tr unlock.clientSecret}" Foreground="{StaticResource TextSecondary}" FontSize="12" Margin="2,0,0,6" />
-                <PasswordBox x:Name="ClientSecretBox" Style="{StaticResource PasswordBoxStyle}" Margin="0,0,0,14" />
-            </StackPanel>
-
-            <TextBlock Text="{local:Tr unlock.master}" Foreground="{StaticResource TextSecondary}" FontSize="12" Margin="2,0,0,6" />
-            <PasswordBox x:Name="Pw" Style="{StaticResource PasswordBoxStyle}" KeyDown="Pw_KeyDown" />
-
-            <StackPanel x:Name="TwoFactorGroup">
-                <TextBlock Text="{local:Tr unlock.twofa}" Foreground="{StaticResource TextSecondary}" FontSize="12" Margin="2,12,0,6" />
-                <Grid>
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="140" />
-                        <ColumnDefinition Width="10" />
-                        <ColumnDefinition Width="*" />
-                    </Grid.ColumnDefinitions>
-                    <ComboBox x:Name="MethodBox" Grid.Column="0" SelectedIndex="0">
-                        <ComboBoxItem Content="Authenticator" />
-                        <ComboBoxItem Content="Email" />
-                        <ComboBoxItem Content="YubiKey" />
-                    </ComboBox>
-                    <Border Grid.Column="2" Style="{StaticResource FieldBorder}">
-                        <TextBox x:Name="TwoFactorBox" Style="{StaticResource PlainBox}" Margin="12,0" />
+                <!-- Master password (method = password) -->
+                <StackPanel x:Name="PasswordGroup">
+                    <TextBlock Text="{local:Tr unlock.master}" Foreground="{StaticResource TextLabel}" FontSize="12.5" FontWeight="SemiBold" Margin="0,22,0,0" />
+                    <Border x:Name="PwBorder" Style="{StaticResource FieldBorder}" Margin="0,9,0,0">
+                        <Grid Margin="18,0">
+                            <PasswordBox x:Name="Pw" Style="{StaticResource PlainPasswordBox}" KeyDown="Pw_KeyDown" />
+                            <TextBlock x:Name="PwPlaceholder" Text="{local:Tr unlock.masterPlaceholder}" Foreground="{StaticResource TextSecondary}"
+                                       FontSize="13" VerticalAlignment="Center" IsHitTestVisible="False" Visibility="Collapsed" />
+                        </Grid>
                     </Border>
-                </Grid>
+                </StackPanel>
+
+                <!-- PIN (method = pin) -->
+                <StackPanel x:Name="PinGroup" Visibility="Collapsed">
+                    <TextBlock Text="{local:Tr unlock.pin}" Foreground="{StaticResource TextLabel}" FontSize="12.5" FontWeight="SemiBold" Margin="0,22,0,0" />
+                    <Border Style="{StaticResource FieldBorder}" Margin="0,9,0,0">
+                        <Grid Margin="18,0">
+                            <PasswordBox x:Name="PinBox" Style="{StaticResource PlainPasswordBox}" FontFamily="{StaticResource MonoFont}" FontSize="12" KeyDown="Pw_KeyDown" />
+                            <TextBlock x:Name="PinPlaceholder" Text="{local:Tr unlock.pinPlaceholder}" Foreground="{StaticResource TextSecondary}"
+                                       FontSize="13" FontFamily="{StaticResource AppFont}" VerticalAlignment="Center" IsHitTestVisible="False" Visibility="Collapsed" />
+                        </Grid>
+                    </Border>
+                </StackPanel>
+
+                <TextBlock x:Name="Error" Foreground="{StaticResource Danger}" FontSize="12" TextWrapping="Wrap"
+                           Margin="0,10,0,0" Visibility="Collapsed" />
+
+                <!-- primary button: lock glyph + method-dependent label -->
+                <Button x:Name="OkBtn" Style="{StaticResource PrimaryButtonLarge}" Margin="0,18,0,0" IsDefault="True" Click="Ok_Click">
+                    <StackPanel Orientation="Horizontal">
+                        <Viewbox Width="16" Height="16" VerticalAlignment="Center" Margin="0,0,9,0">
+                            <Canvas Width="24" Height="24">
+                                <Path Data="{StaticResource IconLock}" Stroke="{StaticResource OnAccent}" StrokeThickness="2"
+                                      StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round" />
+                            </Canvas>
+                        </Viewbox>
+                        <TextBlock x:Name="OkLabel" Text="{local:Tr unlock.btnUnlock}" VerticalAlignment="Center" />
+                    </StackPanel>
+                </Button>
             </StackPanel>
 
-            <TextBlock x:Name="Error" Foreground="{StaticResource Danger}" FontSize="12" TextWrapping="Wrap"
-                       Margin="2,10,0,0" Visibility="Collapsed" />
+            <!-- close button: card top-right corner, red on hover -->
+            <Button x:Name="CloseBtn" Style="{StaticResource CloseButton}"
+                    HorizontalAlignment="Right" VerticalAlignment="Top" Click="Cancel_Click">
+                <Viewbox Width="17" Height="17">
+                    <Canvas Width="24" Height="24">
+                        <Path Data="{StaticResource IconClose}" Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                              StrokeThickness="1.7" StrokeStartLineCap="Round" StrokeEndLineCap="Round" />
+                    </Canvas>
+                </Viewbox>
+            </Button>
 
-            <Grid Margin="0,20,0,0">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="12" />
-                    <ColumnDefinition Width="1.4*" />
-                </Grid.ColumnDefinitions>
-                <Button Grid.Column="0" Content="{local:Tr common.cancel}" Style="{StaticResource GhostButton}" Click="Cancel_Click" />
-                <Button x:Name="OkBtn" Grid.Column="2" Content="Unlock" Style="{StaticResource PrimaryButton}"
-                        IsDefault="True" Click="Ok_Click" />
+            <!-- Account switcher: overlay dropdown below the account row (design: full-width panel).
+                 The Canvas keeps it out of the layout measure, so it overflows instead of growing
+                 the window. -->
+            <Grid x:Name="Overlay" Visibility="Collapsed">
+                <Rectangle Fill="Transparent" MouseDown="Backdrop_Click" />
+                <Canvas>
+                    <Border x:Name="SwitcherMenu" Style="{StaticResource DropdownPanel}" Canvas.Left="22">
+                        <ScrollViewer VerticalScrollBarVisibility="Auto">
+                            <StackPanel x:Name="SwitcherItems" />
+                        </ScrollViewer>
+                    </Border>
+                </Canvas>
             </Grid>
-        </StackPanel>
+        </Grid>
     </Border>
 </Window>
