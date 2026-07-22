@@ -198,7 +198,8 @@ Pick one of three ways to install:
 - **Installer** - `VaultType-<version>-Setup.exe` from the [latest release](../../releases/latest).
   Installs VaultType into your user profile with a Start-menu shortcut and an uninstaller; no admin
   rights needed. You can delete the downloaded setup afterwards.
-- **Portable** - `VaultType-<version>-win-x64.exe` from the [latest release](../../releases/latest).
+- **Portable** - `VaultType-<version>-win-x64.zip` from the [latest release](../../releases/latest)
+  (contains `VaultType.exe` plus the license and third-party notices).
   A single self-contained file you run directly; keep it somewhere permanent (not your Downloads
   folder, where it's easy to delete by accident).
 
@@ -399,6 +400,7 @@ If VaultType is useful to you, you can support development on Ko-fi:
 Apache License 2.0 **with the Commons Clause** (you may use, modify and share it freely, but not
 sell it). See [LICENSE](LICENSE).
 
-Bundled third-party components (fonts, one Microsoft NuGet package) are listed with their
-licenses in [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md). VaultType collects no data -
+Bundled third-party components (fonts, icon geometries, one Microsoft NuGet package, the .NET
+runtime in self-contained builds) are listed with their licenses in
+[THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md). VaultType collects no data -
 see the [privacy policy](PRIVACY.md).

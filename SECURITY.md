@@ -12,11 +12,12 @@ include your own master password or vault contents.
 
 ## Scope
 
-VaultType is a hardened front-end to the official Bitwarden CLI; all cryptography is performed by
-Bitwarden's own code. Reports about the CLI or the Bitwarden / Vaultwarden server itself belong to
-those projects. In scope here is VaultType's own handling of secrets: memory (locked buffers,
-encryption at rest in RAM), auto-typing, the clipboard, process launching, and screen-capture
-protection.
+VaultType is a native Bitwarden client: it speaks the Bitwarden server API directly and performs
+all cryptography in-process (see the [security model](README.md#security-model)). Reports about
+the Bitwarden / Vaultwarden server itself belong to those projects. In scope here is everything
+VaultType does itself: the protocol client and its cryptography (KDF, vault decryption, TOTP,
+SSH signing, passkeys), memory handling (locked buffers, encryption at rest in RAM), auto-typing,
+the clipboard, process launching, and screen-capture protection.
 
 ## Supported versions
 

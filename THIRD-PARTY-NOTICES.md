@@ -7,7 +7,9 @@ as required by their respective licenses.
 | --- | --- | --- |
 | [Public Sans](https://github.com/uswds/public-sans) (embedded font) | Copyright 2015 The Public Sans Project Authors | SIL Open Font License 1.1 |
 | [JetBrains Mono](https://github.com/JetBrains/JetBrainsMono) (embedded font) | Copyright 2020 The JetBrains Mono Project Authors | SIL Open Font License 1.1 |
+| [Lucide](https://github.com/lucide-icons/lucide) (icon geometries) | Copyright (c) 2022 Lucide Contributors; portions Copyright (c) 2013-2022 Cole Bemis (Feather) | ISC (portions MIT) |
 | [System.Formats.Cbor](https://www.nuget.org/packages/System.Formats.Cbor) (NuGet package) | Copyright (c) .NET Foundation and Contributors | MIT |
+| [.NET Runtime](https://github.com/dotnet/runtime) (bundled in self-contained builds) | Copyright (c) .NET Foundation and Contributors | MIT |
 
 ---
 
@@ -110,9 +112,35 @@ Project Authors, https://github.com/JetBrains/JetBrainsMono).
 
 ---
 
+## ISC License
+
+Applies to **Lucide** (https://github.com/lucide-icons/lucide), whose icon geometries are
+embedded as vector paths in the application's UI.
+
+    ISC License
+
+    Copyright (c) for portions of Lucide are held by Cole Bemis 2013-2022 as part
+    of Feather (MIT). All other copyright (c) for Lucide are held by Lucide
+    Contributors 2022.
+
+    Permission to use, copy, modify, and/or distribute this software for any
+    purpose with or without fee is hereby granted, provided that the above
+    copyright notice and this permission notice appear in all copies.
+
+    THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES WITH
+    REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY
+    AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT,
+    INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM
+    LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR
+    OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
+    PERFORMANCE OF THIS SOFTWARE.
+
+---
+
 ## MIT License
 
-Applies to **System.Formats.Cbor** (Copyright (c) .NET Foundation and Contributors).
+Applies to **System.Formats.Cbor** and to the **.NET Runtime** (both Copyright (c) .NET
+Foundation and Contributors; the runtime is bundled only in the self-contained release builds).
 
     The MIT License (MIT)
 

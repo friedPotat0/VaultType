@@ -1,6 +1,6 @@
 # VaultType privacy policy
 
-*Last updated: 2026-07-21*
+*Last updated: 2026-07-22*
 
 VaultType is a Windows client for Bitwarden and Vaultwarden vaults. This policy describes what
 data the application handles and where it goes. The short version: **VaultType collects nothing.**
@@ -26,7 +26,7 @@ access rights are restricted to your Windows user account:
 - **Public metadata caches** - non-secret SSH public keys and passkey metadata, so those
   features can list entries while the vault is locked.
 
-Uninstalling VaultType and deleting this folder removes all of it.
+VaultType writes no log files. Uninstalling VaultType and deleting this folder removes all of it.
 
 ## What network connections the application makes
 
@@ -37,8 +37,9 @@ VaultType connects only to:
    server does with your data is governed by its operator's privacy policy (for the Bitwarden
    cloud, see [Bitwarden's privacy policy](https://bitwarden.com/privacy/)).
 2. **GitHub** (`api.github.com`) - for the update check, which requests the latest release
-   version. This can be disabled in Settings. No personal data is sent; GitHub sees an ordinary
-   HTTPS request from your IP address.
+   version. The check only runs when you trigger it manually (tray menu or Settings); the
+   application never contacts GitHub on its own. No personal data is sent; GitHub sees an
+   ordinary HTTPS request from your IP address.
 
 There are no other connections. No third-party icon services, no content delivery networks, no
 tracking endpoints.
