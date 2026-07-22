@@ -17,10 +17,7 @@ internal static class OperationSignature
     internal static bool Verify(PluginOperationRequest req, byte[] encodedRequest)
     {
         if (req.CbRequestSignature == 0 || req.PbRequestSignature == IntPtr.Zero)
-        {
-            PasskeyLog.Write("opsig: request carried no signature");
             return !Enforce;
-        }
 
         byte[] sig = new byte[req.CbRequestSignature];
         System.Runtime.InteropServices.Marshal.Copy(req.PbRequestSignature, sig, 0, sig.Length);
@@ -29,10 +26,7 @@ internal static class OperationSignature
         {
             using var ecdsa = LoadPublicKey();
             if (ecdsa == null)
-            {
-                PasskeyLog.Write("opsig: no operation signing public key available");
                 return !Enforce;
-            }
 
             if (ecdsa.VerifyData(encodedRequest, sig, HashAlgorithmName.SHA256,
                     DSASignatureFormat.IeeeP1363FixedFieldConcatenation))
@@ -40,12 +34,10 @@ internal static class OperationSignature
                 return true;
             }
 
-            PasskeyLog.Write($"opsig: signature did not verify (siglen={sig.Length})");
             return !Enforce;
         }
-        catch (Exception ex)
+        catch
         {
-            PasskeyLog.Write($"opsig: verification error: {ex.Message}");
             return !Enforce;
         }
     }
@@ -57,10 +49,7 @@ internal static class OperationSignature
         var clsid = PasskeyIds.Clsid;
         int hr = PasskeyNative.WebAuthNPluginGetOperationSigningPublicKey(ref clsid, out uint cb, out IntPtr pb);
         if (hr != PasskeyNative.S_OK || pb == IntPtr.Zero || cb == 0)
-        {
-            PasskeyLog.Write($"opsig: GetOperationSigningPublicKey hr=0x{hr:X8} cb={cb}");
             return null;
-        }
 
         byte[] blob = new byte[cb];
         try
@@ -105,7 +94,6 @@ internal static class OperationSignature
         }
         catch (CryptographicException) { }
 
-        PasskeyLog.Write($"opsig: could not parse the public key blob ({blob.Length} bytes)");
         ecdsa.Dispose();
         return null;
     }

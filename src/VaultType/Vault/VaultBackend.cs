@@ -53,8 +53,8 @@ public sealed class VaultBackend : IDisposable
     public bool Unlocked => _crypto?.IsUnlocked == true || _mockUnlocked;
     public bool HasPersistedSession => PersistedSession.Load(_statePath) != null;
 
-    // Dev/preview only: pretend to be unlocked with the given items so the --gallery / --screenshots
-    // modes can render item-bearing windows without a real vault.
+    // Dev/preview only: pretend to be unlocked with the given items so the --screenshots
+    // mode can render item-bearing windows without a real vault.
     public void LoadMockUnlocked(List<VaultItem> items)
     {
         Protector?.Dispose();
@@ -456,7 +456,7 @@ public sealed class VaultBackend : IDisposable
             _ = Task.Run(async () =>
             {
                 try { await SyncAsync(CancellationToken.None).ConfigureAwait(false); }
-                catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"passkey post-create sync failed: {ex.Message}"); }
+                catch { }
             }, CancellationToken.None);
 
             return (credentialGuid.ToByteArray(bigEndian: true), ecdsa.ExportParameters(false));
@@ -541,18 +541,13 @@ public sealed class VaultBackend : IDisposable
                     {
                         var k = _crypto!.DecryptSshKey(c, Protector);
                         if (k != null) sshKeys.Add(k);
-                        else Security.Passkey.PasskeyLog.Write($"vault: ssh cipher {c.Id} skipped (sshKey missing in payload)");
                     }
                 }
-                catch (Exception ex)
+                catch
                 {
                     // skip an item we can't decrypt rather than fail the whole vault
-                    Security.Passkey.PasskeyLog.Write($"vault: cipher {c.Id} (type {c.Type}) decrypt failed: {ex.Message}");
                 }
             }
-            Security.Passkey.PasskeyLog.Write(
-                $"vault: sync types=[{string.Join(",", sync.Ciphers.GroupBy(c => c.Type).OrderBy(g => g.Key).Select(g => $"{g.Key}:{g.Count()}"))}] " +
-                $"items={items.Count} sshKeys={sshKeys.Count} passkeys={passkeys.Count}");
             Items = items;
             SshKeys = sshKeys;
             Passkeys = passkeys;

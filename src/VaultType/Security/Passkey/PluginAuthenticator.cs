@@ -16,10 +16,10 @@ namespace VaultType.Security.Passkey;
 public sealed class PluginAuthenticator : IPluginAuthenticator
 {
     public int MakeCredential(IntPtr request, IntPtr response)
-        => Handle(request, response, "MakeCredential", Ceremony.MakeCredential);
+        => Handle(request, response, Ceremony.MakeCredential);
 
     public int GetAssertion(IntPtr request, IntPtr response)
-        => Handle(request, response, "GetAssertion", Ceremony.GetAssertion);
+        => Handle(request, response, Ceremony.GetAssertion);
 
     // Windows calls this when the user aborts (or the ceremony times out). The ceremony code polls
     // the cancellation token. Unlike MakeCredential/GetAssertion this does NOT verify the request
@@ -34,13 +34,11 @@ public sealed class PluginAuthenticator : IPluginAuthenticator
         {
             if (request == IntPtr.Zero) return PasskeyNative.E_POINTER;
             var req = Marshal.PtrToStructure<PluginCancelOperationRequest>(request);
-            PasskeyLog.Write($"CancelOperation txn={req.TransactionId}");
             Ceremony.Cancel(req.TransactionId);
             return PasskeyNative.S_OK;
         }
-        catch (Exception ex)
+        catch
         {
-            PasskeyLog.Write($"CancelOperation failed: {ex}");
             return PasskeyNative.E_FAIL;
         }
     }
@@ -56,9 +54,8 @@ public sealed class PluginAuthenticator : IPluginAuthenticator
             lockStatus = (int)(Ceremony.VaultUnlocked() ? PluginLockStatus.Unlocked : PluginLockStatus.Locked);
             return PasskeyNative.S_OK;
         }
-        catch (Exception ex)
+        catch
         {
-            PasskeyLog.Write($"GetLockStatus failed: {ex}");
             return PasskeyNative.S_OK;   // stay "locked" rather than failing the whole ceremony
         }
     }
@@ -66,7 +63,7 @@ public sealed class PluginAuthenticator : IPluginAuthenticator
     // Shared plumbing for the two ceremony entry points: unmarshal the request, verify it really
     // came from Windows, run the handler, and hand the CTAP response back as CoTaskMem memory
     // (the caller frees it).
-    private static int Handle(IntPtr request, IntPtr response, string what,
+    private static int Handle(IntPtr request, IntPtr response,
                               Func<Guid, IntPtr, ReadOnlyMemory<byte>, byte[]> handler)
     {
         if (request == IntPtr.Zero || response == IntPtr.Zero) return PasskeyNative.E_POINTER;
@@ -76,7 +73,6 @@ public sealed class PluginAuthenticator : IPluginAuthenticator
         try
         {
             var req = Marshal.PtrToStructure<PluginOperationRequest>(request);
-            PasskeyLog.Write($"{what} txn={req.TransactionId} type={req.RequestType} cb={req.CbEncodedRequest}");
 
             if (req.RequestType != PluginRequestType.Ctap2Cbor)
                 return PasskeyNative.E_INVALIDARG;
@@ -86,16 +82,12 @@ public sealed class PluginAuthenticator : IPluginAuthenticator
                 Marshal.Copy(req.PbEncodedRequest, encoded, 0, encoded.Length);
 
             if (!OperationSignature.Verify(req, encoded))
-            {
-                PasskeyLog.Write($"{what}: request signature rejected");
                 return PasskeyNative.E_INVALIDARG;
-            }
 
             payload = handler(req.TransactionId, req.Hwnd, encoded);
         }
-        catch (Exception ex)
+        catch
         {
-            PasskeyLog.Write($"{what} failed: {ex}");
             return PasskeyNative.E_FAIL;
         }
 
@@ -104,7 +96,6 @@ public sealed class PluginAuthenticator : IPluginAuthenticator
         if (payload.Length == 1)
         {
             var status = (CtapStatus)payload[0];
-            PasskeyLog.Write($"{what}: {status}");
             return status is CtapStatus.OperationDenied or CtapStatus.KeepAliveCancel
                 ? PasskeyNative.NTE_USER_CANCELLED
                 : PasskeyNative.E_FAIL;
@@ -119,9 +110,8 @@ public sealed class PluginAuthenticator : IPluginAuthenticator
                 response, fDeleteOld: false);
             return PasskeyNative.S_OK;
         }
-        catch (Exception ex)
+        catch
         {
-            PasskeyLog.Write($"{what}: writing the response failed: {ex}");
             return PasskeyNative.E_FAIL;
         }
     }

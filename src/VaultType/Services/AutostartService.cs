@@ -19,11 +19,9 @@ public static class AutostartService
             else
                 key.DeleteValue(ValueName, throwOnMissingValue: false);
         }
-        catch (Exception ex)
+        catch
         {
-            // e.g. locked-down Run key / registry permissions. Don't crash the app over autostart,
-            // but leave a trace so a silent "Start with Windows" failure is diagnosable.
-            System.Diagnostics.Debug.WriteLine($"AutostartService.Set failed: {ex.Message}");
+            // e.g. locked-down Run key / registry permissions. Don't crash the app over autostart.
         }
     }
 }

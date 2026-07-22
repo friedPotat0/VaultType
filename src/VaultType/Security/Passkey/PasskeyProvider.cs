@@ -30,26 +30,21 @@ public static class PasskeyProvider
                 int hr = PasskeyNative.WebAuthNPluginGetAuthenticatorState(ref clsid, out _);
                 return hr == PasskeyNative.S_OK;
             }
-            catch (Exception ex) { PasskeyLog.Write($"provider: state query failed: {ex.Message}"); return false; }
+            catch { return false; }
         }
     }
 
     // Enable/disable the provider. Safe to call from the settings toggle: it never throws, and it is
-    // a logged no-op when running unpackaged or on an older Windows.
+    // a no-op when running unpackaged or on an older Windows.
     public static void Apply(bool enabled)
     {
-        PasskeyLog.Write($"provider: {(enabled ? "enable" : "disable")} requested");
-        if (!Supported)
-        {
-            PasskeyLog.Write($"provider: skipped (packaged={AppInfo.IsPackaged}, build={Environment.OSVersion.Version.Build})");
-            return;
-        }
+        if (!Supported) return;
 
         try
         {
             if (enabled)
             {
-                if (Registered) { PasskeyLog.Write("provider: already registered"); return; }
+                if (Registered) return;
                 Register();
             }
             else
@@ -57,9 +52,8 @@ public static class PasskeyProvider
                 Unregister();
             }
         }
-        catch (Exception ex)
+        catch
         {
-            PasskeyLog.Write($"provider: {(enabled ? "registration" : "removal")} failed: {ex}");
         }
     }
 
@@ -94,19 +88,9 @@ public static class PasskeyProvider
                 UserVerificationKeyName = null,
             };
 
-            int hr = PasskeyNative.WebAuthNPluginAddAuthenticator2(ref options, out response);
-            if (hr != PasskeyNative.S_OK)
-            {
-                PasskeyLog.Write($"provider: WebAuthNPluginAddAuthenticator2 hr=0x{hr:X8}");
-                return;
-            }
-
+            PasskeyNative.WebAuthNPluginAddAuthenticator2(ref options, out response);
             // The response carries the public key Windows signs operation requests with; we fetch it
             // on demand in the plugin process (OperationSignature), so nothing needs persisting here.
-            uint keyLen = response != IntPtr.Zero
-                ? Marshal.PtrToStructure<PluginAddAuthenticatorResponse>(response).CbOpSignPubKey
-                : 0;
-            PasskeyLog.Write($"provider: registered (authenticatorInfo={info.Length} bytes, opSignPubKey={keyLen} bytes)");
         }
         finally
         {
@@ -128,7 +112,7 @@ public static class PasskeyProvider
             PasskeyNative.WebAuthNPluginAuthenticatorRemoveAllCredentials(ref clsid);
 
             var list = creds.Where(c => c.Discoverable && c.CredentialId.Length > 0 && c.RpId.Length > 0).ToList();
-            if (list.Count == 0) { PasskeyLog.Write("provider: metadata cleared (no discoverable passkeys)"); return; }
+            if (list.Count == 0) return;
 
             int size = Marshal.SizeOf<PluginCredentialDetails>();
             IntPtr array = Marshal.AllocHGlobal(size * list.Count);
@@ -163,8 +147,7 @@ public static class PasskeyProvider
                     Marshal.StructureToPtr(details, array + i * size, fDeleteOld: false);
                 }
 
-                int hr = PasskeyNative.WebAuthNPluginAuthenticatorAddCredentials(ref clsid, (uint)list.Count, array);
-                PasskeyLog.Write($"provider: metadata sync {list.Count} credential(s) hr=0x{hr:X8}");
+                PasskeyNative.WebAuthNPluginAuthenticatorAddCredentials(ref clsid, (uint)list.Count, array);
             }
             finally
             {
@@ -174,16 +157,14 @@ public static class PasskeyProvider
                 Marshal.FreeHGlobal(array);
             }
         }
-        catch (Exception ex)
+        catch
         {
-            PasskeyLog.Write($"provider: metadata sync failed: {ex.Message}");
         }
     }
 
     private static void Unregister()
     {
         var clsid = PasskeyIds.Clsid;
-        int hr = PasskeyNative.WebAuthNPluginRemoveAuthenticator(ref clsid);
-        PasskeyLog.Write($"provider: WebAuthNPluginRemoveAuthenticator hr=0x{hr:X8}");
+        PasskeyNative.WebAuthNPluginRemoveAuthenticator(ref clsid);
     }
 }

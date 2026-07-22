@@ -112,23 +112,6 @@ public partial class App : Application
             }
         }
 
-        // Dev-only: dump a single dialog card (tight, no shadow) for pixel comparison, then exit.
-        for (int i = 0; i < e.Args.Length; i++)
-        {
-            if (string.Equals(e.Args[i], "--carddump", StringComparison.OrdinalIgnoreCase))
-            {
-                try { RunCardDump(e.Args[i + 1], e.Args[i + 2]); } catch (Exception ex) { System.IO.File.WriteAllText(e.Args[i + 2] + ".err", ex.ToString()); }
-                Shutdown();
-                return;
-            }
-            if (string.Equals(e.Args[i], "--show", StringComparison.OrdinalIgnoreCase))
-            {
-                if (i + 1 >= e.Args.Length) { Shutdown(); return; }
-                RunShow(e.Args[i + 1]);   // opens a live window; keeps running until it is closed
-                return;
-            }
-        }
-
         // Dev-only: render the real windows (with mock data) to PNGs for the README, then exit.
         for (int i = 0; i < e.Args.Length; i++)
         {
@@ -141,35 +124,16 @@ public partial class App : Application
             }
         }
 
-        // Dev-only live gallery: open every window at once (mock data) for hot-reload design work.
-        if (e.Args.Any(a => string.Equals(a, "--gallery", StringComparison.OrdinalIgnoreCase)))
-        {
-            RunGalleryMode();
-            return;
-        }
-
         _mutex = new Mutex(true, "VaultType_SingleInstance_9F2A", out bool isNew);
         if (!isNew) { Shutdown(); return; }
 
-        // Don't let a stray UI exception silently kill the whole tray app: log it and keep running.
+        // Don't let a stray UI exception silently kill the whole tray app: surface it and keep running.
         DispatcherUnhandledException += (_, ev) =>
         {
-            LogCrash(ev.Exception);
             try { ShowBalloon(Loc.T("msg.error"), ev.Exception.Message); } catch { }
             ev.Handled = true;
         };
-        // Background-thread (e.g. SSH-agent pipe) exceptions can't be handled, but log them before
-        // the runtime tears the process down so a crash is never silent.
-        AppDomain.CurrentDomain.UnhandledException += (_, ev) =>
-        {
-            if (ev.ExceptionObject is Exception ex) LogCrash(ex);
-            else LogCrash(new Exception($"non-Exception throw: {ev.ExceptionObject}"));
-        };
-        System.Threading.Tasks.TaskScheduler.UnobservedTaskException += (_, ev) =>
-        {
-            LogCrash(ev.Exception);
-            ev.SetObserved();
-        };
+        System.Threading.Tasks.TaskScheduler.UnobservedTaskException += (_, ev) => ev.SetObserved();
 
         _cfg = AppConfig.Load();
         Loc.Init(_cfg.Language);
@@ -795,7 +759,7 @@ public partial class App : Application
         if (AppInfo.IsPackaged)
         {
             try { Process.Start(new ProcessStartInfo(AppInfo.StoreUri) { UseShellExecute = true }); }
-            catch (Exception ex) { LogCrash(ex); ShowBalloon(Loc.T("msg.error"), ex.Message); }
+            catch (Exception ex) { ShowBalloon(Loc.T("msg.error"), ex.Message); }
             return;
         }
         try
@@ -813,153 +777,10 @@ public partial class App : Application
                 ShowBalloon("VaultType", Loc.T("msg.upToDate", AppInfo.Version));
             }
         }
-        catch (Exception ex)
+        catch
         {
-            LogCrash(ex);
             ShowBalloon(Loc.T("msg.error"), Loc.T("msg.updateFailed"));
         }
-    }
-
-    // ---- Live gallery (dev design work with hot reload) ----
-
-    // Open every window at once with mock data, tiled across the desktop, so GUI edits can be
-    // reviewed live under `dotnet watch`. Never touches the real vault or the single-instance mutex.
-    private void RunGalleryMode()
-    {
-        Loc.Init("en");
-        _cfg = new AppConfig { ShowIcons = false };
-
-        // A stray click on a non-modal window's button would try to set DialogResult and throw;
-        // swallow that so the gallery stays up while the user pokes around.
-        DispatcherUnhandledException += (_, e) => { if (e.Exception is InvalidOperationException) e.Handled = true; };
-
-        var ctx = new ForegroundInfo { Exe = "brave.exe", Title = "Sign in to GitHub", Url = "https://github.com/login" };
-
-        var accPriv = new AccountConfig { Id = "p", Name = "Private", ColorHex = "#57C98A", ServerUrl = "https://vault.example.com", SignedInBefore = true };
-        var accWork = new AccountConfig { Id = "w", Name = "Work", ColorHex = "#3B82F6", Kind = AccountKind.BitwardenEU, ServerUrl = AccountConfig.EuCloud, SignedInBefore = true };
-        var sPriv = new VaultSession(accPriv, _cfg);
-        sPriv.Backend.LoadMockUnlocked(BuildMockItems());
-        var sWork = new VaultSession(accWork, _cfg);
-
-        var wins = new List<Window>();
-
-        var picker = new PickerWindow(new[] { sPriv, sWork }, ctx, 0, false, showAllFirst: true, _ => Task.FromResult(false));
-        picker.Title = "VaultType - Picker";
-        wins.Add(picker);
-
-        var unlock = new UnlockWindow("Unlock vault", "", false);
-        unlock.Pw.Password = "correct horse battery staple";
-        unlock.SetAccounts(new List<AccountChoice>
-        {
-            new() { Id = "p", Email = "alex.doe@example.com", Server = "https://vault.example.com", ColorHex = "#57C98A" },
-            new() { Id = "w", Email = "info@acme.io", Server = "https://vault.bitwarden.eu", ColorHex = "#3B82F6" },
-        }, 0);
-        unlock.Title = "VaultType - Unlock";
-        wins.Add(unlock);
-
-        var signin = new SignInWindow(false, "alex.doe@example.com");
-        signin.Preset(method: "apikey", serverIndex: 0);
-        signin.ClientIdBox.Text = "user.7f3a1c9e-2b4d-4e8a-9f10-abcdef123456";
-        signin.ClientSecretBox.Password = "aXb9Kd2mNp7qRs4tUv1wYz0e";
-        signin.Pw.Password = "correct horse battery staple";
-        signin.Title = "VaultType - Sign in";
-        wins.Add(signin);
-
-        var settingsRows = new List<AccountRow>
-        {
-            new() { Id = "p", Name = "Private", ColorHex = "#57C98A", ServerLabel = "https://vault.example.com", Unlocked = true },
-            new() { Id = "w", Name = "Work", ColorHex = "#3B82F6", ServerLabel = "Bitwarden.eu (EU)", Unlocked = false },
-        };
-        var settings = new SettingsWindow(_cfg, settingsRows, false);
-        settings.Title = "VaultType - Settings";
-        wins.Add(settings);
-
-        var confirm = new ConfirmWindow("Remember this entry?",
-            "Add 'https://github.com' to 'GitHub' so it is suggested for github.com next time?", false);
-        confirm.Title = "VaultType - Confirm";
-        wins.Add(confirm);
-
-        var loading = new LoadingWindow(false);
-        loading.SetStatus("Unlocking ...");
-        loading.Title = "VaultType - Loading";
-        wins.Add(loading);
-
-        BuildGalleryControl(wins);
-    }
-
-    private static string GalleryMonitorFile =>
-        System.IO.Path.Combine(System.IO.Path.GetTempPath(), "vaulttype-gallery-monitor.txt");
-
-    // Tiny always-on-top panel to move the whole gallery between monitors, re-tile, or quit. The
-    // chosen monitor is remembered across watch restarts so edits don't kick the windows back.
-    private void BuildGalleryControl(List<Window> wins)
-    {
-        var screens = WinForms.Screen.AllScreens;
-        int primary = Array.FindIndex(screens, s => s.Primary); if (primary < 0) primary = 0;
-        int idx = primary;
-        try { if (int.TryParse(System.IO.File.ReadAllText(GalleryMonitorFile), out int v) && v >= 0 && v < screens.Length) idx = v; } catch { }
-
-        var panel = new System.Windows.Controls.StackPanel { Margin = new Thickness(12) };
-        System.Windows.Controls.Button Mk(string t)
-        {
-            var b = new System.Windows.Controls.Button
-            {
-                Content = t, Margin = new Thickness(0, 0, 0, 8),
-                Style = (Style)Application.Current.FindResource("GhostButton"),
-            };
-            panel.Children.Add(b);
-            return b;
-        }
-        var bNext = Mk("Alle Fenster -> naechster Monitor");
-        var bTile = Mk("Neu anordnen");
-        var bExit = Mk("Gallery beenden");
-
-        var ctrl = new Window
-        {
-            Title = "VaultType Gallery", Width = 260, SizeToContent = SizeToContent.Height,
-            WindowStyle = WindowStyle.ToolWindow, ResizeMode = ResizeMode.NoResize,
-            Topmost = true, ShowInTaskbar = true, Content = panel,
-            Background = (Brush)Application.Current.FindResource("WindowBg"),
-        };
-        ctrl.Show();
-        ctrl.UpdateLayout();
-
-        // Tile the whole gallery inside one monitor's work area (pixels -> DIPs via the DPI scale).
-        void TileOnScreen(int screenIndex)
-        {
-            var sc = screens[screenIndex].WorkingArea;
-            double dpi = System.Windows.Media.VisualTreeHelper.GetDpi(ctrl).DpiScaleX;
-            if (dpi <= 0) dpi = 1;
-            double left = sc.Left / dpi, top = sc.Top / dpi, right = sc.Right / dpi, bottom = sc.Bottom / dpi;
-            double x = left + 12, y = top + 12, rowH = 0;
-            foreach (var w in wins)
-            {
-                w.WindowStartupLocation = WindowStartupLocation.Manual;
-                w.Topmost = false;
-                w.ShowInTaskbar = true;
-                if (!w.IsVisible) w.Show();
-                w.UpdateLayout();
-                w.Left = x;
-                w.Top = y;
-                x += w.ActualWidth + 12;
-                rowH = Math.Max(rowH, w.ActualHeight);
-                if (x + 320 > right) { x = left + 12; y += rowH + 12; rowH = 0; }
-            }
-            ctrl.Left = right - ctrl.ActualWidth - 12;
-            ctrl.Top = bottom - ctrl.ActualHeight - 12;
-        }
-
-        bNext.Click += (_, __) =>
-        {
-            if (screens.Length < 2) return;
-            idx = (idx + 1) % screens.Length;
-            try { System.IO.File.WriteAllText(GalleryMonitorFile, idx.ToString()); } catch { }
-            TileOnScreen(idx);
-        };
-        bTile.Click += (_, __) => TileOnScreen(idx);
-        bExit.Click += (_, __) => Shutdown();
-
-        TileOnScreen(idx);
     }
 
     // ---- Screenshot mode (README assets) ----
@@ -1129,155 +950,6 @@ public partial class App : Application
         w.Close();
     }
 
-    // Render just the card element (by name) to a tight 1x PNG - no window margin, no drop shadow -
-    // so it can be pixel-compared against the design card baseline (same border-box dimensions).
-    private void CardDump(Window w, string cardName, string path, Action? beforeRender = null)
-    {
-        w.WindowStartupLocation = WindowStartupLocation.Manual;
-        w.Left = -10000; w.Top = -10000; w.ShowInTaskbar = false; w.Topmost = false;
-        w.Show();
-        Dispatcher.Invoke(() => { }, System.Windows.Threading.DispatcherPriority.Loaded);
-        w.UpdateLayout();
-        beforeRender?.Invoke();
-
-        // Render in the resting (unfocused) state to match the static design - the window's smart
-        // focus would otherwise green-highlight the first input.
-        System.Windows.Input.FocusManager.SetFocusedElement(w, null);
-        System.Windows.Input.Keyboard.ClearFocus();
-
-        var card = w.FindName(cardName) as FrameworkElement ?? (FrameworkElement)w.Content;
-        var savedEffect = card.Effect;
-        var savedMargin = card is System.Windows.Controls.Border cb ? cb.Margin : new Thickness();
-        card.Effect = null;
-        if (card is System.Windows.Controls.Border b) b.Margin = new Thickness(0);
-
-        Dispatcher.Invoke(() => { }, System.Windows.Threading.DispatcherPriority.ContextIdle);
-        w.UpdateLayout();
-
-        int width = (int)System.Math.Ceiling(card.ActualWidth);
-        int height = (int)System.Math.Ceiling(card.ActualHeight);
-        var rtb = new System.Windows.Media.Imaging.RenderTargetBitmap(width, height, 96, 96,
-            System.Windows.Media.PixelFormats.Pbgra32);
-        rtb.Render(card);
-        var enc = new System.Windows.Media.Imaging.PngBitmapEncoder();
-        enc.Frames.Add(System.Windows.Media.Imaging.BitmapFrame.Create(rtb));
-        using (var fs = System.IO.File.Create(path)) enc.Save(fs);
-
-        card.Effect = savedEffect;
-        if (card is System.Windows.Controls.Border b2) b2.Margin = savedMargin;
-        w.Close();
-    }
-
-    // Dev-only: dump one dialog's card to a tight PNG for pixel comparison against the design.
-    private void RunCardDump(string name, string outPath)
-    {
-        Loc.Init("de");   // the design reference is German
-        _cfg = new AppConfig { ShowIcons = false };
-        var w = BuildMockDialog(name);
-        if (w != null) CardDump(w, "Card", outPath);
-    }
-
-    // Dev-only: open a single dialog as a live on-screen window (to judge real text rendering).
-    private void RunShow(string name)
-    {
-        Loc.Init("de");
-        _cfg = new AppConfig { ShowIcons = false };
-        var w = BuildMockDialog(name);
-        if (w == null) { Shutdown(); return; }
-        w.WindowStartupLocation = WindowStartupLocation.CenterScreen;
-        w.Closed += (_, __) => Shutdown();
-        w.Show();
-        w.Activate();
-    }
-
-    // Build a dialog window populated with mock data (shared by --carddump and --show).
-    private Window? BuildMockDialog(string name)
-    {
-        if (name == "unlock")
-        {
-            var unlock = new UnlockWindow("Vault entsperren",
-                "Gib dein Master-Passwort ein, um den Vault zu entsperren.", false);
-            unlock.SetAccounts(new List<AccountChoice>
-            {
-                new() { Id = "p", Name = "Privat", Email = "alex.doe@example.com", Server = "https://vault.example.com", ColorHex = "#8AA64A" },
-                new() { Id = "w", Name = "Arbeit", Email = "info@acme.io", Server = "https://work.acme.io", ColorHex = "#3D7FC0" },
-                new() { Id = "f", Name = "Familie", Email = "family@example.net", Server = "https://vault.bitwarden.com", ColorHex = "#A371F7" },
-            }, 0);
-            unlock.Pw.Password = "Sup3rSecretMasterKey!42";
-            return unlock;
-        }
-        if (name == "signin")
-        {
-            // matches the design reference: self-hosted Vaultwarden? no - default: Bitwarden US,
-            // e-mail method, master-password unlock, vault "Privat"
-            var signin = new SignInWindow(false, "alex.doe@example.com");
-            signin.Preset(method: "email", serverIndex: 0);
-            signin.Pw.Password = "Sup3rSecretMasterKey!42";
-            signin.VaultNameBox.Text = "Privat";
-            return signin;
-        }
-        if (name == "picker")
-        {
-            var ctx = new ForegroundInfo { Exe = "brave.exe", Title = "Sign in to GitHub", Url = "https://github.com/login" };
-            var accPriv = new AccountConfig { Id = "p", Name = "Privat", ColorHex = "#8AA64A", ServerUrl = "https://vault.example.com", SignedInBefore = true };
-            var accWork = new AccountConfig { Id = "w", Name = "Team", ColorHex = "#3D7FC0", Kind = AccountKind.BitwardenEU, ServerUrl = AccountConfig.EuCloud, SignedInBefore = true };
-            var sPriv = new VaultSession(accPriv, _cfg);
-            sPriv.Backend.LoadMockUnlocked(BuildMockItems());
-            var sWork = new VaultSession(accWork, _cfg);
-            return new PickerWindow(new[] { sPriv, sWork }, ctx, 0, false, showAllFirst: true, _ => Task.FromResult(false));
-        }
-        if (name == "settings")
-        {
-            var rows = new List<AccountRow>
-            {
-                new() { Id = "p", Name = "Privat", ColorHex = "#8AA64A", ServerLabel = "Bitwarden (EU)", Unlocked = true },
-                new() { Id = "w", Name = "Arbeit", ColorHex = "#3D7FC0", ServerLabel = "vault.acme.io", Unlocked = false },
-                new() { Id = "f", Name = "Familie", ColorHex = "#A371F7", ServerLabel = "Bitwarden (US)", Unlocked = false },
-            };
-            var sw = new SettingsWindow(_cfg, rows, false)
-            {
-                SshStatusProvider = () => Loc.T("ssh.many", 4),
-                CreateSshWindow = () => BuildMockDialog("ssh"),
-            };
-            sw.ShowPasskeyAsSupported();
-            return sw;
-        }
-        if (name == "tray")
-        {
-            var aPriv = new AccountConfig { Id = "p", Name = "Privat", ColorHex = "#8AA64A", Kind = AccountKind.BitwardenEU, ServerUrl = AccountConfig.EuCloud, SignedInBefore = true };
-            var aWork = new AccountConfig { Id = "w", Name = "Arbeit", ColorHex = "#3D7FC0", ServerUrl = "https://vault.acme.io", SignedInBefore = true };
-            var aFam = new AccountConfig { Id = "f", Name = "Familie", ColorHex = "#A371F7", Kind = AccountKind.BitwardenUS, ServerUrl = AccountConfig.UsCloud, SignedInBefore = true };
-            var sPriv = new VaultSession(aPriv, _cfg);
-            sPriv.Backend.LoadMockUnlocked(BuildMockItems());   // unlocked -> shows an entry count
-            var sWork = new VaultSession(aWork, _cfg);          // locked -> shows a lock icon
-            var sFam = new VaultSession(aFam, _cfg);
-            return new TrayMenuWindow(new[] { sPriv, sWork, sFam }, "Strg + Alt + A", "vor 2 Min.", new TrayMenuWindow.Actions());
-        }
-        if (name == "ssh")
-        {
-            var acc = new AccountConfig { Id = "p", Name = "Privat", ColorHex = "#8AA64A", ServerUrl = "https://vault.example.com", SignedInBefore = true };
-            var s = new VaultSession(acc, _cfg);
-            s.Backend.LoadMockUnlocked(BuildMockItems());
-            s.Backend.LoadMockSshKeys(BuildMockSshKeys(s));
-            return new SshKeysWindow(new[] { s }, _cfg, false);
-        }
-        return null;
-    }
-
-    // Mock SSH keys for the design gallery / card dump (display data only).
-    private static List<SshKeyEntry> BuildMockSshKeys(VaultSession s)
-    {
-        SshKeyEntry K(string vault, string name, string type, string fp) => new()
-        { Name = name, Type = type, Fingerprint = fp, PublicKey = "ssh-" + type + " AAAA " + name };
-        // matches the design reference: vaults "Privat" + "Cloud" unlocked -> three keys shown
-        return new List<SshKeyEntry>
-        {
-            K("Privat", "privat@laptop", "ed25519", "SHA256:a3Fq8LzvKmR2pXwT9hNcBs4Yd7Qe1oUj0Gf5RiZkL8"),
-            K("Privat", "github-deploy", "ed25519", "SHA256:pL2vNcHt7Wm3Qx9Ab6Ye0Rf4Zd8Kj1Uo5Gs2Vi7xQ0m"),
-            K("Cloud", "cloud-admin", "rsa-4096", "SHA256:7mRhTtqA2Wv9Kx3Nb6Yc0Rf8Zd4Ej1Uo5Gs7Vi2x4tBw"),
-        };
-    }
-
     // put the password caret at the end (after the dots), like a normally filled field
     private static void MoveCaretToEnd(System.Windows.Controls.PasswordBox pw)
     {
@@ -1330,7 +1002,7 @@ public partial class App : Application
         // so a tray action can never take the whole app down.
         void Safe(Action a) => Dispatcher.BeginInvoke((Action)(() =>
         {
-            try { a(); } catch (Exception ex) { LogCrash(ex); ShowBalloon(Loc.T("msg.error"), ex.Message); }
+            try { a(); } catch (Exception ex) { ShowBalloon(Loc.T("msg.error"), ex.Message); }
         }));
         var menu = new TrayMenuWindow(_sessions, _cfg.Hotkey, SyncHint(), new TrayMenuWindow.Actions
         {
@@ -1353,16 +1025,6 @@ public partial class App : Application
         _trayMenu = menu;
         var pos = WinForms.Cursor.Position;
         menu.ShowAt(pos.X, pos.Y);
-    }
-
-    private static void LogCrash(Exception ex)
-    {
-        try
-        {
-            string path = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "vaulttype-crash.log");
-            System.IO.File.AppendAllText(path, $"[{DateTime.Now:s}] {ex}\n\n");
-        }
-        catch { }
     }
 
     // When were all signed-in vaults last in sync? The hint shows the OLDEST per-account stamp,
@@ -1660,9 +1322,6 @@ public partial class App : Application
                     if (matches.Count > 0) break;
                 }
             }
-            // Do not log the plaintext RP id or the full list of every known RP - that is a
-            // behavioural profile. Redacted tag only.
-            PasskeyLog.Write($"assert: rp={PasskeyLog.Redact(r.RpId)} allow={allow.Count} matches={matches.Count}");
             if (matches.Count == 0) return PasskeyIpcResponse.Fail(CtapStatus.NoCredentials);
 
             var (owner, cred) = matches[0];
@@ -1733,12 +1392,10 @@ public partial class App : Application
         });
         if (denied != null) return denied;
 
-        PasskeyLog.Write($"create: rp={r.RpId} account={owner!.Cfg.Name}");
         var created = Task.Run(() => owner!.Backend.CreatePasskeyAsync(
             r.RpId, r.RpName,
             r.UserId != null ? Convert.FromBase64String(r.UserId) : Array.Empty<byte>(),
             r.UserName, r.UserDisplayName, r.Discoverable)).GetAwaiter().GetResult();
-        PasskeyLog.Write($"create: {(created == null ? "FAILED" : "ok")}");
         if (created == null) return PasskeyIpcResponse.Fail(CtapStatus.OtherError);
 
         // The vault re-sync runs in the background, so the fresh passkey is not in Backend.Passkeys

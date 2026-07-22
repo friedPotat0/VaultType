@@ -154,7 +154,7 @@ public partial class SshKeysWindow : Window
         copy.Click += (_, __) =>
         {
             try { Clipboard.SetText(key.PublicKey); }
-            catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"ssh: copy public key failed: {ex.Message}"); }
+            catch { }
         };
         actions.Children.Add(copy);
 

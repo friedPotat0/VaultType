@@ -111,14 +111,12 @@ internal sealed class PasskeyIpcServer : IDisposable
         _cts = new CancellationTokenSource();
         var ct = _cts.Token;
         Task.Run(() => AcceptLoop(ct), ct);
-        PasskeyLog.Write($"ipc: server started ({PasskeyIpc.PipeName})");
     }
 
     internal void Stop()
     {
         _cts?.Cancel();
         _cts = null;
-        PasskeyLog.Write("ipc: server stopped");
     }
 
     private async Task AcceptLoop(CancellationToken ct)
@@ -138,9 +136,8 @@ internal sealed class PasskeyIpcServer : IDisposable
                 _ = Task.Run(() => Serve(server), ct);
             }
             catch (OperationCanceledException) { break; }
-            catch (Exception ex)
+            catch
             {
-                PasskeyLog.Write($"ipc: accept failed: {ex.Message}");
                 try { await Task.Delay(500, ct).ConfigureAwait(false); } catch { break; }
             }
         }
@@ -167,18 +164,15 @@ internal sealed class PasskeyIpcServer : IDisposable
                     request = PasskeyIpc.ReadMessage<PasskeyIpcRequest>(pipe);
                 }
                 if (request == null) return;
-                PasskeyLog.Write($"ipc: {request.Op} rp={PasskeyLog.Redact(request.RpId)}");
                 PasskeyIpcResponse response;
                 try { response = _handler(request); }
-                catch (Exception ex)
+                catch
                 {
-                    PasskeyLog.Write($"ipc: handler failed: {ex}");
                     response = PasskeyIpcResponse.Fail(CtapStatus.OtherError);
                 }
                 PasskeyIpc.WriteMessage(pipe, response);
-                PasskeyLog.Write($"ipc: {request.Op} answered ok={response.Ok} status={response.Status}");
             }
-            catch (Exception ex) { PasskeyLog.Write($"ipc: serve failed: {ex.Message}"); }
+            catch { }
         }
     }
 
@@ -198,25 +192,17 @@ internal sealed class PasskeyIpcServer : IDisposable
         try
         {
             if (!GetNamedPipeClientProcessId(pipe.SafePipeHandle, out uint pid))
-            {
-                PasskeyLog.Write($"ipc: cannot resolve client pid (err={Marshal.GetLastWin32Error()})");
                 return false;
-            }
 
             string? self = Environment.ProcessPath;
             string? client = null;
             try { using var p = Process.GetProcessById((int)pid); client = p.MainModule?.FileName; }
-            catch (Exception ex) { PasskeyLog.Write($"ipc: cannot inspect client pid={pid}: {ex.Message}"); }
+            catch { }
 
-            if (self != null && client != null && string.Equals(self, client, StringComparison.OrdinalIgnoreCase))
-                return true;
-
-            PasskeyLog.Write($"ipc: rejecting untrusted client pid={pid}");
-            return false;
+            return self != null && client != null && string.Equals(self, client, StringComparison.OrdinalIgnoreCase);
         }
-        catch (Exception ex)
+        catch
         {
-            PasskeyLog.Write($"ipc: client authentication failed: {ex.Message}");
             return false;
         }
     }

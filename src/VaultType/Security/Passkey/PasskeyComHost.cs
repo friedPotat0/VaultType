@@ -29,12 +29,10 @@ public static class PasskeyComHost
 
     public static void Run()
     {
-        PasskeyLog.Write("-PluginActivated: starting COM server");
-
         // STA: the ceremony may put a window on screen (unlock / confirmation), and the message
         // pump below is what keeps that window responsive.
         int hr = PasskeyNative.CoInitializeEx(IntPtr.Zero, PasskeyNative.COINIT_APARTMENTTHREADED);
-        if (hr < 0) { PasskeyLog.Write($"CoInitializeEx failed 0x{hr:X8}"); return; }
+        if (hr < 0) return;
 
         uint cookie = 0;
         var clsid = PasskeyIds.Clsid;
@@ -45,24 +43,21 @@ public static class PasskeyComHost
                 PasskeyNative.CLSCTX_LOCAL_SERVER,
                 PasskeyNative.REGCLS_MULTIPLEUSE | PasskeyNative.REGCLS_SUSPENDED,
                 out cookie);
-            if (hr < 0) { PasskeyLog.Write($"CoRegisterClassObject failed 0x{hr:X8}"); return; }
+            if (hr < 0) return;
 
             hr = PasskeyNative.CoResumeClassObjects();
-            if (hr < 0) { PasskeyLog.Write($"CoResumeClassObjects failed 0x{hr:X8}"); return; }
+            if (hr < 0) return;
 
-            PasskeyLog.Write($"COM server ready (clsid={PasskeyIds.ClsidString})");
             Touch();
             PumpUntilIdle();
         }
-        catch (Exception ex)
+        catch
         {
-            PasskeyLog.Write($"COM server error: {ex}");
         }
         finally
         {
             if (cookie != 0) PasskeyNative.CoRevokeClassObject(cookie);
             PasskeyNative.CoUninitialize();
-            PasskeyLog.Write("COM server stopped");
         }
     }
 
@@ -106,9 +101,8 @@ internal sealed class PluginClassFactory : IClassFactory
             try { return Marshal.QueryInterface(unk, in riid, out ppvObject); }
             finally { Marshal.Release(unk); }
         }
-        catch (Exception ex)
+        catch
         {
-            PasskeyLog.Write($"CreateInstance failed: {ex}");
             return PasskeyNative.E_FAIL;
         }
     }

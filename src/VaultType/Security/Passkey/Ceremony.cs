@@ -37,9 +37,7 @@ internal static class Ceremony
     {
         CtapMakeCredentialRequest req;
         try { req = Ctap2.DecodeMakeCredential(encodedRequest); }
-        catch (CtapException ex) { PasskeyLog.Write($"MakeCredential: {ex.Message}"); return Ctap2.Error(ex.Status); }
-
-        PasskeyLog.Write($"MakeCredential rp={PasskeyLog.Redact(req.RpId)} user={PasskeyLog.Redact(req.UserName)} rk={req.RequireResidentKey} uv={req.RequireUserVerification}");
+        catch (CtapException ex) { return Ctap2.Error(ex.Status); }
 
         var (uvWanted, userVerified) = PerformUserVerification(transactionId, hwnd, req.RequireUserVerification, req.UserName);
         if (uvWanted && !userVerified) return Ctap2.Error(CtapStatus.OperationDenied);
@@ -68,9 +66,7 @@ internal static class Ceremony
     {
         CtapGetAssertionRequest req;
         try { req = Ctap2.DecodeGetAssertion(encodedRequest); }
-        catch (CtapException ex) { PasskeyLog.Write($"GetAssertion: {ex.Message}"); return Ctap2.Error(ex.Status); }
-
-        PasskeyLog.Write($"GetAssertion rp={PasskeyLog.Redact(req.RpId)} allowList={req.AllowList.Count} uv={req.RequireUserVerification}");
+        catch (CtapException ex) { return Ctap2.Error(ex.Status); }
 
         var (uvWanted, userVerified) = PerformUserVerification(transactionId, hwnd, req.RequireUserVerification, req.RpId);
         if (uvWanted && !userVerified) return Ctap2.Error(CtapStatus.OperationDenied);
@@ -122,12 +118,10 @@ internal static class Ceremony
                 DisplayHint = PasskeyIds.AuthenticatorName,
             };
             int hr = PasskeyNative.WebAuthNPluginPerformUserVerification(ref uvRequest, out _, out response);
-            PasskeyLog.Write($"uv: hr=0x{hr:X8}");
             return (true, hr == PasskeyNative.S_OK);
         }
-        catch (Exception ex)
+        catch
         {
-            PasskeyLog.Write($"uv: failed: {ex.Message}");
             return (true, false);
         }
         finally

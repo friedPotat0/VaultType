@@ -230,9 +230,8 @@ public sealed class SshAgentService : IDisposable
             WriteString(ms, sigBlob.ToArray());
             return ms.ToArray();
         }
-        catch (Exception ex)
+        catch
         {
-            VaultType.Security.Passkey.PasskeyLog.Write($"ssh: sign failed for {client}: {ex.Message}");
             return new[] { SSH_AGENT_FAILURE };
         }
         finally { CryptographicOperations.ZeroMemory(pem); }

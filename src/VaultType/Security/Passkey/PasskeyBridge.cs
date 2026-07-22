@@ -11,11 +11,11 @@ internal static class PasskeyBridge
 
     internal static bool VaultUnlocked()
     {
-        var resp = Send(new PasskeyIpcRequest { Op = "status" }, quiet: true);
+        var resp = Send(new PasskeyIpcRequest { Op = "status" });
         return resp is { Ok: true, Unlocked: true };
     }
 
-    internal static PasskeyIpcResponse Send(PasskeyIpcRequest request, bool quiet = false)
+    internal static PasskeyIpcResponse Send(PasskeyIpcRequest request)
     {
         try
         {
@@ -31,12 +31,10 @@ internal static class PasskeyBridge
         }
         catch (TimeoutException)
         {
-            if (!quiet) PasskeyLog.Write("bridge: no running VaultType instance (connect timeout)");
             return PasskeyIpcResponse.Fail(CtapStatus.OperationDenied);
         }
-        catch (Exception ex)
+        catch
         {
-            if (!quiet) PasskeyLog.Write($"bridge: request failed: {ex.Message}");
             return PasskeyIpcResponse.Fail(CtapStatus.OtherError);
         }
     }

@@ -61,11 +61,9 @@ public sealed class AccountCrypto : IDisposable
                     _orgKeys[org.Id] = SymmetricCryptoKey.FromRaw(orgRaw);
                     CryptographicOperations.ZeroMemory(orgRaw);
                 }
-                catch (Exception ex)
+                catch
                 {
-                    // Skip an org whose key we can't unwrap, but record which one and why so the
-                    // missing-org-items symptom is diagnosable. Only the id/error text is logged.
-                    Security.Passkey.PasskeyLog.Write($"vault: org {org.Id} key unwrap failed: {ex.Message}");
+                    // Skip an org whose key we can't unwrap.
                 }
             }
         }

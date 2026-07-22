@@ -153,7 +153,7 @@ public partial class SettingsWindow : Window
         ContentScroll?.ScrollToTop();
     }
 
-    // Dev-only (gallery/screenshot mode): render the passkey rows as if the plugin were available,
+    // Dev-only (screenshot mode): render the passkey rows as if the plugin were available,
     // so the mock captures don't show the unpackaged-build hint.
     internal void ShowPasskeyAsSupported()
     {

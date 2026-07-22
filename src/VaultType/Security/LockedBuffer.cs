@@ -18,9 +18,8 @@ public sealed unsafe class LockedBuffer : IDisposable
             Native.MEM_COMMIT | Native.MEM_RESERVE, Native.PAGE_READWRITE);
         if (_ptr == IntPtr.Zero) throw new OutOfMemoryException("VirtualAlloc failed");
         // Best effort: VirtualLock can fail when the process working-set limit is hit. We keep
-        // the buffer regardless (never throw); the return value is only surfaced as a debug hint.
-        if (!Native.VirtualLock(_ptr, (UIntPtr)(uint)length))
-            Debug.WriteLine($"LockedBuffer: VirtualLock failed (working-set limit?), err={Marshal.GetLastWin32Error()}");
+        // the buffer regardless (never throw).
+        Native.VirtualLock(_ptr, (UIntPtr)(uint)length);
         NativeMemory.Clear((void*)_ptr, (nuint)length);
     }
 

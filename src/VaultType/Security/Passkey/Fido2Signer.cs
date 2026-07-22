@@ -20,9 +20,8 @@ internal static class Fido2Signer
         {
             ecdsa.ImportPkcs8PrivateKey(buf.Span[..privateKey.Cipher.Length], out _);
         }
-        catch (CryptographicException ex)
+        catch (CryptographicException)
         {
-            PasskeyLog.Write($"sign: PKCS#8 import failed: {ex.Message}");
             return null;
         }
         return ecdsa.SignData(message, HashAlgorithmName.SHA256, DSASignatureFormat.Rfc3279DerSequence);

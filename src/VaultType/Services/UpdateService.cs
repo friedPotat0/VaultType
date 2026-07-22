@@ -37,11 +37,9 @@ public static class UpdateService
                       && lv > cv;
             return new UpdateInfo(newer, latest, url);
         }
-        catch (Exception ex)
+        catch
         {
-            // e.g. GitHub 403 rate-limit or no network. The caller only sees "no update", so leave
-            // a trace to tell an actual failure apart from genuinely being up to date.
-            System.Diagnostics.Debug.WriteLine($"UpdateService.CheckAsync failed: {ex.Message}");
+            // e.g. GitHub 403 rate-limit or no network. The caller only sees "no update".
             return null;
         }
     }
