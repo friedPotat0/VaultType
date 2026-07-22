@@ -63,7 +63,11 @@ jobs:
             -p:EnableCompressionInSingleFile=true `
             -p:Version=$env:VERSION `
             -o publish
-          Copy-Item publish/VaultType.exe "VaultType-${env:VERSION}-win-x64.exe"
+          # Ship the portable build as a ZIP so the license and third-party notices
+          # (OFL/ISC/MIT attribution requirements) travel with the executable.
+          Compress-Archive `
+            -Path publish/VaultType.exe, LICENSE, THIRD-PARTY-NOTICES.md `
+            -DestinationPath "VaultType-${env:VERSION}-win-x64.zip"
 
       - name: Build installer (Inno Setup)
         shell: pwsh
@@ -78,13 +82,17 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: VaultType-win-x64
-          path: VaultType-*.exe
+          path: |
+            VaultType-*.zip
+            VaultType-*.exe
 
       - name: Publish release
         if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2.6.2
         with:
-          files: VaultType-*.exe
+          files: |
+            VaultType-*.zip
+            VaultType-*.exe
           body_path: RELEASE_NOTES.md
 
       # keep a CHANGELOG.md in the repo, refreshed on the default branch
