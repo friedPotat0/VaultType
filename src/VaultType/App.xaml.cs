@@ -248,7 +248,7 @@ public partial class App : Application
         var s = picked.Session;
         var item = picked.Item;
         if (!s.Unlocked || matches.Contains(item)) return;
-        string? uri = BuildRememberUri(ctx, _cfg.DefaultUriMatch);
+        string? uri = BuildRememberUri(ctx);
         if (uri == null) return;
         if (item.Uris.Any(u => string.Equals(u.Value, uri, StringComparison.OrdinalIgnoreCase))) return;
 
@@ -269,15 +269,14 @@ public partial class App : Application
         catch (Exception ex) { ShowBalloon(Loc.T("msg.error"), ex.Message); }
     }
 
-    private static string? BuildRememberUri(ForegroundInfo ctx, int defaultMatch)
+    private static string? BuildRememberUri(ForegroundInfo ctx)
     {
         if (!string.IsNullOrEmpty(ctx.Url))
         {
-            var (host, domain) = Matcher.HostDomain(ctx.Url!);
-            // The saved URI follows the configured default rule, so it must carry whatever that
-            // rule compares: the full host under Host matching, the base domain otherwise.
-            string d = defaultMatch == 1 || string.IsNullOrEmpty(domain) ? host : domain;
-            return string.IsNullOrEmpty(d) ? null : "https://" + d;
+            // Always keep the full host: the match rule decides how much of it is compared,
+            // and a truncated URI would go stale if that rule ever changes.
+            string host = Matcher.HostDomain(ctx.Url!).host;
+            return string.IsNullOrEmpty(host) ? null : "https://" + host;
         }
         if (!string.IsNullOrEmpty(ctx.Exe)) return "app://" + ctx.Exe;
         return null;
