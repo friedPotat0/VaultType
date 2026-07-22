@@ -47,7 +47,9 @@ body:
       label: Backend
       options:
         - Self-hosted Vaultwarden
-        - bitwarden.com
+        - Bitwarden.com (US)
+        - Bitwarden.eu (EU)
+        - Self-hosted Bitwarden
         - Other
     validations:
       required: true
