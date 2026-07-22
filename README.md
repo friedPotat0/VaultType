@@ -267,7 +267,11 @@ Press the hotkey, unlock once, then in the picker:
 | `Esc` | Cancel |
 
 For desktop apps, add a URI like `app://programname.exe` to the entry - or simply let VaultType
-offer to remember it the first time.
+offer to remember it the first time. Two more URI forms work for desktop apps: a plain
+`programname.exe` also matches the executable name, and `title:<text>` matches whenever the
+foreground window title contains `<text>` (case-insensitive) - handy for apps like PuTTY where
+the window title carries the server or user name. An entry is offered as soon as any one of its
+URIs matches.
 
 With **several accounts**, the picker lists the entries of every unlocked vault together, each
 tagged with its account badge. Any vault that is still locked appears as a chip at the bottom -
