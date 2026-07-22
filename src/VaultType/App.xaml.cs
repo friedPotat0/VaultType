@@ -248,11 +248,11 @@ public partial class App : Application
         var s = picked.Session;
         var item = picked.Item;
         if (!s.Unlocked || matches.Contains(item)) return;
-        string? uri = BuildRememberUri(ctx);
+        string? uri = BuildRememberUri(ctx, _cfg.DefaultUriMatch);
         if (uri == null) return;
         if (item.Uris.Any(u => string.Equals(u.Value, uri, StringComparison.OrdinalIgnoreCase))) return;
 
-        string label = !string.IsNullOrEmpty(ctx.Url) ? Matcher.HostDomain(ctx.Url!).domain : ctx.Exe;
+        string label = !string.IsNullOrEmpty(ctx.Url) ? uri["https://".Length..] : ctx.Exe;
         var confirm = new ConfirmWindow(Loc.T("confirm.rememberTitle"),
             Loc.T("confirm.rememberMsg", uri, item.Name, label),
             _cfg.ExcludeFromScreenCapture);
@@ -269,12 +269,14 @@ public partial class App : Application
         catch (Exception ex) { ShowBalloon(Loc.T("msg.error"), ex.Message); }
     }
 
-    private static string? BuildRememberUri(ForegroundInfo ctx)
+    private static string? BuildRememberUri(ForegroundInfo ctx, int defaultMatch)
     {
         if (!string.IsNullOrEmpty(ctx.Url))
         {
             var (host, domain) = Matcher.HostDomain(ctx.Url!);
-            string d = string.IsNullOrEmpty(domain) ? host : domain;
+            // The saved URI follows the configured default rule, so it must carry whatever that
+            // rule compares: the full host under Host matching, the base domain otherwise.
+            string d = defaultMatch == 1 || string.IsNullOrEmpty(domain) ? host : domain;
             return string.IsNullOrEmpty(d) ? null : "https://" + d;
         }
         if (!string.IsNullOrEmpty(ctx.Exe)) return "app://" + ctx.Exe;
