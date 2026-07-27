@@ -185,21 +185,30 @@ public static class AutoTyper
         if (code != null) TypeText(target, code, delayMs);
     }
 
-    // Ctrl+A the field first so what we type overwrites whatever was already there
+    // Gap between the individual key events of a modifier combo, in ms.
+    private const int ModifierGapMs = 12;
+
+    // Ctrl+A the field first so what we type overwrites whatever was already there. The four events
+    // go out one at a time with a gap in between: pushed as a single batch, apps that evaluate the
+    // modifier state asynchronously (the Windows 11 Notepad does) can miss the Ctrl and take the A
+    // as a literal character, which then leaks into the field instead of selecting it.
     private static void ClearField(IntPtr target, bool enabled)
     {
         if (!enabled) return;
         Guard(target);
         const ushort VK_CONTROL = 0x11, VK_A = 0x41;
-        var inputs = new[]
-        {
-            MakeKey(VK_CONTROL, false),
-            MakeKey(VK_A, false),
-            MakeKey(VK_A, true),
-            MakeKey(VK_CONTROL, true),
-        };
-        Native.SendInput((uint)inputs.Length, inputs, Marshal.SizeOf<Native.INPUT>());
+        SendKeyEvent(MakeKey(VK_CONTROL, false));
+        SendKeyEvent(MakeKey(VK_A, false));
+        SendKeyEvent(MakeKey(VK_A, true));
+        SendKeyEvent(MakeKey(VK_CONTROL, true));
         Thread.Sleep(25);
+    }
+
+    private static void SendKeyEvent(Native.INPUT input)
+    {
+        var inputs = new[] { input };
+        Native.SendInput(1, inputs, Marshal.SizeOf<Native.INPUT>());
+        Thread.Sleep(ModifierGapMs);
     }
 
     // Sends a single UTF-16 code unit as a Unicode keystroke.
