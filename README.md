@@ -222,8 +222,9 @@ Then, either way:
 > API key by default:** the cloud login is protected by a CAPTCHA that a desktop app cannot solve,
 > so an API key is the reliable way in (it also avoids the 2FA prompt). Create one in the Bitwarden
 > web vault under *Account settings -> Security -> Keys -> View API key*, then paste the client ID
-> and secret - the master password is still required, it protects your keys. **Self-hosted
-> Vaultwarden** has no such CAPTCHA, so it simply uses your email and master password.
+> and secret together with your account email (it salts the key derivation) - the master password
+> is still required, it protects your keys. **Self-hosted Vaultwarden** has no such CAPTCHA, so it
+> simply uses your email and master password.
 
 ## Configuration
 
@@ -236,7 +237,7 @@ Everything below is adjustable in the Settings window; the file itself lives in
 | `Hotkey` | `Ctrl+Alt+A` | Global hotkey |
 | `Language` | `auto` | UI language (`auto` follows Windows) |
 | `IdleTimeoutMinutes` | `30` | Auto-lock after inactivity (`0` = never) |
-| `TypingDelayMs` | `4` | Delay between simulated keystrokes |
+| `TypingDelayMs` | `25` | Delay between simulated keystrokes (apps that decode injected keystrokes asynchronously garble the text below roughly 15 ms) |
 | `ClearFieldBeforeTyping` | `true` | Select the field (Ctrl+A) before typing |
 | `AutoTypeFieldName` | `auto-type` | Name of the custom field holding a per-entry [sequence](#auto-type-sequences) |
 | `DefaultUriMatch` | `0` | Fallback URL match for entries with no rule of their own (`0` = base domain, `1` = host, `2` = exact URL) |
