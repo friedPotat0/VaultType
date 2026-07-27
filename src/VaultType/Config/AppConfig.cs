@@ -17,8 +17,11 @@ public sealed class AppConfig
     // auto-lock after this many idle minutes (0 = never)
     public int IdleTimeoutMinutes { get; set; } = 30;
 
-    // delay between simulated keystrokes, in ms
-    public int TypingDelayMs { get; set; } = 4;
+    // Delay between simulated keystrokes, in ms. Not as low as it could be: apps that decode the
+    // injected VK_PACKET events asynchronously (the Windows 11 Notepad, Electron apps) garble the
+    // text below roughly 15 ms - characters come out repeated or swapped, because they resolve a
+    // queued event against a keyboard state that has already moved on.
+    public int TypingDelayMs { get; set; } = 25;
 
     // select each field (Ctrl+A) before typing so we overwrite whatever was prefilled
     public bool ClearFieldBeforeTyping { get; set; } = true;
