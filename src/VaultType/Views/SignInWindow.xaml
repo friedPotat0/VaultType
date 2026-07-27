@@ -144,7 +144,7 @@
                 <TextBlock x:Name="PasskeyHint" Text="{local:Tr signin.passkeyHint}" Foreground="{StaticResource TextHint}" FontSize="12"
                            TextWrapping="Wrap" LineHeight="18" Margin="0,16,0,0" />
 
-                <!-- mode: email -->
+                <!-- account e-mail (email / apikey) - it is the KDF salt, so the API-key grant needs it too -->
                 <StackPanel x:Name="EmailGroup">
                     <TextBlock Text="{local:Tr signin.email}" Foreground="{StaticResource TextLabel}" FontSize="12.5" FontWeight="SemiBold" Margin="0,18,0,0" />
                     <Border Style="{StaticResource FieldBorder}" Margin="0,9,0,0">
@@ -154,6 +154,10 @@
                                        FontSize="13" VerticalAlignment="Center" IsHitTestVisible="False" />
                         </Grid>
                     </Border>
+                </StackPanel>
+
+                <!-- mode: email -->
+                <StackPanel x:Name="TwofaGroup">
                     <TextBlock Text="{local:Tr signin.twofa}" Foreground="{StaticResource TextLabel}" FontSize="12.5" FontWeight="SemiBold" Margin="0,18,0,0" />
                     <Grid Margin="0,9,0,0">
                         <Grid.ColumnDefinitions>

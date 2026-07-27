@@ -138,7 +138,10 @@ public partial class SignInWindow : Window
         BuildPills(UnlockPills, UnlockMethods.Where(m => !(m.Id == "passkey" && IsVaultwarden)).ToArray(), _prefUnlock,
                    id => { _prefUnlock = id; Refresh(); });
 
-        EmailGroup.Visibility = _method == "email" ? Visibility.Visible : Visibility.Collapsed;
+        // The e-mail is the KDF salt for the master key, so the API-key grant needs it as well -
+        // only the 2FA fields below it belong to the password grant alone.
+        EmailGroup.Visibility = _method is "email" or "apikey" ? Visibility.Visible : Visibility.Collapsed;
+        TwofaGroup.Visibility = _method == "email" ? Visibility.Visible : Visibility.Collapsed;
         ApiGroup.Visibility = _method == "apikey" ? Visibility.Visible : Visibility.Collapsed;
         SsoGroup.Visibility = _method == "sso" ? Visibility.Visible : Visibility.Collapsed;
         SsoWarn.Visibility = IsVaultwarden ? Visibility.Visible : Visibility.Collapsed;
@@ -292,6 +295,7 @@ public partial class SignInWindow : Window
             case "apikey":
                 if (ClientIdBox.Text.Trim().Length == 0) { ShowError(Loc.T("unlock.errClientId")); ClientIdBox.Focus(); return; }
                 if (ClientSecretBox.SecurePassword.Length == 0) { ShowError(Loc.T("unlock.errClientSecret")); ClientSecretBox.Focus(); return; }
+                if (EmailBox.Text.Trim().Length == 0) { ShowError(Loc.T("unlock.errEmail")); EmailBox.Focus(); return; }
                 if (Pw.SecurePassword.Length == 0) { ShowError(Loc.T("unlock.errMaster")); Pw.Focus(); return; }
                 break;
             case "device":

@@ -113,7 +113,7 @@ public sealed class VaultApiClient : IDisposable
         {
             Content = new FormUrlEncodedContent(form),
         };
-        if (email != null)
+        if (!string.IsNullOrEmpty(email))
             req.Headers.TryAddWithoutValidation("auth-email", Base64Url(Encoding.UTF8.GetBytes(email)));
 
         using var resp = await _http.SendAsync(req, ct).ConfigureAwait(false);

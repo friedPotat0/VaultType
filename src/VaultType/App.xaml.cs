@@ -818,6 +818,7 @@ public partial class App : Application
             signinBw.Preset(method: "apikey", serverIndex: 0);
             signinBw.ClientIdBox.Text = "user.7f3a1c9e-2b4d-4e8a-9f10-abcdef123456";
             signinBw.ClientSecretBox.Password = "aXb9Kd2mNp7qRs4tUv1wYz0e";
+            signinBw.EmailBox.Text = "alex.doe@example.com";
             signinBw.Pw.Password = "correct horse battery staple";
             CaptureWindow(signinBw, System.IO.Path.Combine(outDir, "signin-bitwarden.png"),
                 beforeRender: () => MoveCaretToEnd(signinBw.Pw));
