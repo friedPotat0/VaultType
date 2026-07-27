@@ -99,6 +99,7 @@ public sealed class CipherModel
     public SshKeyModel? SshKey { get; set; }
     public List<FieldModel> Fields { get; set; } = new();
     public DateTimeOffset? RevisionDate { get; set; }
+    public DateTimeOffset? DeletedDate { get; set; }   // non-null = the item sits in the trash
 
     // Kept verbatim for read-modify-write on edit.
     public JsonElement Raw { get; set; }

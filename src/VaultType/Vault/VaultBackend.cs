@@ -529,6 +529,10 @@ public sealed class VaultBackend : IDisposable
             var passkeys = new List<Fido2Entry>();
             foreach (var c in sync.Ciphers)
             {
+                // /api/sync ships trashed ciphers as well. This loop is the single place the item,
+                // SSH-key and passkey lists are built from, so dropping them here keeps them out of
+                // the picker, the entry counts and the agent alike.
+                if (c.DeletedDate != null) continue;
                 try
                 {
                     if (c.Type == 1)
