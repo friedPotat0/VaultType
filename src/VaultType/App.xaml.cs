@@ -34,6 +34,11 @@ public partial class App : Application
     private string? _pendingUpdateUrl;   // set when a newer release is found; opened if the balloon is clicked
 
     private bool AnyUnlocked => _sessions.Any(s => s.Unlocked);
+
+    // The vault to offer when none is open: whichever was unlocked last. On a fresh install nothing
+    // carries a timestamp yet and the first configured account wins.
+    private VaultSession MostRecentlyUnlocked()
+        => _sessions.OrderByDescending(s => s.Cfg.LastUnlockedUtc ?? DateTimeOffset.MinValue).First();
     private int TotalItems => _sessions.Where(s => s.Unlocked).Sum(s => s.Items.Count);
 
     protected override void OnStartup(StartupEventArgs e)
@@ -137,6 +142,7 @@ public partial class App : Application
 
         _cfg = AppConfig.Load();
         Loc.Init(_cfg.Language);
+        FieldAliases.Configure(_cfg.FieldAliases);   // user-supplied spellings for the {FIELD ...} lookup
         ProcessHardening.Apply(_cfg.AntiDebugger);
 
         foreach (var acc in _cfg.Accounts) _sessions.Add(new VaultSession(acc, _cfg));
@@ -197,12 +203,14 @@ public partial class App : Application
             {
                 if (!await AddAccountAsync()) return;
             }
-            else if (!AnyUnlocked && _sessions.Count == 1)
+            else if (!AnyUnlocked)
             {
-                // Single account, nothing open yet: unlock it straight away (no chooser needed).
-                if (!await UnlockSessionAsync(_sessions[0])) return;
+                // Nothing open at all: go straight to the unlock dialog rather than showing an
+                // empty picker that only says the vault is locked. With several vaults the one
+                // used most recently is preselected; the dialog's own switcher covers the rest.
+                if (!await UnlockSessionAsync(MostRecentlyUnlocked())) return;
             }
-            // Otherwise fall through to the picker; any locked account shows up as a footer chip.
+            // With at least one vault open we go to the picker; the locked ones show up as chips.
 
             // The URL read ran in parallel; only show a brief spinner if it isn't done yet.
             if (urlTask.IsCompleted) ctx.Url = await urlTask;
@@ -247,6 +255,9 @@ public partial class App : Application
     {
         var s = picked.Session;
         var item = picked.Item;
+        // Logins only: the edit body is built around a login object, so attaching a URI to a card
+        // or identity cipher would rewrite it into something the server side doesn't expect.
+        if (item.Kind != ItemKind.Login) return;
         if (!s.Unlocked || matches.Contains(item)) return;
         string? uri = BuildRememberUri(ctx);
         if (uri == null) return;
@@ -287,28 +298,38 @@ public partial class App : Application
         var protector = r.Session.Protector;
         if (protector == null) return;
 
-        // Actions that reveal the password/TOTP require re-prompt if the entry demands it.
-        bool sensitive = r.Action is PickAction.TypeFull or PickAction.TypePassword or PickAction.TypeTotp
-            or PickAction.CopyPassword or PickAction.CopyTotp;
-        if (sensitive && r.Item.Reprompt && _cfg.HonorMasterPasswordReprompt && !VerifyMasterPassword(r.Session)) return;
+        // The re-prompt flag guards the whole entry, not just its secret fields: every action on
+        // an entry that carries it asks for the master password again.
+        if (r.Item.Reprompt && _cfg.HonorMasterPasswordReprompt && !VerifyMasterPassword(r.Session)) return;
 
-        int secs = _cfg.ClipboardClearSeconds;
-        switch (r.Action)
+        if (r.Action == PickAction.Copy)
         {
-            case PickAction.TypeFull:
-                AutoTyper.Type(ctx.Hwnd, r.Item, protector, TypeAction.Full, _cfg.TypingDelayMs, _cfg.ClearFieldBeforeTyping); break;
-            case PickAction.TypeUsername:
-                AutoTyper.Type(ctx.Hwnd, r.Item, protector, TypeAction.Username, _cfg.TypingDelayMs, _cfg.ClearFieldBeforeTyping); break;
-            case PickAction.TypePassword:
-                AutoTyper.Type(ctx.Hwnd, r.Item, protector, TypeAction.Password, _cfg.TypingDelayMs, _cfg.ClearFieldBeforeTyping); break;
-            case PickAction.TypeTotp:
-                AutoTyper.Type(ctx.Hwnd, r.Item, protector, TypeAction.Totp, _cfg.TypingDelayMs, _cfg.ClearFieldBeforeTyping); break;
-            case PickAction.CopyUsername:
-                ClipboardService.CopyUsername(r.Item, secs); ShowBalloon(Loc.T("msg.copiedTitle"), Loc.T("msg.copiedUser", secs)); break;
-            case PickAction.CopyPassword:
-                ClipboardService.CopyPassword(r.Item, protector, secs); ShowBalloon(Loc.T("msg.copiedTitle"), Loc.T("msg.copiedPass", secs)); break;
-            case PickAction.CopyTotp:
-                ClipboardService.CopyTotp(r.Item, protector, secs); ShowBalloon(Loc.T("msg.copiedTitle"), Loc.T("msg.copiedTotp", secs)); break;
+            int secs = _cfg.ClipboardClearSeconds;
+            ClipboardService.Copy(r.Item, r.Field, protector, secs);
+            ShowBalloon(Loc.T("msg.copiedTitle"), Loc.T("msg.copiedField", FieldLabels.Text(r.Field), secs));
+            return;
+        }
+
+        var outcome = AutoTyper.Type(ctx.Hwnd, r.Item, protector, r.Field,
+                                     _cfg.TypingDelayMs, _cfg.ClearFieldBeforeTyping,
+                                     _cfg.FillRequiredFieldsOnly);
+        ReportTypeOutcome(outcome);
+    }
+
+    // Cards and identities locate each field before typing into it, so a run can end without
+    // having typed everything. Say so instead of leaving a half-filled form unexplained. A lost
+    // focus stays silent - the user switched windows themselves and already knows.
+    private void ReportTypeOutcome(TypeOutcome outcome)
+    {
+        switch (outcome.Result)
+        {
+            case TypeResult.FieldNotFound:
+                ShowBalloon(Loc.T("msg.fieldMissingTitle"),
+                            Loc.T("msg.fieldMissingMsg", FieldLabels.ForLookup(outcome.MissingField)));
+                break;
+            case TypeResult.NoFieldsDetected:
+                ShowBalloon(Loc.T("msg.noFieldsTitle"), Loc.T("msg.noFieldsMsg"));
+                break;
         }
     }
 
@@ -522,6 +543,7 @@ public partial class App : Application
                 continue;
             }
 
+            s.Cfg.LastUnlockedUtc = DateTimeOffset.UtcNow;
             _cfg.Save();
             _idle.Arm(_cfg.IdleTimeoutMinutes);
             UpdateTray();
@@ -532,19 +554,29 @@ public partial class App : Application
     // Synchronous unlock for the agent paths - SSH sign requests and passkey ceremonies - (already
     // on the UI thread inside Dispatcher.Invoke, so we can't await). The backend awaits with
     // ConfigureAwait(false), so blocking here is safe.
-    private bool UnlockForAgent(VaultSession s, string subtitleKey = "ssh.unlockForKey")
+    // viaMasterPassword reports how the vault was opened. An entry that asks for the master
+    // password again is satisfied by a master-password unlock that just happened, but not by a
+    // PIN unlock - no master password was entered in that case.
+    private bool UnlockForAgent(VaultSession s, out bool viaMasterPassword, string subtitleKey = "ssh.unlockForKey")
     {
+        viaMasterPassword = false;
         string method = s.Cfg.UnlockMethod;
         if (method == "pin" && !PinUnlock.Available(s)) method = "password";
         if (method is "bio" or "passkey") method = "password";
 
         var win = new UnlockWindow(Loc.T("unlock.title"),
             Loc.T(subtitleKey), _cfg.ExcludeFromScreenCapture, method);
-        var choices = _sessions.Select(x => new AccountChoice
+        // Only the owning vault: which one is needed follows from the key or credential being used,
+        // so there is nothing to switch to here. Offering the switcher would let the dialog show one
+        // vault while still unlocking the other.
+        win.SetAccounts(new[]
         {
-            Id = x.Cfg.Id, Name = x.Cfg.Name, Email = x.Cfg.AccountEmail, Server = x.Cfg.ServerUrl, ColorHex = x.Cfg.ColorHex,
-        }).ToList();
-        win.SetAccounts(choices, _sessions.IndexOf(s));
+            new AccountChoice
+            {
+                Id = s.Cfg.Id, Name = s.Cfg.Name, Email = s.Cfg.AccountEmail,
+                Server = s.Cfg.ServerUrl, ColorHex = s.Cfg.ColorHex,
+            },
+        }, 0);
         if (win.ShowDialog() != true) return false;
 
         bool viaPin = method == "pin";
@@ -557,8 +589,22 @@ public partial class App : Application
         try { st = Task.Run(() => viaPin ? PinUnlock.Unlock(s, pw) : s.Backend.UnlockAsync(pw)).GetAwaiter().GetResult(); }
         catch { st = UnlockStatus.Failed; }
 
-        if (st == UnlockStatus.Success) { _cfg.Save(); _idle.Arm(_cfg.IdleTimeoutMinutes); UpdateTray(); return true; }
+        if (st == UnlockStatus.Success)
+        {
+            viaMasterPassword = !viaPin;
+            s.Cfg.LastUnlockedUtc = DateTimeOffset.UtcNow;
+            _cfg.Save(); _idle.Arm(_cfg.IdleTimeoutMinutes); UpdateTray(); return true;
+        }
         return false;
+    }
+
+    // Ask for the master password when an entry carries the re-prompt flag. Skipped when the vault
+    // was opened with the master password moments ago, so a signature straight after unlocking
+    // doesn't demand the same password twice.
+    private bool RepromptSatisfied(VaultSession s, bool reprompt, bool alreadyEnteredMasterPassword)
+    {
+        if (!reprompt || !_cfg.HonorMasterPasswordReprompt) return true;
+        return alreadyEnteredMasterPassword || VerifyMasterPassword(s);
     }
 
     private bool VerifyMasterPassword(VaultSession s)
@@ -802,10 +848,12 @@ public partial class App : Application
             var accPriv = new AccountConfig { Id = "p", Name = "Private", ColorHex = "#57C98A", ServerUrl = "https://vault.example.com", SignedInBefore = true };
             var accWork = new AccountConfig { Id = "w", Name = "Work", ColorHex = "#3B82F6", Kind = AccountKind.BitwardenEU, ServerUrl = AccountConfig.EuCloud, SignedInBefore = true };
             var sPriv = new VaultSession(accPriv, _cfg);
-            sPriv.Backend.LoadMockUnlocked(BuildMockItems());
+            sPriv.Backend.LoadMockUnlocked(BuildMockItems(), MockProtector);
             var sWork = new VaultSession(accWork, _cfg);   // left locked -> appears as a footer chip
 
-            var picker = new PickerWindow(new[] { sPriv, sWork }, ctx, 0, false, showAllFirst: true,
+            // The hotkey path, which is what users actually see: matching logins for the active
+            // site, followed by the identity and card sections.
+            var picker = new PickerWindow(new[] { sPriv, sWork }, ctx, 0, false, showAllFirst: false,
                 _ => Task.FromResult(false));
             CaptureWindow(picker, System.IO.Path.Combine(outDir, "picker.png"));
 
@@ -865,7 +913,7 @@ public partial class App : Application
             CaptureWindow(settingsInt, System.IO.Path.Combine(outDir, "settings-integration.png"));
 
             var sshSession = new VaultSession(accPriv, _cfg);
-            sshSession.Backend.LoadMockUnlocked(BuildMockItems());
+            sshSession.Backend.LoadMockUnlocked(BuildMockItems(), MockProtector);
             sshSession.Backend.LoadMockSshKeys(new List<SshKeyEntry>
             {
                 new() { Name = "alex@laptop", Type = "ed25519", Fingerprint = "SHA256:a3Fq8LzvKmR2pXwT9hNcBs4Yd7Qe1oUj0Gf5RiZkL8", PublicKey = "ssh-ed25519 AAAA alex@laptop" },
@@ -891,8 +939,12 @@ public partial class App : Application
         finally { Shutdown(); }
     }
 
+    // Screenshot mode only: one protector shared by all mock entries, so the SecretBoxes on the
+    // mock cards and identities stay decryptable after LoadMockUnlocked adopts it.
+    private static readonly SecretProtector MockProtector = new();
+
     // A non-null, empty session key so a mock VaultSession reads as "unlocked" for screenshots.
-    // Mock login entries - display data only, no real secrets - covering every badge state.
+    // Mock entries - display data only, no real secrets - covering every entry type and badge state.
     private static List<VaultItem> BuildMockItems()
     {
         static VaultItem It(string name, string user, string host, bool totp = false, string? seq = null)
@@ -901,13 +953,47 @@ public partial class App : Application
             if (host.Length > 0) it.Uris.Add(new ItemUri { Value = "https://" + host, Host = host, Domain = host });
             return it;
         }
+
+        // Placeholder values, not real card or identity data.
+        static SecretBox Box(string value) => MockProtector.Protect(System.Text.Encoding.UTF8.GetBytes(value));
+
+        static VaultItem Card(string name, string brand, string last4, string holder)
+            => new()
+            {
+                Name = name,
+                Kind = ItemKind.Card,
+                Card = new CardData
+                {
+                    Brand = brand, Last4 = last4, CardholderName = holder,
+                    Number = Box("0000000000000000"), Code = Box("000"),
+                    ExpMonth = Box("7"), ExpYear = Box("2029"),
+                },
+            };
+
+        static VaultItem Identity(string name, string first, string last)
+            => new()
+            {
+                Name = name,
+                Kind = ItemKind.Identity,
+                Identity = new IdentityData
+                {
+                    FirstName = first, LastName = last,
+                    Email = Box("alex.doe@example.com"), Phone = Box("+49 30 000000"),
+                    Address1 = Box("Beispielweg 1"), PostalCode = Box("10115"), City = Box("Berlin"),
+                    Country = Box("Deutschland"),
+                },
+            };
+
         return new List<VaultItem>
         {
             It("GitHub", "alex.doe@example.com", "github.com", totp: true),
+            Card("Visa privat", "Visa", "4242", "Alex Doe"),
+            Identity("Privatanschrift", "Alex", "Doe"),
             It("Google", "alex.doe@example.com", "google.com", totp: true),
             It("Amazon AWS", "iam-admin", "aws.amazon.com", seq: "{USERNAME}{TAB}{PASSWORD}{ENTER}"),
             It("Proxmox VE", "root@pam", "pve.example.lan", seq: "{USERNAME}{TAB}{PASSWORD}{ENTER}"),
             It("Nextcloud", "alex.doe", "cloud.example.com"),
+            Card("Mastercard Gold", "Mastercard", "8317", "Alex Doe"),
             It("Reddit", "u/night_owl", "reddit.com", totp: true),
             It("Steam", "night_owl", "steampowered.com", totp: true, seq: "{USERNAME}{TAB}{PASSWORD}{ENTER}"),
             It("PayPal", "alex.doe@example.com", "paypal.com"),
@@ -1242,6 +1328,7 @@ public partial class App : Application
             VaultSession? owner = _sessions.FirstOrDefault(s => s.Unlocked &&
                 s.SshKeys.Any(k => SshAgentService.PublicKeyToBlob(k.PublicKey).AsSpan().SequenceEqual(publicBlob)));
             string? keyName = null;
+            bool freshMasterPassword = false;
             if (owner == null)
             {
                 foreach (var s in _sessions.Where(s => !s.Unlocked))
@@ -1251,7 +1338,7 @@ public partial class App : Application
                     if (meta != null) { owner = s; keyName = meta.Name; break; }
                 }
                 // The key belongs to a locked vault: unlock it now (the whole point of this flow).
-                if (owner != null && !owner.Unlocked && !UnlockForAgent(owner)) return default;
+                if (owner != null && !owner.Unlocked && !UnlockForAgent(owner, out freshMasterPassword)) return default;
             }
             if (owner == null) return default;
 
@@ -1259,6 +1346,9 @@ public partial class App : Application
                 SshAgentService.PublicKeyToBlob(k.PublicKey).AsSpan().SequenceEqual(publicBlob));
             if (live?.PrivateKey == null || owner.Protector == null) return default;
             keyName ??= live.Name;
+
+            // The key's own re-prompt flag, on top of the global confirm-each-use setting.
+            if (!RepromptSatisfied(owner, live.Reprompt, freshMasterPassword)) return default;
 
             if (_cfg.SshConfirmEachUse)
             {
@@ -1314,12 +1404,13 @@ public partial class App : Application
                     .ToList();
 
             var matches = Matches();
+            bool freshMasterPassword = false;
             if (matches.Count == 0)
             {
                 // A locked vault may hold the passkey: offer to unlock, then look again.
                 foreach (var s in _sessions.Where(s => !s.Unlocked).ToList())
                 {
-                    if (!UnlockForAgent(s, "passkey.unlockForKey")) continue;
+                    if (!UnlockForAgent(s, out freshMasterPassword, "passkey.unlockForKey")) continue;
                     matches = Matches();
                     if (matches.Count > 0) break;
                 }
@@ -1327,6 +1418,11 @@ public partial class App : Application
             if (matches.Count == 0) return PasskeyIpcResponse.Fail(CtapStatus.NoCredentials);
 
             var (owner, cred) = matches[0];
+
+            // The owning entry's re-prompt flag. Windows Hello covers presence, not the vault's own
+            // master password, so this is asked on top of it.
+            if (!RepromptSatisfied(owner, cred.Reprompt, freshMasterPassword))
+                return PasskeyIpcResponse.Fail(CtapStatus.OperationDenied);
 
             // The plugin process performs Windows Hello when configured and the IPC peer is
             // authenticated as that very process (PasskeyIpcServer.IsTrustedClient), so UserVerified
@@ -1379,7 +1475,7 @@ public partial class App : Application
             owner = _sessions.FirstOrDefault(s => s.Unlocked);
             if (owner == null)
                 foreach (var s in _sessions)
-                    if (UnlockForAgent(s, "passkey.unlockForKey")) { owner = s; break; }
+                    if (UnlockForAgent(s, out _, "passkey.unlockForKey")) { owner = s; break; }
             if (owner == null) return PasskeyIpcResponse.Fail(CtapStatus.OperationDenied);
 
             if (exclude.Count > 0 && _sessions.Where(s => s.Unlocked)

@@ -26,6 +26,11 @@ public sealed class AppConfig
     // select each field (Ctrl+A) before typing so we overwrite whatever was prefilled
     public bool ClearFieldBeforeTyping { get; set; } = true;
 
+    // When filling a form from a card or identity, restrict it to the fields the form marks as
+    // mandatory. Off means every field VaultType recognises gets filled. Forms that mark nothing at
+    // all are filled completely either way - otherwise nothing would happen on them.
+    public bool FillRequiredFieldsOnly { get; set; } = true;
+
     // real favicons from your own Vaultwarden (/icons); off = letter avatars, fully offline
     public bool ShowIcons { get; set; } = true;
 
@@ -43,6 +48,11 @@ public sealed class AppConfig
 
     // name of the custom entry field that holds a per-entry auto-type sequence
     public string AutoTypeFieldName { get; set; } = "auto-type";
+
+    // Extra spellings for the {FIELD ...} lookup, keyed by field group (e.g. "CardCode":
+    // ["kartenprüfwert"]). Merged on top of the builtin lists so an unusual form can be taught
+    // without waiting for a new release.
+    public Dictionary<string, List<string>> FieldAliases { get; set; } = new();
 
     // URI match rule for entries that don't set their own (0 = base domain, 1 = host).
     // Bitwarden's own default is base domain; host is handy when every service sits on its

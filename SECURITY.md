@@ -16,8 +16,9 @@ VaultType is a native Bitwarden client: it speaks the Bitwarden server API direc
 all cryptography in-process (see the [security model](README.md#security-model)). Reports about
 the Bitwarden / Vaultwarden server itself belong to those projects. In scope here is everything
 VaultType does itself: the protocol client and its cryptography (KDF, vault decryption, TOTP,
-SSH signing, passkeys), memory handling (locked buffers, encryption at rest in RAM), auto-typing,
-the clipboard, process launching, and screen-capture protection.
+SSH signing, passkeys), memory handling (locked buffers, encryption at rest in RAM), auto-typing
+and the [field lookup](README.md#field-lookup) it uses to place values, the clipboard, process
+launching, and screen-capture protection.
 
 ## Supported versions
 

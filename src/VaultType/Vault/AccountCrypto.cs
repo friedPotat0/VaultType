@@ -114,7 +114,7 @@ public sealed class AccountCrypto : IDisposable
     private string DecString(string? enc, SymmetricCryptoKey key)
         => string.IsNullOrEmpty(enc) ? "" : EncString.Parse(enc).DecryptToString(key);
 
-    // Decrypt a login cipher into a VaultItem. Non-login types return null (for now).
+    // Decrypt a login cipher into a VaultItem. Non-login types return null.
     public VaultItem? DecryptLogin(CipherModel c, SecretProtector protector, string autoTypeFieldName)
     {
         if (c.Type != 1 || c.Login == null) return null;
@@ -142,16 +142,147 @@ public sealed class AccountCrypto : IDisposable
                 it.Uris.Add(iu);
             }
 
-            foreach (var f in c.Fields)
-            {
-                string name = DecString(f.Name, key);
-                if (!string.Equals(name, autoTypeFieldName, StringComparison.OrdinalIgnoreCase)) continue;
-                string val = DecString(f.Value, key);
-                if (val.Length > 0) it.CustomSequence = val;
-            }
+            it.CustomSequence = ReadCustomSequence(c, key, autoTypeFieldName);
             return it;
         }
         finally { if (owns) key.Dispose(); }
+    }
+
+    // Decrypt a card cipher (type 3) into a VaultItem. Non-card types return null.
+    // Number, security code and expiry go into the protector; brand, cardholder and the last four
+    // digits stay plaintext so the picker can label the row without decrypting anything.
+    public VaultItem? DecryptCard(CipherModel c, SecretProtector protector, string autoTypeFieldName)
+    {
+        if (c.Type != 3 || c.Card == null) return null;
+        var (key, owns) = ContentKey(c);
+        try
+        {
+            var card = new CardData
+            {
+                CardholderName = DecString(c.Card.CardholderName, key),
+                Brand = DecString(c.Card.Brand, key),
+            };
+            card.Number = ProtectDecrypted(c.Card.Number, key, protector);
+            card.Code = ProtectDecrypted(c.Card.Code, key, protector);
+            card.ExpMonth = ProtectDecrypted(c.Card.ExpMonth, key, protector);
+            card.ExpYear = ProtectDecrypted(c.Card.ExpYear, key, protector);
+            card.Last4 = LastFourDigits(c.Card.Number, key);
+
+            var it = new VaultItem
+            {
+                Id = c.Id ?? "",
+                Kind = ItemKind.Card,
+                Name = DecString(c.Name, key),
+                Reprompt = c.Reprompt == 1,
+                Card = card,
+            };
+            it.CustomSequence = ReadCustomSequence(c, key, autoTypeFieldName);
+            it.CustomFields = ReadCustomFields(c, key, protector, autoTypeFieldName);
+            return it;
+        }
+        finally { if (owns) key.Dispose(); }
+    }
+
+    // Decrypt an identity cipher (type 4) into a VaultItem. Non-identity types return null.
+    // Only the first and last name stay plaintext - everything else is protected in RAM.
+    public VaultItem? DecryptIdentity(CipherModel c, SecretProtector protector, string autoTypeFieldName)
+    {
+        if (c.Type != 4 || c.Identity == null) return null;
+        var (key, owns) = ContentKey(c);
+        try
+        {
+            var id = c.Identity;
+            var data = new IdentityData
+            {
+                FirstName = DecString(id.FirstName, key),
+                LastName = DecString(id.LastName, key),
+                Title = ProtectDecrypted(id.Title, key, protector),
+                MiddleName = ProtectDecrypted(id.MiddleName, key, protector),
+                Address1 = ProtectDecrypted(id.Address1, key, protector),
+                Address2 = ProtectDecrypted(id.Address2, key, protector),
+                Address3 = ProtectDecrypted(id.Address3, key, protector),
+                City = ProtectDecrypted(id.City, key, protector),
+                State = ProtectDecrypted(id.State, key, protector),
+                PostalCode = ProtectDecrypted(id.PostalCode, key, protector),
+                Country = ProtectDecrypted(id.Country, key, protector),
+                Company = ProtectDecrypted(id.Company, key, protector),
+                Email = ProtectDecrypted(id.Email, key, protector),
+                Phone = ProtectDecrypted(id.Phone, key, protector),
+                Ssn = ProtectDecrypted(id.Ssn, key, protector),
+                Username = ProtectDecrypted(id.Username, key, protector),
+                PassportNumber = ProtectDecrypted(id.PassportNumber, key, protector),
+                LicenseNumber = ProtectDecrypted(id.LicenseNumber, key, protector),
+            };
+
+            var it = new VaultItem
+            {
+                Id = c.Id ?? "",
+                Kind = ItemKind.Identity,
+                Name = DecString(c.Name, key),
+                Reprompt = c.Reprompt == 1,
+                Identity = data,
+            };
+            it.CustomSequence = ReadCustomSequence(c, key, autoTypeFieldName);
+            it.CustomFields = ReadCustomFields(c, key, protector, autoTypeFieldName);
+            return it;
+        }
+        finally { if (owns) key.Dispose(); }
+    }
+
+    // The per-entry auto-type sequence from the configured custom field, if the entry carries one.
+    private string? ReadCustomSequence(CipherModel c, SymmetricCryptoKey key, string autoTypeFieldName)
+    {
+        string? seq = null;
+        foreach (var f in c.Fields)
+        {
+            string name = DecString(f.Name, key);
+            if (!string.Equals(name, autoTypeFieldName, StringComparison.OrdinalIgnoreCase)) continue;
+            string val = DecString(f.Value, key);
+            if (val.Length > 0) seq = val;
+        }
+        return seq;
+    }
+
+    // The entry's other custom fields, so a form field the built-in groups don't cover can still be
+    // filled by naming it in the vault. Text and hidden fields only - a boolean or a linked field
+    // has nothing to type. The auto-type sequence field is excluded; it is not form data.
+    private List<CustomField> ReadCustomFields(CipherModel c, SymmetricCryptoKey key,
+                                               SecretProtector protector, string autoTypeFieldName)
+    {
+        var list = new List<CustomField>();
+        foreach (var f in c.Fields)
+        {
+            if (f.Type != 0 && f.Type != 1) continue;
+            string name = DecString(f.Name, key);
+            if (name.Length == 0) continue;
+            if (string.Equals(name, autoTypeFieldName, StringComparison.OrdinalIgnoreCase)) continue;
+
+            var value = ProtectDecrypted(f.Value, key, protector);
+            if (value == null) continue;
+            list.Add(new CustomField { Name = name, Value = value });
+        }
+        return list;
+    }
+
+    // The last four digits of a card number, for the picker row. Decrypted into a locked buffer and
+    // wiped again - only the four digits survive as a managed string.
+    private static string LastFourDigits(string? encNumber, SymmetricCryptoKey key)
+    {
+        if (string.IsNullOrEmpty(encNumber)) return "";
+        byte[] pt = EncString.Parse(encNumber).DecryptSymmetric(key);
+        try
+        {
+            Span<char> digits = stackalloc char[4];
+            int n = 0;
+            // Walk backwards and keep the last four digits, skipping spaces and dashes.
+            for (int i = pt.Length - 1; i >= 0 && n < 4; i--)
+            {
+                char ch = (char)pt[i];
+                if (ch >= '0' && ch <= '9') digits[3 - n++] = ch;
+            }
+            return n == 4 ? new string(digits) : "";
+        }
+        finally { CryptographicOperations.ZeroMemory(pt); }
     }
 
     // Decrypt an SSH-key cipher (type 5) into an SshKeyEntry. Non-SSH types return null.
@@ -165,6 +296,7 @@ public sealed class AccountCrypto : IDisposable
             {
                 Id = c.Id ?? "",
                 Name = DecString(c.Name, key),
+                Reprompt = c.Reprompt == 1,
                 Fingerprint = DecString(c.SshKey.KeyFingerprint, key),
                 PublicKey = DecString(c.SshKey.PublicKey, key),
             };
@@ -193,6 +325,7 @@ public sealed class AccountCrypto : IDisposable
                     {
                         ItemId = c.Id ?? "",
                         ItemName = itemName,
+                        Reprompt = c.Reprompt == 1,
                         CredentialId = ParseCredentialId(DecString(f.CredentialId, key)),
                         RpId = DecString(f.RpId, key),
                         RpName = DecString(f.RpName, key),

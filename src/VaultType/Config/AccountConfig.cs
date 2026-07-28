@@ -44,6 +44,11 @@ public sealed class AccountConfig
     // sync); feeds the tray menu's "last synced" hint across restarts
     public DateTimeOffset? LastSyncUtc { get; set; }
 
+    // when this account was last unlocked. With several vaults configured, the one used most
+    // recently is what the picker offers to unlock first - that is almost always the one wanted
+    // again, rather than whichever happens to sit first in the list.
+    public DateTimeOffset? LastUnlockedUtc { get; set; }
+
     public const string UsCloud = "https://vault.bitwarden.com";
     public const string EuCloud = "https://vault.bitwarden.eu";
 

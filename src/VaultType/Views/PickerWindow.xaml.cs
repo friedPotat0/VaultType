@@ -1,6 +1,7 @@
 using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Data;
 using System.Windows.Input;
 using System.Windows.Interop;
 using System.Windows.Media;
@@ -15,9 +16,11 @@ using ColorConverter = System.Windows.Media.ColorConverter;   // vs System.Drawi
 
 namespace VaultType.Views;
 
-public enum PickAction { TypeFull, TypeUsername, TypePassword, TypeTotp, CopyUsername, CopyPassword, CopyTotp }
+public enum PickAction { Type, Copy }
 
-public sealed record PickResult(VaultItem Item, PickAction Action, VaultSession Session);
+// What the user picked: an entry, whether to type or copy, and which field. ItemField.None with
+// PickAction.Type means the whole entry, i.e. its custom or default sequence.
+public sealed record PickResult(VaultItem Item, PickAction Action, ItemField Field, VaultSession Session);
 
 public partial class PickerWindow : Window
 {
@@ -99,11 +102,41 @@ public partial class PickerWindow : Window
         return vm;
     }
 
+    // Logins only appear when they match the active window, or when the tray opened the picker,
+    // where there is no context to match against. Identities and cards follow regardless: unlike a
+    // login they aren't tied to a domain, so they can be wanted on any page.
     private void ShowDefault()
     {
-        if (!_showAllFirst && _matches.Count > 0) SetList(_matches, Loc.T("picker.matching", _matches.Count));
-        else if (_all.Count > 0) SetList(_all, _hostLabel.Length > 0 ? Loc.T("picker.allFor", _hostLabel) : Loc.T("picker.all", _all.Count));
-        else SetList(_all, HasLocked ? Loc.T("picker.unlockPrompt") : Loc.T("picker.all", 0));
+        var rows = new List<Row>();
+        string? hint = null;
+        var logins = Logins(_all);
+
+        if (_showAllFirst)
+            AddRows(rows, logins, Loc.T("picker.all", logins.Count));
+        else if (_matches.Count > 0)
+            AddRows(rows, _matches, Loc.T("picker.matching", _matches.Count));
+        else if (logins.Count > 0)
+            hint = _hostLabel.Length > 0 ? Loc.T("picker.noMatchFor", _hostLabel) : Loc.T("picker.noMatchApp");
+
+        AppendExtras(rows, _all);
+        SetList(rows, hint);
+    }
+
+    // Identities and cards, in that order, appended below whatever the logins section holds.
+    private void AppendExtras(List<Row> rows, IReadOnlyList<(VaultItem it, VaultSession s)> source)
+    {
+        var ids = source.Where(x => x.it.Kind == ItemKind.Identity).ToList();
+        var cards = source.Where(x => x.it.Kind == ItemKind.Card).ToList();
+        AddRows(rows, ids, Loc.T("picker.groupIdentities", ids.Count));
+        AddRows(rows, cards, Loc.T("picker.groupCards", cards.Count));
+    }
+
+    private static List<(VaultItem it, VaultSession s)> Logins(IReadOnlyList<(VaultItem it, VaultSession s)> source)
+        => source.Where(x => x.it.Kind == ItemKind.Login).ToList();
+
+    private void AddRows(List<Row> rows, IReadOnlyList<(VaultItem it, VaultSession s)> items, string group)
+    {
+        foreach (var x in items) rows.Add(new Row(x.it, x.s, group));
     }
 
     // After an in-place unlock, keep whatever the user was looking at.
@@ -114,20 +147,35 @@ public partial class PickerWindow : Window
         else Search_TextChanged(Search, null!);
     }
 
-    private void SetList(IReadOnlyList<(VaultItem it, VaultSession s)> items, string section)
+    private void SetList(IReadOnlyList<Row> rows, string? hint)
     {
-        var vms = items.Select(x => Vm(x.it, x.s)).ToList();
-        List.ItemsSource = vms;
-        SectionLabel.Text = section;
+        var vms = rows.Select(r => { var vm = Vm(r.Item, r.Session); vm.GroupLabel = r.Group; return vm; }).ToList();
+
+        // Group headers come from GroupLabel; the source order decides the order of the blocks.
+        var view = new CollectionViewSource { Source = vms };
+        view.GroupDescriptions.Add(new PropertyGroupDescription(nameof(ItemVM.GroupLabel)));
+        List.ItemsSource = view.View;
 
         bool hasItems = vms.Count > 0;
+        bool showHint = hasItems && !string.IsNullOrEmpty(hint);
+
+        // The hint sits above the sections. With nothing to show at all the empty state already
+        // explains the situation, so showing both would say the same thing twice.
+        HintLabel.Text = hint ?? "";
+        HintBox.Visibility = showHint ? Visibility.Visible : Visibility.Collapsed;
+
         List.Visibility = hasItems ? Visibility.Visible : Visibility.Collapsed;
         EmptyPanel.Visibility = hasItems ? Visibility.Collapsed : Visibility.Visible;
         if (!hasItems) ShowEmptyState();
 
-        if (hasItems) List.SelectedIndex = 0;
+        // Only preselect when the first row is actually a suggestion. Without a matching login the
+        // list starts at the identities, and highlighting one would present it as the match the
+        // hint just said doesn't exist - Enter would then type the wrong entry.
+        List.SelectedIndex = hasItems && !showHint ? 0 : -1;
         foreach (var vm in vms) LoadIcon(vm);
     }
+
+    private readonly record struct Row(VaultItem Item, VaultSession Session, string Group);
 
     // No rows: either every vault is locked (show the unlock hint) or the unlocked vaults hold
     // nothing for this context (show the empty hint), matching the design's two in-list states.
@@ -142,8 +190,7 @@ public partial class PickerWindow : Window
 
         if (!anyUnlocked && !searching)
         {
-            var s = _sessions.FirstOrDefault(x => !x.Unlocked);
-            LockedTitle.Text = Loc.T("picker.lockedTitle", s?.Cfg.Name ?? "");
+            LockedTitle.Text = Loc.T("picker.lockedTitle", PreferredLocked()?.Cfg.Name ?? "");
         }
         else
         {
@@ -156,7 +203,7 @@ public partial class PickerWindow : Window
 
     private async void LoadIcon(ItemVM vm)
     {
-        if (vm.Icon != null) return;
+        if (!vm.WantsFavicon || vm.Icon != null) return;   // cards and identities have no website
         try { var img = await vm.Session.Icons.GetAsync(vm.IconDomain); if (img != null) vm.Icon = img; }
         catch { }
     }
@@ -170,8 +217,14 @@ public partial class PickerWindow : Window
 
         if (term.Length == 0) { ShowDefault(); return; }
 
-        var filtered = _all.Where(x => x.it.Matches(term)).ToList();
-        SetList(filtered, Loc.T("picker.results", filtered.Count));
+        // A search reaches across everything, but keeps the same grouping so the kind of entry
+        // stays obvious.
+        var hits = _all.Where(x => x.it.Matches(term)).ToList();
+        var rows = new List<Row>();
+        var logins = Logins(hits);
+        AddRows(rows, logins, Loc.T("picker.groupLogins", logins.Count));
+        AppendExtras(rows, hits);
+        SetList(rows, null);
     }
 
     protected override void OnPreviewKeyDown(KeyEventArgs e)
@@ -184,12 +237,14 @@ public partial class PickerWindow : Window
             case Key.Enter:
                 // Nothing to type yet but a locked account waiting -> unlock it (keyboard path).
                 if (List.SelectedItem is not ItemVM && HasLocked) UnlockFirstLocked();
-                else Choose(PickAction.TypeFull);
+                else Choose(PickAction.Type, ItemField.None);
                 e.Handled = true; break;
             case Key.Escape: DialogResult = false; e.Handled = true; break;
-            case Key.U when ctrl: Choose(PickAction.TypeUsername); e.Handled = true; break;
-            case Key.P when ctrl: Choose(PickAction.TypePassword); e.Handled = true; break;
-            case Key.T when ctrl: Choose(PickAction.TypeTotp); e.Handled = true; break;
+            // The single-field shortcuts stay login-only; cards and identities have far too many
+            // fields to bind sensibly and are served through the context menu instead.
+            case Key.U when ctrl: Choose(PickAction.Type, ItemField.Username); e.Handled = true; break;
+            case Key.P when ctrl: Choose(PickAction.Type, ItemField.Password); e.Handled = true; break;
+            case Key.T when ctrl: Choose(PickAction.Type, ItemField.Totp); e.Handled = true; break;
         }
         base.OnPreviewKeyDown(e);
     }
@@ -205,7 +260,7 @@ public partial class PickerWindow : Window
         List.ScrollIntoView(List.SelectedItem);
     }
 
-    private void List_DoubleClick(object sender, MouseButtonEventArgs e) => Choose(PickAction.TypeFull);
+    private void List_DoubleClick(object sender, MouseButtonEventArgs e) => Choose(PickAction.Type, ItemField.None);
 
     private void List_RightDown(object sender, MouseButtonEventArgs e)
     {
@@ -214,33 +269,67 @@ public partial class PickerWindow : Window
         if (d is ListBoxItem lbi) lbi.IsSelected = true;
     }
 
-    // Only offer copy actions for fields the entry actually has.
+    // The per-field menu differs by entry type; fields the entry doesn't carry are left out.
+    private static readonly (ItemField Field, string Key)[] LoginFields =
+    {
+        (ItemField.Username, "field.username"), (ItemField.Password, "field.password"), (ItemField.Totp, "field.totp"),
+    };
+    private static readonly (ItemField Field, string Key)[] CardFields =
+    {
+        (ItemField.CardNumber, "field.cardNumber"), (ItemField.CardExpiry, "field.cardExpiry"),
+        (ItemField.CardCode, "field.cardCode"), (ItemField.CardHolder, "field.cardHolder"),
+    };
+    private static readonly (ItemField Field, string Key)[] IdentityFields =
+    {
+        (ItemField.IdName, "field.idName"), (ItemField.IdEmail, "field.idEmail"),
+        (ItemField.IdPhone, "field.idPhone"), (ItemField.IdAddress, "field.idAddress"),
+    };
+
+    private static (ItemField Field, string Key)[] FieldsFor(VaultItem item) => item.Kind switch
+    {
+        ItemKind.Card => CardFields,
+        ItemKind.Identity => IdentityFields,
+        _ => LoginFields,
+    };
+
+    // Rebuild the menu for the selected entry: a "type" block, a separator, then a "copy" block.
     private void List_ContextMenuOpening(object sender, ContextMenuEventArgs e)
     {
         if (List.SelectedItem is not ItemVM vm || List.ContextMenu is null) { e.Handled = true; return; }
         var item = vm.Item;
-        var items = List.ContextMenu.Items;
-        ((MenuItem)items[0]).Visibility = string.IsNullOrEmpty(item.Username) ? Visibility.Collapsed : Visibility.Visible;
-        ((MenuItem)items[1]).Visibility = item.Password == null ? Visibility.Collapsed : Visibility.Visible;
-        ((MenuItem)items[2]).Visibility = item.HasTotp ? Visibility.Visible : Visibility.Collapsed;
-        if (string.IsNullOrEmpty(item.Username) && item.Password == null && !item.HasTotp)
-            e.Handled = true; // nothing to copy -> don't open the menu
+        var present = FieldsFor(item).Where(f => item.Has(f.Field)).ToList();
+        if (present.Count == 0) { e.Handled = true; return; }   // nothing to offer -> don't open
+
+        var menu = List.ContextMenu;
+        menu.Items.Clear();
+
+        foreach (var (field, key) in present)
+            menu.Items.Add(MakeFieldItem(Loc.T("picker.typeField", Loc.T(key)), PickAction.Type, field,
+                                         field == ItemField.Username ? "⌃U"
+                                       : field == ItemField.Password ? "⌃P"
+                                       : field == ItemField.Totp ? "⌃T" : ""));
+
+        menu.Items.Add(new Separator());
+
+        foreach (var (field, key) in present)
+            menu.Items.Add(MakeFieldItem(Loc.T("picker.copyField", Loc.T(key)), PickAction.Copy, field, ""));
     }
 
-    private void CopyUser_Click(object sender, RoutedEventArgs e) => Choose(PickAction.CopyUsername);
-    private void CopyPass_Click(object sender, RoutedEventArgs e) => Choose(PickAction.CopyPassword);
-    private void CopyTotp_Click(object sender, RoutedEventArgs e) => Choose(PickAction.CopyTotp);
+    private MenuItem MakeFieldItem(string header, PickAction action, ItemField field, string gesture)
+    {
+        var mi = new MenuItem { Header = header, InputGestureText = gesture };
+        mi.Click += (_, __) => Choose(action, field);
+        return mi;
+    }
 
-    private void Choose(PickAction action)
+    private void Choose(PickAction action, ItemField field)
     {
         if (List.SelectedItem is not ItemVM vm) return;
         var item = vm.Item;
-        // Guard the keyboard shortcuts (Ctrl+U/P/T) for absent fields exactly like the context menu
-        // hides them - otherwise an entry with no password would still fire a TypePassword action.
-        if ((action is PickAction.TypeTotp or PickAction.CopyTotp) && !item.HasTotp) return;
-        if ((action is PickAction.TypeUsername or PickAction.CopyUsername) && string.IsNullOrEmpty(item.Username)) return;
-        if ((action is PickAction.TypePassword or PickAction.CopyPassword) && item.Password == null) return;
-        Result = new PickResult(item, action, vm.Session);
+        // Guard the keyboard shortcuts for absent fields exactly like the context menu leaves them
+        // out - otherwise an entry with no password would still fire a password action.
+        if (!item.Has(field)) return;
+        Result = new PickResult(item, action, field, vm.Session);
         DialogResult = true;
     }
 
@@ -256,10 +345,19 @@ public partial class PickerWindow : Window
 
     private bool HasLocked => _sessions.Any(s => !s.Unlocked);
 
+    // The vault unlocked most recently is almost always the one wanted again; list order would
+    // keep offering the same one regardless of what the user actually works with.
+    private VaultSession? PreferredLocked()
+        => _sessions.Where(s => !s.Unlocked)
+                    .OrderByDescending(s => s.Cfg.LastUnlockedUtc ?? DateTimeOffset.MinValue)
+                    .FirstOrDefault();
+
     private void BuildChips()
     {
         LockedBar.Children.Clear();
-        var locked = _sessions.Where(s => !s.Unlocked).ToList();
+        var locked = _sessions.Where(s => !s.Unlocked)
+                              .OrderByDescending(s => s.Cfg.LastUnlockedUtc ?? DateTimeOffset.MinValue)
+                              .ToList();
         LockedBar.Visibility = locked.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
         foreach (var s in locked) LockedBar.Children.Add(MakeChip(s));
     }
@@ -305,7 +403,7 @@ public partial class PickerWindow : Window
 
     private void UnlockFirstLocked()
     {
-        var s = _sessions.FirstOrDefault(x => !x.Unlocked);
+        var s = PreferredLocked();
         if (s != null) _ = UnlockSession(s);
     }
 

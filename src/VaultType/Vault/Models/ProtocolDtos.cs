@@ -97,6 +97,8 @@ public sealed class CipherModel
     public string? Key { get; set; }     // per-item content key (EncString) or null
     public LoginModel? Login { get; set; }
     public SshKeyModel? SshKey { get; set; }
+    public CardModel? Card { get; set; }
+    public IdentityModel? Identity { get; set; }
     public List<FieldModel> Fields { get; set; } = new();
     public DateTimeOffset? RevisionDate { get; set; }
     public DateTimeOffset? DeletedDate { get; set; }   // non-null = the item sits in the trash
@@ -125,6 +127,40 @@ public sealed class SshKeyModel
     public string? PrivateKey { get; set; }     // EncString (OpenSSH PEM)
     public string? PublicKey { get; set; }       // EncString
     public string? KeyFingerprint { get; set; }  // EncString (may be absent on older Vaultwarden)
+}
+
+// A card cipher (type 3). Every value is an EncString.
+public sealed class CardModel
+{
+    public string? CardholderName { get; set; }
+    public string? Brand { get; set; }      // "Visa", "Mastercard", "Other", ...
+    public string? Number { get; set; }
+    public string? ExpMonth { get; set; }   // "1".."12" - Bitwarden does not pad it
+    public string? ExpYear { get; set; }
+    public string? Code { get; set; }       // CVV/CVC
+}
+
+// An identity cipher (type 4). Every value is an EncString.
+public sealed class IdentityModel
+{
+    public string? Title { get; set; }
+    public string? FirstName { get; set; }
+    public string? MiddleName { get; set; }
+    public string? LastName { get; set; }
+    public string? Address1 { get; set; }
+    public string? Address2 { get; set; }
+    public string? Address3 { get; set; }
+    public string? City { get; set; }
+    public string? State { get; set; }
+    public string? PostalCode { get; set; }
+    public string? Country { get; set; }
+    public string? Company { get; set; }
+    public string? Email { get; set; }
+    public string? Phone { get; set; }
+    public string? Ssn { get; set; }
+    public string? Username { get; set; }
+    public string? PassportNumber { get; set; }
+    public string? LicenseNumber { get; set; }
 }
 
 public sealed class Fido2CredentialModel

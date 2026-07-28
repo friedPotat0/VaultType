@@ -52,6 +52,22 @@ are processed exclusively on your device, in hardened memory (see the
 own vault server, end-to-end encrypted according to the Bitwarden protocol. They are never sent
 to the developer or to any third party.
 
+## What the application reads from other windows
+
+To decide which entries to suggest, VaultType reads the title and process name of the window that
+was active when you pressed the hotkey, and - for recognised browsers - the address currently shown
+in the address bar. This happens on your device only and is used solely to match entries against the
+current site or application.
+
+When a sequence fills a card or an identity, VaultType additionally reads the **structure** of the
+target window's input fields - their labels and internal identifiers - through the Windows
+accessibility interface, in order to place each value in the correct field. Only that structure is
+read; the content of those fields is not read, and this lookup only runs when a sequence actually
+requires it.
+
+None of this information is stored, written to disk, or transmitted anywhere. It exists in memory
+for the duration of the auto-type run and is discarded afterwards. VaultType writes no log files.
+
 ## Children's privacy
 
 VaultType is a general-purpose utility and does not knowingly collect data from anyone,

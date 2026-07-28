@@ -69,6 +69,7 @@ public partial class SettingsWindow : Window
         IdleBox.Text = cfg.IdleTimeoutMinutes.ToString();
         ClipBox.Text = cfg.ClipboardClearSeconds.ToString();
         ClearFieldTgl.IsChecked = cfg.ClearFieldBeforeTyping;
+        RequiredOnlyTgl.IsChecked = cfg.FillRequiredFieldsOnly;
         HideCaptureTgl.IsChecked = cfg.ExcludeFromScreenCapture;
         AntiDbgTgl.IsChecked = cfg.AntiDebugger;
         AutostartTgl.IsChecked = cfg.Autostart;
@@ -476,6 +477,7 @@ public partial class SettingsWindow : Window
         _cfg.IdleTimeoutMinutes = ParseInt(IdleBox.Text, _cfg.IdleTimeoutMinutes, 0, 1440);
         _cfg.ClipboardClearSeconds = ParseInt(ClipBox.Text, _cfg.ClipboardClearSeconds, 0, 3600);
         _cfg.ClearFieldBeforeTyping = ClearFieldTgl.IsChecked == true;
+        _cfg.FillRequiredFieldsOnly = RequiredOnlyTgl.IsChecked == true;
         _cfg.ExcludeFromScreenCapture = HideCaptureTgl.IsChecked == true;
         _cfg.AntiDebugger = AntiDbgTgl.IsChecked == true;
         _cfg.Autostart = AutostartTgl.IsChecked == true;

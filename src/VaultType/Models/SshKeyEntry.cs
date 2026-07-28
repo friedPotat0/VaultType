@@ -12,4 +12,8 @@ public sealed class SshKeyEntry
     public string Fingerprint { get; set; } = "";   // "SHA256:..."
     public string PublicKey { get; set; } = "";     // authorized_keys line
     public SecretBox? PrivateKey { get; set; }      // OpenSSH private key PEM
+
+    // The cipher's "re-prompt for the master password" flag. Signing with this key asks for the
+    // master password on top of the confirm-each-use setting.
+    public bool Reprompt { get; set; }
 }

@@ -19,6 +19,10 @@ public sealed class Fido2Entry
     public uint Counter;
     public bool Discoverable;
 
+    // The owning cipher's "re-prompt for the master password" flag. An assertion with this
+    // credential asks for the master password on top of the usual confirmation.
+    public bool Reprompt;
+
     // PKCS#8 ECDSA P-256 private key (the decoded keyValue), protected by the session's protector.
     public SecretBox? PrivateKey;
 }

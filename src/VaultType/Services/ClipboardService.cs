@@ -19,17 +19,63 @@ public static class ClipboardService
     // have copied in the meantime, without holding the secret around past the copy.
     private static byte[]? _lastHash;
 
-    public static void CopyUsername(VaultItem item, int clearSeconds) => Set(item.Username, clearSeconds);
-
-    public static void CopyPassword(VaultItem item, SecretProtector p, int clearSeconds)
+    // Copy one field of an entry. Putting a secret on the clipboard inevitably turns it into a
+    // managed string - that is the price of "copy", and why the auto-clear below exists.
+    public static void Copy(VaultItem item, ItemField field, SecretProtector p, int clearSeconds)
     {
-        if (item.Password == null || !p.IsActive) return;
-        using var buf = p.Reveal(item.Password);
-        string s = Encoding.UTF8.GetString(buf.Span.Slice(0, item.Password.Cipher.Length));
-        Set(s, clearSeconds);
+        var card = item.Card;
+        var id = item.Identity;
+
+        switch (field)
+        {
+            case ItemField.Username: Set(item.Username, clearSeconds); break;
+            case ItemField.Password: Set(Plain(item.Password, p), clearSeconds); break;
+            case ItemField.Totp: CopyTotp(item, p, clearSeconds); break;
+
+            case ItemField.CardNumber: Set(Plain(card?.Number, p), clearSeconds); break;
+            case ItemField.CardCode: Set(Plain(card?.Code, p), clearSeconds); break;
+            case ItemField.CardHolder: Set(card?.CardholderName ?? "", clearSeconds); break;
+            case ItemField.CardExpiry: Set(Expiry(card, p), clearSeconds); break;
+
+            case ItemField.IdName: Set(id?.FullName ?? "", clearSeconds); break;
+            case ItemField.IdEmail: Set(Plain(id?.Email, p), clearSeconds); break;
+            case ItemField.IdPhone: Set(Plain(id?.Phone, p), clearSeconds); break;
+            case ItemField.IdAddress: Set(Address(id, p), clearSeconds); break;
+        }
     }
 
-    public static void CopyTotp(VaultItem item, SecretProtector p, int clearSeconds)
+    // "MM/YY" from the two protected expiry parts, matching what the typing engine produces.
+    private static string Expiry(CardData? card, SecretProtector p)
+    {
+        if (card == null) return "";
+        string m = Plain(card.ExpMonth, p);
+        string y = Plain(card.ExpYear, p);
+        if (m.Length == 1) m = "0" + m;
+        if (y.Length > 2) y = y[^2..];
+        return m.Length == 0 && y.Length == 0 ? "" : $"{m}/{y}";
+    }
+
+    private static string Address(IdentityData? id, SecretProtector p)
+    {
+        if (id == null) return "";
+        var parts = new List<string>();
+        void Add(string s) { if (s.Length > 0) parts.Add(s); }
+        Add(Plain(id.Address1, p));
+        Add(Plain(id.Address2, p));
+        string zip = Plain(id.PostalCode, p), city = Plain(id.City, p);
+        Add(string.Join(" ", new[] { zip, city }.Where(x => x.Length > 0)));
+        Add(Plain(id.Country, p));
+        return string.Join(Environment.NewLine, parts);
+    }
+
+    private static string Plain(SecretBox? box, SecretProtector p)
+    {
+        if (box == null || !p.IsActive) return "";
+        using var buf = p.Reveal(box);
+        return Encoding.UTF8.GetString(buf.Span.Slice(0, box.Cipher.Length));
+    }
+
+    private static void CopyTotp(VaultItem item, SecretProtector p, int clearSeconds)
     {
         if (item.TotpSecret == null || !p.IsActive) return;
         using var buf = p.Reveal(item.TotpSecret);

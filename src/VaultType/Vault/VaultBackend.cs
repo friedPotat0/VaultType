@@ -55,10 +55,12 @@ public sealed class VaultBackend : IDisposable
 
     // Dev/preview only: pretend to be unlocked with the given items so the --screenshots
     // mode can render item-bearing windows without a real vault.
-    public void LoadMockUnlocked(List<VaultItem> items)
+    public void LoadMockUnlocked(List<VaultItem> items, SecretProtector? protector = null)
     {
-        Protector?.Dispose();
-        Protector = new SecretProtector();
+        // Mock items that carry SecretBoxes were built against a protector of their own; adopt it
+        // instead of creating a fresh one, or those boxes would no longer decrypt.
+        if (!ReferenceEquals(protector, Protector)) Protector?.Dispose();
+        Protector = protector ?? new SecretProtector();
         Items = items;
         _mockUnlocked = true;
     }
@@ -540,6 +542,16 @@ public sealed class VaultBackend : IDisposable
                         var it = _crypto!.DecryptLogin(c, Protector, _app.AutoTypeFieldName);
                         if (it != null) items.Add(it);
                         passkeys.AddRange(_crypto!.DecryptFido2(c, Protector));
+                    }
+                    else if (c.Type == 3)
+                    {
+                        var it = _crypto!.DecryptCard(c, Protector, _app.AutoTypeFieldName);
+                        if (it != null) items.Add(it);
+                    }
+                    else if (c.Type == 4)
+                    {
+                        var it = _crypto!.DecryptIdentity(c, Protector, _app.AutoTypeFieldName);
+                        if (it != null) items.Add(it);
                     }
                     else if (c.Type == 5)
                     {

@@ -22,8 +22,10 @@
 
 VaultType gives Bitwarden a global auto-type hotkey - the feature power users miss from KeePass.
 Press a shortcut and it types your username, password and TOTP into **any** window: desktop
-applications *and* browsers. Beyond auto-type, it can serve the **SSH keys** stored in your vault
-through the Windows OpenSSH agent, and act as a **Windows 11 passkey provider** (experimental).
+applications *and* browsers. The same shortcut fills checkout and registration forms from the
+**cards** and **identities** in your vault, matching each form field by its label. Beyond
+auto-type, it can serve the **SSH keys** stored in your vault through the Windows OpenSSH agent,
+and act as a **Windows 11 passkey provider** (experimental).
 
 VaultType is a **native Bitwarden client**: it speaks the Bitwarden server API directly and
 performs all cryptography in-process - no Bitwarden CLI, no browser extension, no helper
@@ -59,18 +61,24 @@ secrets.
 ## Features
 
 - **Global hotkey** (default `Ctrl+Alt+A`) opens a context-aware entry picker.
-- **KeePass-style picker** - entries matching the active window/URL come first, but you can
-  **search the whole vault** if the automatic match is wrong.
+- **KeePass-style picker** - logins for the active window/URL are listed first; if there are none,
+  it says so instead of dumping the whole vault on you. Identities and cards always follow below,
+  since they aren't tied to a site. **Search the whole vault** at any time.
 - **Auto-type** the full sequence (username → Tab → password → Enter), or username / password /
   TOTP only - with per-entry [custom sequences](#auto-type-sequences).
-- **Copy to clipboard** (right-click) for username / password / TOTP, with the clipboard
+- **Cards and identities** - fill checkout and registration forms from your vault. VaultType matches
+  the form's mandatory fields against the entry [by their labels](#field-lookup) and fills what fits,
+  in the order the page uses them - no blind tabbing, so nothing lands in the wrong box. Your own
+  custom fields are matched by name, and a split street/house-number form is handled.
+- **Copy to clipboard** (right-click) for every field of an entry, with the clipboard
   **cleared automatically** after a timeout.
 - **Learn associations** - pick a non-suggested entry and VaultType offers to remember the
   current site or app for next time.
 - **Multiple accounts** - keep several vaults side by side (say a personal Vaultwarden and a work
   Bitwarden cloud). Unlock as many as you like; the picker merges their entries and tags each with a
   coloured account badge. Locked accounts show up as chips you can unlock on the spot, without
-  leaving the picker. Each vault keeps its own session and its own encryption key.
+  leaving the picker - the one you used most recently is offered first. Each vault keeps its own
+  session and its own encryption key.
 - **Native vault client** - VaultType talks to the Bitwarden/Vaultwarden API itself (PBKDF2 *and*
   Argon2id KDF, API-key login, two-factor via authenticator app, email, YubiKey or Duo). No
   Bitwarden CLI to download, verify or keep updated.
@@ -87,21 +95,22 @@ secrets.
 - **Auto-lock** after inactivity (default 30 minutes); it also re-locks after the computer wakes
   from sleep or standby, since real time keeps counting.
 - **Master password reprompt** - entries flagged in Bitwarden as "ask for master password" are
-  re-confirmed before typing or copying.
+  re-confirmed before *any* action on them, including SSH keys and passkeys.
 - **Multilingual** - ships in 11 languages, follows your Windows display language automatically.
 - Clean dark interface, runs quietly in the system tray.
 
 ## Screenshots
 
-The picker is context-aware: entries matching the active window or URL come first, and you can
-search the whole vault at any time. Every window shares the same clean, dark interface.
+The picker is context-aware: logins for the active window or URL come first, with identities and
+cards in their own sections below, and you can search the whole vault at any time. Every window
+shares the same clean, dark interface.
 
 <div align="center">
 <table>
   <tr>
     <td colspan="2" align="center">
       <img src="assets/screenshots/picker.png" width="420" alt="VaultType entry picker" /><br />
-      <sub><b>Entry picker</b> - matches for the active window come first; start typing to search the whole vault. With more than one account, each entry carries a coloured badge and locked vaults appear as chips you can unlock in place.</sub><br /><br />
+      <sub><b>Entry picker</b> - logins for the active window come first, identities and cards follow in their own sections; start typing to search the whole vault. With more than one account, each entry carries a coloured badge and locked vaults appear as chips you can unlock in place.</sub><br /><br />
     </td>
   </tr>
   <tr>
@@ -160,7 +169,13 @@ password or vault data.
 - Windows are hidden from screen capture (`WDA_EXCLUDEFROMCAPTURE`), legacy DLL/hook injection is
   blocked (`ProcessExtensionPointDisablePolicy`), and the app refuses to run under a debugger.
 - **Auto-type aborts instantly** if focus leaves the target window - no stray characters end up
-  in the wrong place, and nothing is typed if focus cannot be restored to the target.
+  in the wrong place, and nothing is typed if focus cannot be restored to the target. Card and
+  identity sequences also abort when a field cannot be [located](#field-lookup), instead of typing
+  into whatever came next, and the caret is confirmed to sit in the intended field before the first
+  keystroke goes out.
+- **Values are only ever typed, never written through the accessibility interface.** That interface
+  is used to *find* and *focus* a field; setting a value through it would require handing the secret
+  over as an ordinary managed string, bypassing the locked-buffer handling above.
 - **No clipboard** is used for typing. The optional copy actions are the only clipboard use, and
   they self-clear (only if the clipboard still holds what VaultType put there).
 - **PIN unlock is rate-limited**: five wrong PINs destroy the PIN envelope and force the master
@@ -239,7 +254,9 @@ Everything below is adjustable in the Settings window; the file itself lives in
 | `IdleTimeoutMinutes` | `30` | Auto-lock after inactivity (`0` = never) |
 | `TypingDelayMs` | `25` | Delay between simulated keystrokes (apps that decode injected keystrokes asynchronously garble the text below roughly 15 ms) |
 | `ClearFieldBeforeTyping` | `true` | Select the field (Ctrl+A) before typing |
+| `FillRequiredFieldsOnly` | `true` | When filling from a card or identity, only fill fields the form marks as mandatory |
 | `AutoTypeFieldName` | `auto-type` | Name of the custom field holding a per-entry [sequence](#auto-type-sequences) |
+| `FieldAliases` | `{}` | Extra spellings for the [field lookup](#field-lookup), keyed by field group, e.g. `{"CardCode": ["kartenprüfwert"]}` |
 | `DefaultUriMatch` | `0` | Fallback URL match for entries with no rule of their own (`0` = base domain, `1` = host, `2` = exact URL) |
 | `ShowIcons` | `true` | Favicons from your own server (`false` = letter avatars, offline) |
 | `ClipboardClearSeconds` | `12` | Clear the clipboard this long after a copy (`0` = never) |
@@ -251,6 +268,7 @@ Everything below is adjustable in the Settings window; the file itself lives in
 | `SshDisabledKeys` | `[]` | SSH keys switched off in the agent (managed in the key list) |
 | `PasskeyProviderEnabled` | `false` | Register as a Windows 11 passkey provider (experimental) |
 | `PasskeyRequireHello` | `true` | Gate passkey use behind Windows Hello |
+| `EnableTrayClick` | `true` | React to a left-click on the tray icon (needs a lightweight foreground hook); `false` = hotkey only |
 | `TrayClickAction` | `2` | Tray left-click: `0` = menu, `1` = auto-type, `2` = settings |
 | `Autostart` | `true` | Start with Windows (per-user) |
 
@@ -261,11 +279,14 @@ Press the hotkey, unlock once, then in the picker:
 | Input | Action |
 | --- | --- |
 | `↑` `↓` | Move selection |
-| `Enter` | Auto-type (username → Tab → password → Enter) |
-| `Ctrl+U` / `Ctrl+P` / `Ctrl+T` | Type username / password / TOTP only |
-| Right-click | Copy username / password / TOTP |
+| `Enter` | Auto-type the entry's [sequence](#auto-type-sequences) |
+| `Ctrl+U` / `Ctrl+P` / `Ctrl+T` | Type username / password / TOTP only (logins) |
+| Right-click | Type or copy an individual field |
 | Type | Search the whole vault |
 | `Esc` | Cancel |
+
+Cards and identities have too many fields to bind to shortcuts, so their individual fields live in
+the right-click menu. Pressing `Enter` on them runs their default sequence just like on a login.
 
 For desktop apps, add a URI like `app://programname.exe` to the entry - or simply let VaultType
 offer to remember it the first time. Two more URI forms work for desktop apps: a plain
@@ -279,34 +300,72 @@ tagged with its account badge. Any vault that is still locked appears as a chip 
 click it (or press `Enter` on an empty search) to unlock just that account and fold its entries in,
 without closing the picker.
 
+If **no** vault is open, the hotkey goes straight to the unlock dialog instead of showing an empty
+picker, with the vault you used most recently preselected. Its account row switches to another
+vault if you want a different one.
+
 The **tray menu** shows each account with its state (entry count, or a lock you can click to
 unlock), and offers *Auto-type*, *Sync*, *Lock* per account or *Lock all*, *Check for updates*,
 *Settings* and *Exit*.
 
 ## Auto-type sequences
 
-Pressing Enter on an entry types the default sequence:
+Pressing Enter on an entry runs its default sequence, which depends on the entry type:
 
-```
-{USERNAME}{TAB}{PASSWORD}{ENTER}
-```
+| Entry type | Default sequence |
+| --- | --- |
+| Login | `{USERNAME}{TAB}{PASSWORD}{ENTER}` |
+| Card | fills the mandatory card fields the form asks for |
+| Identity | fills the mandatory identity fields the form asks for |
 
-You can override this per entry: add a **custom text field** named `auto-type` to the Bitwarden
-entry and set its value to your own sequence. Entries with a custom sequence show a keyboard badge
-in the picker (hover it to see the exact sequence). `Ctrl+U` / `Ctrl+P` / `Ctrl+T` always type a
-single field, regardless of the custom sequence.
+Cards and identities have **no fixed sequence**. VaultType reads which fields the form actually
+exposes, then fills every one of them the entry has a value for, in the order they appear on the
+page - see [field lookup](#field-lookup). One checkout wants number, expiry and code; the next also
+asks for the cardholder. One order form has a single name box; the next has separate first and last
+name fields plus a full address block. A fixed list of keystrokes cannot serve both.
+
+Nothing is guessed: a field whose label VaultType doesn't recognise is skipped rather than filled
+with whatever came next, and if no field matches the entry at all, it says so instead of leaving an
+empty form behind.
+
+Card and identity sequences also deliberately **do not end with Enter**: on a login form Enter
+submits, which is what you want, but in the middle of a checkout it would send a half-filled order.
+
+You can override the default per entry: add a **custom text field** named `auto-type` to the
+Bitwarden entry and set its value to your own sequence. The selected row in the picker previews the
+sequence it will run, so you can see what will happen before pressing Enter. `Ctrl+U` / `Ctrl+P` /
+`Ctrl+T` always type a single field, regardless of the custom sequence.
 
 Supported placeholders (case-insensitive):
 
 | Placeholder | Types |
 | --- | --- |
-| `{USERNAME}` / `{USER}` / `{LOGIN}` | the username |
+| `{USERNAME}` / `{USER}` / `{LOGIN}` | the username (on an identity: its own username field) |
 | `{PASSWORD}` / `{PASS}` | the password |
 | `{TOTP}` / `{OTP}` | the current TOTP code |
+| `{FIELD "..."}` | moves the caret to a named field first - see [field lookup](#field-lookup) |
 | `{TAB}` `{ENTER}` `{SPACE}` | those keys |
 | `{CLEARFIELD}` | selects the field first (Ctrl+A) |
 | `{DELAY 200}` | waits 200 ms (also `{WAIT}` / `{SLEEP}`) |
 | any other text | typed literally |
+
+Card placeholders:
+
+| Placeholder | Types |
+| --- | --- |
+| `{CARDNUMBER}` / `{CARDNUM}` | the card number |
+| `{CARDCODE}` / `{CVV}` / `{CVC}` | the security code |
+| `{CARDHOLDER}` / `{CARDNAME}` | the cardholder name |
+| `{CARDBRAND}` | the brand (Visa, Mastercard, …) |
+| `{CARDEXPMONTH}` / `{EXPMONTH}` | expiry month, padded to two digits (`01`) |
+| `{CARDEXPMONTHRAW}` | expiry month exactly as stored (`1`) |
+| `{CARDEXPYEAR}` / `{EXPYEAR}` | expiry year in full (`2029`) |
+| `{CARDEXPYEAR2}` / `{EXPYEAR2}` | expiry year, two digits (`29`) |
+| `{CARDEXP}` / `{CARDEXPIRY}` | month and year combined (`07/29`) |
+
+Identity placeholders: `{TITLE}` `{FIRSTNAME}` `{MIDDLENAME}` `{LASTNAME}` `{FULLNAME}`
+`{COMPANY}` `{EMAIL}` `{PHONE}` `{ADDRESS1}` `{ADDRESS2}` `{ADDRESS3}` `{CITY}` `{STATE}`
+`{POSTALCODE}` / `{ZIP}` `{COUNTRY}` `{SSN}` `{PASSPORT}` `{LICENSE}`
 
 Example for a two-step login where the username comes first and the password field only appears a
 moment later (the way PayPal and some others do it):
@@ -315,7 +374,75 @@ moment later (the way PayPal and some others do it):
 {USERNAME}{ENTER}{DELAY 1500}{PASSWORD}{ENTER}
 ```
 
+Example for a checkout that wants the security code before the expiry date:
+
+```
+{FIELD "card number"}{CARDNUMBER}{FIELD "CVV"}{CARDCODE}{FIELD "expiry"}{CARDEXP}
+```
+
 The field name (`auto-type`) can be changed via `AutoTypeFieldName` in `config.json`.
+
+### Field lookup
+
+Payment and registration forms differ far too much for a fixed chain of tabs to be safe - one shop
+asks for number, expiry, code; the next swaps the last two; a third puts month and year in one box.
+So instead of tabbing blindly, VaultType **matches the form against the entry**: it reads the labels
+of the form's input fields, works out which of them it recognises, and fills those the entry has a
+value for. Fields it doesn't recognise are left alone.
+
+**Only mandatory fields are filled** by default. A field counts as mandatory when the form marks it
+as required or puts an asterisk in its label. Optional extras - a second phone number, a delivery
+note - stay empty. Turn *Settings → Auto-Type → Only mandatory fields* off to fill every recognised
+field instead. Forms that mark nothing at all (some only validate in JavaScript) are filled
+completely either way, since otherwise nothing would happen on them.
+
+Two pairs are treated as alternatives, so nothing gets filled twice: a combined name box rules out
+separate first/last name fields (and vice versa), as does a combined `MM/YY` box against separate
+month and year fields.
+
+**Street and house number** are stored as one line by Bitwarden. If the form has a separate house
+number field, the line is split - "Beispielweg 12a" becomes street *Beispielweg* and number *12a*.
+Numbers at the front ("12 Main Street") are handled too. If no number can be identified, the whole
+line goes into the street field and the number field is left for you, rather than splitting at a
+guess.
+
+**Your own custom fields work too.** Any text or hidden field you add to a card or identity in
+Bitwarden is matched against the form by its name. Call a field *Date of birth* in the vault and it
+fills the form's *Date of birth* box - no configuration needed, the name is the link. This is how
+you cover anything the builtin groups don't. The field holding your auto-type sequence is excluded.
+
+`{FIELD "..."}` does the same thing explicitly. You name the *concept*, not the form's wording -
+VaultType knows the common spellings and searches for all of them, so these are equivalent:
+
+```
+{FIELD "CVV"}     {FIELD "Prüfziffer"}     {FIELD "security code"}     {FIELD "CVC"}
+```
+
+Both the visible label and the form's internal field identifier are matched, which makes the lookup
+work on foreign-language forms too. Searching starts at the field the caret is currently in, so
+clicking into the right section of a long form before pressing the hotkey picks that section.
+
+A term VaultType doesn't recognise is searched for literally, and unusual wording can be taught
+through `FieldAliases` in `config.json`:
+
+```json
+"FieldAliases": {
+  "CardCode": ["kartenprüfwert", "kk-prüfnummer"],
+  "PostalCode": ["postnummer"]
+}
+```
+
+Group names are `CardNumber`, `CardHolder`, `CardExpMonth`, `CardExpYear`, `CardExpiry`,
+`CardCode`, `Title`, `FirstName`, `MiddleName`, `LastName`, `FullName`, `Company`, `Email`,
+`Phone`, `Username`, `Address1`, `Address2`, `Address3`, `StreetName`, `HouseNumber`, `City`,
+`State`, `PostalCode`, `Country`, `Ssn`, `Passport` and `License`.
+
+> [!NOTE]
+> The lookup reads the target window's field structure through the Windows accessibility interface -
+> the same mechanism already used to read a browser's address bar. Applications that expose nothing
+> there (some Qt and Java programs) can't be filled this way; VaultType says so instead of guessing.
+> Nothing is ever written through that interface: values are always typed as keystrokes, so secrets
+> keep going through the same locked-memory path as before.
 
 ## SSH agent
 

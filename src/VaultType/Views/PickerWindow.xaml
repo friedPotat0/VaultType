@@ -17,7 +17,9 @@
                     <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
 
-                <!-- Icon: favicon tile, or letter avatar as a fallback -->
+                <!-- Icon: favicon tile or letter avatar for logins; a type tile for cards and
+                     identities, which have no website to fetch an icon from. The card tile carries
+                     the brand as text - no brand logos are shipped. -->
                 <Grid Grid.Column="0" Width="40" Height="40">
                     <Border CornerRadius="12" Background="{Binding Name, Converter={StaticResource AvatarGradientBrush}}"
                             Visibility="{Binding AvatarVisibility}">
@@ -28,14 +30,42 @@
                         <Image Source="{Binding Icon}" Width="22" Height="22" Stretch="Uniform"
                                HorizontalAlignment="Center" VerticalAlignment="Center" />
                     </Border>
+                    <Border CornerRadius="12" Background="{Binding CardFill}" BorderBrush="{Binding CardBorder}" BorderThickness="1"
+                            Visibility="{Binding CardVisibility}">
+                        <Grid>
+                            <Viewbox Width="28" Height="28" HorizontalAlignment="Center" VerticalAlignment="Center">
+                                <Canvas Width="24" Height="24">
+                                    <Path Data="{StaticResource IconCard}" Stroke="{Binding CardAccent}" StrokeThickness="1.5"
+                                          StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round" />
+                                </Canvas>
+                            </Viewbox>
+                            <!-- The brand sits centred in the card body below the stripe, scaled to
+                                 fit so a four-letter code like AMEX stays clear of the outline.
+                                 The margin offsets it from the tile centre into that lower half. -->
+                            <Viewbox Width="14" Height="5.5" Stretch="Uniform" StretchDirection="DownOnly"
+                                     HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0,5.5,0,0">
+                                <TextBlock Text="{Binding CardBrandShort}" Foreground="{Binding CardAccent}"
+                                           FontSize="10" FontWeight="Bold" />
+                            </Viewbox>
+                        </Grid>
+                    </Border>
+                    <Border CornerRadius="12" Background="#14FFFFFF" BorderBrush="#26FFFFFF" BorderThickness="1"
+                            Visibility="{Binding IdentityVisibility}">
+                        <Viewbox Width="21" Height="21" HorizontalAlignment="Center" VerticalAlignment="Center">
+                            <Canvas Width="24" Height="24">
+                                <Path Data="{StaticResource IconUser}" Stroke="{StaticResource TextSub}" StrokeThickness="1.7"
+                                      StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round" />
+                            </Canvas>
+                        </Viewbox>
+                    </Border>
                 </Grid>
 
                 <StackPanel Grid.Column="1" Margin="13,0,8,0" VerticalAlignment="Center">
                     <TextBlock Text="{Binding Name}" Foreground="{StaticResource TextPrimary}" FontSize="14.5"
                                FontWeight="Bold" TextTrimming="CharacterEllipsis" />
-                    <TextBlock Text="{Binding Username}" Foreground="{StaticResource TextSub}" FontSize="12.5"
+                    <TextBlock Text="{Binding Subtitle}" Foreground="{StaticResource TextSub}" FontSize="12.5"
                                TextTrimming="CharacterEllipsis" Margin="0,1,0,0"
-                               Visibility="{Binding HasUsername, Converter={StaticResource BoolToVis}}" />
+                               Visibility="{Binding HasSubtitle, Converter={StaticResource BoolToVis}}" />
                     <!-- auto-type sequence preview: shown on the selected row (matches the design) -->
                     <ItemsControl ItemsSource="{Binding SequenceTokens}" Margin="0,5,0,0"
                                   Visibility="{Binding IsSelected, RelativeSource={RelativeSource AncestorType=ListBoxItem}, Converter={StaticResource BoolToVis}}">
@@ -110,22 +140,56 @@
                     </Grid>
                 </Border>
 
-                <!-- section label (design: "Alle Einträge für <host>") -->
-                <TextBlock x:Name="SectionLabel" Foreground="{StaticResource TextSecondary}" FontSize="12.5"
-                           FontWeight="SemiBold" Margin="20,0,20,0" TextTrimming="CharacterEllipsis" />
+                <!-- Shown when the active window has no matching logins. Set apart from the section
+                     headings below, which would otherwise make it read as just another one. -->
+                <Border x:Name="HintBox" Margin="20,0,20,0" CornerRadius="9" Padding="12,9"
+                        Background="#0FFFFFFF" BorderBrush="#1AFFFFFF" BorderThickness="1"
+                        Visibility="Collapsed">
+                    <StackPanel Orientation="Horizontal">
+                        <Viewbox Width="15" Height="15" VerticalAlignment="Center" Margin="0,0,9,0">
+                            <Canvas Width="24" Height="24">
+                                <Path Data="{StaticResource IconInfo}" Stroke="{StaticResource TextMuted}"
+                                      StrokeThickness="1.7" StrokeStartLineCap="Round" StrokeEndLineCap="Round" />
+                            </Canvas>
+                        </Viewbox>
+                        <TextBlock x:Name="HintLabel" Foreground="{StaticResource TextSecondary}" FontSize="12.5"
+                                   VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                    </StackPanel>
+                </Border>
 
-                <!-- entry list -->
-                <ListBox x:Name="List" Style="{StaticResource ItemList}" MaxHeight="236"
+                <!-- entry list, grouped into logins / identities / cards -->
+                <!-- sized for three section headings, which take about 90px of the height -->
+                <ListBox x:Name="List" Style="{StaticResource ItemList}" MaxHeight="330"
                          Margin="20,4,6,4"
                          ItemContainerStyle="{StaticResource ItemContainer}" ItemTemplate="{StaticResource ItemTemplate}"
                          MouseDoubleClick="List_DoubleClick" PreviewMouseRightButtonDown="List_RightDown"
                          ContextMenuOpening="List_ContextMenuOpening">
+                    <!-- The heading is drawn by the template itself: a GroupItem has no Header
+                         property to bind a ContentPresenter to, and the default template indents
+                         the rows away from the ungrouped alignment. -->
+                    <ListBox.GroupStyle>
+                        <GroupStyle>
+                            <GroupStyle.ContainerStyle>
+                                <Style TargetType="GroupItem">
+                                    <Setter Property="Template">
+                                        <Setter.Value>
+                                            <ControlTemplate TargetType="GroupItem">
+                                                <StackPanel>
+                                                    <TextBlock Text="{Binding Name}" Foreground="{StaticResource TextSecondary}"
+                                                               FontSize="12.5" FontWeight="SemiBold" Margin="0,9,0,5"
+                                                               TextTrimming="CharacterEllipsis" />
+                                                    <ItemsPresenter />
+                                                </StackPanel>
+                                            </ControlTemplate>
+                                        </Setter.Value>
+                                    </Setter>
+                                </Style>
+                            </GroupStyle.ContainerStyle>
+                        </GroupStyle>
+                    </ListBox.GroupStyle>
+                    <!-- filled per entry in List_ContextMenuOpening: the fields differ by entry type -->
                     <ListBox.ContextMenu>
-                        <ContextMenu>
-                            <MenuItem Header="{local:Tr picker.copyUser}" InputGestureText="⌃U" Click="CopyUser_Click" />
-                            <MenuItem Header="{local:Tr picker.copyPass}" InputGestureText="⌃P" Click="CopyPass_Click" />
-                            <MenuItem Header="{local:Tr picker.copyTotp}" InputGestureText="⌃T" Click="CopyTotp_Click" />
-                        </ContextMenu>
+                        <ContextMenu />
                     </ListBox.ContextMenu>
                 </ListBox>
 
