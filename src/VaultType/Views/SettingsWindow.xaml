@@ -417,6 +417,16 @@
                                     </StackPanel>
                                     <ToggleButton Grid.Column="2" x:Name="AutostartTgl" Style="{StaticResource ToggleSwitch}" VerticalAlignment="Center" />
                                 </Grid>
+                                <Grid x:Name="AutoUpdateRow" Margin="0,0,0,14">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" /><ColumnDefinition Width="16" /><ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel VerticalAlignment="Center">
+                                        <TextBlock Style="{StaticResource RowTitle}" Text="{local:Tr settings.autoUpdate}" />
+                                        <TextBlock Style="{StaticResource RowSub}" Text="{local:Tr settings.autoUpdateHint}" TextWrapping="Wrap" />
+                                    </StackPanel>
+                                    <ToggleButton Grid.Column="2" x:Name="AutoUpdateTgl" Style="{StaticResource ToggleSwitch}" VerticalAlignment="Center" />
+                                </Grid>
                                 <Grid Margin="0,0,0,14">
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="*" /><ColumnDefinition Width="16" /><ColumnDefinition Width="Auto" />

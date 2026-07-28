@@ -57,6 +57,9 @@ public partial class SettingsWindow : Window
     // App updates the row object with the saved values before the task completes
     public Func<AccountRow, Task>? EditAccount { get; set; }
 
+    // provided by App: the result of a check started here, so the tray indicator stays in step
+    public Action<UpdateService.UpdateInfo?>? UpdateFound { get; set; }
+
     public SettingsWindow(AppConfig cfg, List<AccountRow> rows, bool excludeCapture)
     {
         InitializeComponent();
@@ -97,17 +100,30 @@ public partial class SettingsWindow : Window
         for (int i = 0; i < Loc.Languages.Length; i++) _langCodes[i + 1] = Loc.Languages[i].Code;
         _lang = Math.Max(0, Array.FindIndex(_langCodes, c => c.Equals(cfg.Language, StringComparison.OrdinalIgnoreCase)));
 
-        // Store edition: the Store keeps the app current on its own; the GitHub check only
-        // applies to the installer/portable builds.
+        // Store edition: the Store keeps the app current on its own; the GitHub check (and with it
+        // the background check) only applies to the installer/portable builds.
         if (AppInfo.IsPackaged)
         {
             UpdStatus.Text = Loc.T("settings.updatesStore", AppInfo.Version);
             UpdBtnLabel.Text = Loc.T("settings.updatesOpenStore");
+            AutoUpdateRow.Visibility = Visibility.Collapsed;
         }
         else
         {
-            UpdStatus.Text = Loc.T("settings.updatesCurrent", AppInfo.Version);
-            UpdBtnLabel.Text = Loc.T("settings.updatesBtn");
+            AutoUpdateTgl.IsChecked = cfg.BackgroundUpdateCheck;
+            // A release found earlier stays visible after a restart, so this agrees with the tray icon.
+            if (UpdateService.IsNewer(cfg.KnownUpdateVersion, AppInfo.Version))
+            {
+                UpdStatus.Text = Loc.T("settings.updatesAvailable", cfg.KnownUpdateVersion!);
+                // Only offer the download outright while that result is still current.
+                if (LastCheckIsFresh(cfg)) ShowFoundUpdate(cfg.KnownUpdateVersion!, cfg.KnownUpdateUrl);
+                else UpdBtnLabel.Text = Loc.T("settings.updatesBtn");
+            }
+            else
+            {
+                UpdStatus.Text = Loc.T("settings.updatesCurrent", AppInfo.Version);
+                UpdBtnLabel.Text = Loc.T("settings.updatesBtn");
+            }
         }
 
         BuildAccounts();
@@ -406,21 +422,15 @@ public partial class SettingsWindow : Window
 
     // ---- updates ----
 
+    // The release the button would download, once one is known.
+    private string? _updUrl;
+
     private async void CheckUpdates_Click(object sender, RoutedEventArgs e)
     {
-        if (AppInfo.IsPackaged)
-        {
-            try
-            {
-                System.Diagnostics.Process.Start(
-                    new System.Diagnostics.ProcessStartInfo(AppInfo.StoreUri) { UseShellExecute = true });
-            }
-            catch (Exception ex)
-            {
-                UpdStatus.Text = ex.Message;
-            }
-            return;
-        }
+        if (AppInfo.IsPackaged) { OpenUpdateUrl(AppInfo.StoreUri); return; }
+        // Second click, now that a release is known: download instead of checking again.
+        if (_updUrl is { } url) { OpenUpdateUrl(url); return; }
+
         if (_updChecking) return;
         _updChecking = true;
         UpdStatus.Text = Loc.T("settings.updatesChecking");
@@ -428,9 +438,10 @@ public partial class SettingsWindow : Window
         try
         {
             var info = await UpdateService.CheckAsync(AppInfo.Version);
-            UpdStatus.Text = info == null ? Loc.T("msg.updateFailed")
-                : info.IsNewer ? Loc.T("settings.updatesAvailable", info.LatestVersion)
-                : Loc.T("settings.updatesUpToDate");
+            UpdateFound?.Invoke(info);   // App remembers it and updates the tray icon and menu
+            if (info == null) UpdStatus.Text = Loc.T("msg.updateFailed");
+            else if (info.IsNewer) ShowFoundUpdate(info.LatestVersion, info.Url);
+            else UpdStatus.Text = Loc.T("settings.updatesUpToDate");
         }
         catch
         {
@@ -441,7 +452,30 @@ public partial class SettingsWindow : Window
         finally
         {
             _updChecking = false;
-            UpdBtnLabel.Text = Loc.T("settings.updatesBtn");
+            if (_updUrl == null) UpdBtnLabel.Text = Loc.T("settings.updatesBtn");
+        }
+    }
+
+    private void ShowFoundUpdate(string version, string? url)
+    {
+        _updUrl = UpdateService.SafeReleaseUrl(url);
+        UpdStatus.Text = Loc.T("settings.updatesAvailable", version);
+        UpdBtnLabel.Text = Loc.T("settings.updatesDownload");
+    }
+
+    private static bool LastCheckIsFresh(AppConfig cfg)
+        => cfg.LastUpdateCheckUtc is { } last && DateTimeOffset.UtcNow - last < UpdateService.RecheckAfter;
+
+    private void OpenUpdateUrl(string url)
+    {
+        try
+        {
+            System.Diagnostics.Process.Start(
+                new System.Diagnostics.ProcessStartInfo(url) { UseShellExecute = true });
+        }
+        catch (Exception ex)
+        {
+            UpdStatus.Text = ex.Message;
         }
     }
 
@@ -482,6 +516,8 @@ public partial class SettingsWindow : Window
         _cfg.AntiDebugger = AntiDbgTgl.IsChecked == true;
         _cfg.Autostart = AutostartTgl.IsChecked == true;
         AutostartService.Set(_cfg.Autostart);
+        // Hidden in the Store edition, where the row was never filled in - keep the stored value.
+        if (!AppInfo.IsPackaged) _cfg.BackgroundUpdateCheck = AutoUpdateTgl.IsChecked == true;
 
         _cfg.SshAgentEnabled = SshAgentTgl.IsChecked == true;
         _cfg.SshConfirmEachUse = SshConfirmTgl.IsChecked == true;

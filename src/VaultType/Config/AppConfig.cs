@@ -75,6 +75,23 @@ public sealed class AppConfig
     // the "VaultType is running" balloon is shown once after installation, not on every start
     public bool FirstRunNotified { get; set; }
 
+    // ---- updates ----
+
+    // Look for a new release on GitHub in the background (at most once a day). Off by default:
+    // without it the app never contacts anything but your own vault server on its own.
+    // Deliberately NOT named AutoUpdateCheck: configs written before 1.2.0 still carry that key
+    // with `true` (it was a setting that never did anything), and reusing the name would switch
+    // background requests on for those users without them ever asking for it.
+    public bool BackgroundUpdateCheck { get; set; }
+
+    // when the background check last reached GitHub, so restarts don't re-ask every time
+    public DateTimeOffset? LastUpdateCheckUtc { get; set; }
+
+    // The newer release the last check found, remembered so the tray indicator survives a restart
+    // without another request. Cleared once the running version has caught up.
+    public string? KnownUpdateVersion { get; set; }
+    public string? KnownUpdateUrl { get; set; }
+
     // ---- integration (design "Integration" section) ----
 
     // serve vault SSH keys over the Windows OpenSSH agent named pipe

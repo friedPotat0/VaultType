@@ -3,12 +3,19 @@ using System.Text.Json;
 
 namespace VaultType.Services;
 
-// Manual, user-triggered update check against the GitHub Releases API. Nothing secret is sent -
-// it only reads the latest release tag and compares it to the running version.
+// Update check against the GitHub Releases API - run manually from the tray menu or the settings,
+// and in the background only when the user turned that on. Nothing secret is sent - it only reads
+// the latest release tag and compares it to the running version.
 public static class UpdateService
 {
     private const string Repo = "friedPotat0/VaultType";
     private static readonly HttpClient Http = new() { Timeout = TimeSpan.FromSeconds(10) };
+
+    // Fallback target when a remembered result carries no usable release URL.
+    public const string ReleasesUrl = $"https://github.com/{Repo}/releases/latest";
+
+    // How long a result counts as current; past that a manual check asks GitHub again.
+    public static readonly TimeSpan RecheckAfter = TimeSpan.FromHours(1);
 
     public sealed record UpdateInfo(bool IsNewer, string LatestVersion, string Url);
 
@@ -32,10 +39,7 @@ public static class UpdateService
             string latest = tag.TrimStart('v', 'V');
             if (latest.Length == 0) return null;
 
-            bool newer = Version.TryParse(latest, out var lv)
-                      && Version.TryParse(currentVersion, out var cv)
-                      && lv > cv;
-            return new UpdateInfo(newer, latest, url);
+            return new UpdateInfo(IsNewer(latest, currentVersion), latest, url);
         }
         catch
         {
@@ -43,4 +47,21 @@ public static class UpdateService
             return null;
         }
     }
+
+    // Also used to re-check a remembered result after a restart, so an indicator left over from
+    // before the update disappears on its own.
+    public static bool IsNewer(string? latest, string current)
+        => Version.TryParse(latest, out var lv)
+        && Version.TryParse(current, out var cv)
+        && lv > cv;
+
+    // A release URL is written to config.json and read back later, and ShellExecute would just as
+    // happily run a local path or a protocol handler - so anything but an https GitHub address is
+    // replaced by the releases page.
+    public static string SafeReleaseUrl(string? url)
+        => Uri.TryCreate(url, UriKind.Absolute, out var u)
+        && u.Scheme == Uri.UriSchemeHttps
+        && (u.Host == "github.com" || u.Host.EndsWith(".github.com", StringComparison.Ordinal))
+            ? url!
+            : ReleasesUrl;
 }

@@ -34,13 +34,15 @@ public partial class TrayMenuWindow : Window
     private bool _closing;
     private readonly string _syncHint;
     private readonly bool _excludeCapture;
+    private readonly string? _updateVersion;
 
     // The action the user picked; App runs it in the Closed handler, once this window is fully gone
     // (calling Show/ShowDialog while a window is still closing throws).
     public Action? PendingAction { get; private set; }
 
+    // `updateVersion`: the release waiting to be installed, if one is known.
     public TrayMenuWindow(IReadOnlyList<VaultSession> sessions, string hotkey, string syncHint, Actions actions,
-        bool excludeCapture = false)
+        bool excludeCapture = false, string? updateVersion = null)
     {
         InitializeComponent();
         _sessions = sessions;
@@ -48,6 +50,7 @@ public partial class TrayMenuWindow : Window
         _hotkey = hotkey;
         _syncHint = syncHint;
         _excludeCapture = excludeCapture;
+        _updateVersion = updateVersion;
         Build();
         // Close when focus moves elsewhere. Deactivated fires INSIDE the WM_ACTIVATE window
         // procedure; calling Close() synchronously there tears the window down from within its own
@@ -86,10 +89,13 @@ public partial class TrayMenuWindow : Window
         }
 
         Root.Children.Add(Divider());
-        // Store edition: the action opens the Store product page, so say that instead of "check".
-        Root.Children.Add(ActionRow("IconDownload",
-            Loc.T(AppInfo.IsPackaged ? "settings.updatesOpenStore" : "tray.checkUpdates"),
-            null, () => _actions.CheckUpdates?.Invoke()));
+        // A known update is named outright, so it shows up without any notification. Store edition:
+        // the action opens the Store product page, so say that instead of "check".
+        Root.Children.Add(_updateVersion != null
+            ? ActionRow("IconDownload", Loc.T("tray.updateTo", _updateVersion), null,
+                        () => _actions.CheckUpdates?.Invoke(), accent: true)
+            : ActionRow("IconDownload", Loc.T(AppInfo.IsPackaged ? "settings.updatesOpenStore" : "tray.checkUpdates"),
+                        null, () => _actions.CheckUpdates?.Invoke()));
         Root.Children.Add(ActionRow("IconSliders", Loc.T("tray.settings"), null, () => _actions.OpenSettings?.Invoke()));
         Root.Children.Add(ActionRow("IconPower", Loc.T("tray.exit"), null, () => _actions.Exit?.Invoke()));
     }
@@ -140,7 +146,7 @@ public partial class TrayMenuWindow : Window
     }
 
     // design menu item: icon 15 + label + optional right hint, hover faint white
-    private FrameworkElement ActionRow(string icon, string label, string? hint, Action onClick)
+    private FrameworkElement ActionRow(string icon, string label, string? hint, Action onClick, bool accent = false)
     {
         var grid = new Grid();
         grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
@@ -148,9 +154,15 @@ public partial class TrayMenuWindow : Window
         grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
 
-        var iconBox = new Viewbox { Width = 15, Height = 15, VerticalAlignment = VerticalAlignment.Center, Child = StrokeCanvas(icon, (Brush)FindResource("TextSecondary"), 1.7) };
+        var fg = (Brush)FindResource(accent ? "Accent" : "TextSecondary");
+        var iconBox = new Viewbox { Width = 15, Height = 15, VerticalAlignment = VerticalAlignment.Center, Child = StrokeCanvas(icon, fg, 1.7) };
         Grid.SetColumn(iconBox, 0);
-        var text = new TextBlock { Text = label, Foreground = (Brush)FindResource("TextBody"), FontSize = 13, VerticalAlignment = VerticalAlignment.Center };
+        var text = new TextBlock
+        {
+            Text = label, Foreground = accent ? fg : (Brush)FindResource("TextBody"),
+            FontSize = 13, FontWeight = accent ? FontWeights.SemiBold : FontWeights.Normal,
+            VerticalAlignment = VerticalAlignment.Center,
+        };
         Grid.SetColumn(text, 2);
         grid.Children.Add(iconBox);
         grid.Children.Add(text);

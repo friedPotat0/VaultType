@@ -31,7 +31,11 @@ public partial class App : Application
     // One runtime session per configured account (RAM only). Several may be unlocked at once.
     private readonly List<VaultSession> _sessions = new();
     private bool _busy;
-    private string? _pendingUpdateUrl;   // set when a newer release is found; opened if the balloon is clicked
+
+    // The newer release we know about, or null. Survives a restart through the config.
+    private UpdateService.UpdateInfo? _update;
+    private System.Windows.Threading.DispatcherTimer? _updateTimer;
+    private bool _updateChecking;   // a manual check is in flight
 
     private bool AnyUnlocked => _sessions.Any(s => s.Unlocked);
 
@@ -157,9 +161,11 @@ public partial class App : Application
         if (_cfg.EnableTrayClick) _fgTracker = new ForegroundTracker();
         AutostartService.Set(_cfg.Autostart);   // keep the Run entry in sync with the preference
 
+        RestoreKnownUpdate();
         SetupTray();
         ApplySshAgent();
         ApplyPasskeyProvider();
+        ApplyBackgroundUpdateCheck();
         if (hotkeyOk)
         {
             // greet only on the very first start after installation, not on every launch
@@ -689,6 +695,13 @@ public partial class App : Application
                 SshStatusProvider = () => SshKeysWindow.StatusText(_sessions),
                 CreateSshWindow = () => new SshKeysWindow(_sessions, _cfg, _cfg.ExcludeFromScreenCapture),
                 EditAccount = EditAccountFromSettings,
+                // A check started in the settings feeds the tray indicator too, without waiting for "Save".
+                UpdateFound = info =>
+                {
+                    if (info == null) return;   // failed check: keep what we already know
+                    _cfg.LastUpdateCheckUtc = DateTimeOffset.UtcNow;
+                    RememberUpdate(info);
+                },
             };
             if (w.ShowDialog() != true) return;
             _cfg.Save();
@@ -700,6 +713,7 @@ public partial class App : Application
             ApplySshAgent();
             if (AnyUnlocked) _idle.Arm(_cfg.IdleTimeoutMinutes);
             ApplyPasskeyProvider();
+            ApplyBackgroundUpdateCheck();
             UpdateTray();
             langChanged = !string.Equals(prevLang, _cfg.Language, StringComparison.OrdinalIgnoreCase);
         }
@@ -797,37 +811,124 @@ public partial class App : Application
         ExitApp();
     }
 
-    // Manual update check from the tray menu. On success the balloon is clickable and opens the release.
-    // async void: guard the whole body so a failure surfaces as a balloon, not an unhandled exception.
+    // ---- updates ----
+
+    // An entry the running version has caught up with is dropped rather than restored.
+    private void RestoreKnownUpdate()
+    {
+        if (!AppInfo.IsPackaged && UpdateService.IsNewer(_cfg.KnownUpdateVersion, AppInfo.Version))
+        {
+            _update = new UpdateService.UpdateInfo(true, _cfg.KnownUpdateVersion!,
+                                                   UpdateService.SafeReleaseUrl(_cfg.KnownUpdateUrl));
+            return;
+        }
+        if (_cfg.KnownUpdateVersion == null && _cfg.KnownUpdateUrl == null) return;
+        _cfg.KnownUpdateVersion = null;
+        _cfg.KnownUpdateUrl = null;
+        _cfg.Save();
+    }
+
+    // Everything else reads the release URL from here, so this is where it gets vetted.
+    private void RememberUpdate(UpdateService.UpdateInfo? info)
+    {
+        _update = info is { IsNewer: true }
+            ? info with { Url = UpdateService.SafeReleaseUrl(info.Url) }
+            : null;
+        _cfg.KnownUpdateVersion = _update?.LatestVersion;
+        _cfg.KnownUpdateUrl = _update?.Url;
+        _cfg.Save();
+        UpdateTray();
+    }
+
+    private bool LastCheckIsFresh()
+        => _cfg.LastUpdateCheckUtc is { } last && DateTimeOffset.UtcNow - last < UpdateService.RecheckAfter;
+
+    // Never in the Store edition - the Store keeps packaged installs current by itself.
+    private void ApplyBackgroundUpdateCheck()
+    {
+        _updateTimer?.Stop();
+        _updateTimer = null;
+        if (AppInfo.IsPackaged || !_cfg.BackgroundUpdateCheck) return;
+
+        // The first look comes soon after the start, since a machine that is rarely left running
+        // would never get there otherwise; after that it only checks whether a day has passed.
+        var timer = new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromSeconds(30) };
+        timer.Tick += (_, __) =>
+        {
+            timer.Interval = TimeSpan.FromHours(6);
+            _ = BackgroundCheckAsync();
+        };
+        _updateTimer = timer;
+        timer.Start();
+    }
+
+    private async Task BackgroundCheckAsync()
+    {
+        if (_cfg.LastUpdateCheckUtc is { } last && DateTimeOffset.UtcNow - last < TimeSpan.FromHours(24)) return;
+
+        var info = await UpdateService.CheckAsync(AppInfo.Version);
+        if (info == null) return;   // offline or rate-limited: no timestamp, so the next tick retries
+        _cfg.LastUpdateCheckUtc = DateTimeOffset.UtcNow;
+
+        // Announce a version once; from then on the tray icon and menu carry it.
+        bool firstSighting = info.IsNewer
+            && !string.Equals(info.LatestVersion, _cfg.KnownUpdateVersion, StringComparison.Ordinal);
+        RememberUpdate(info);
+        if (firstSighting && _update is { } found)
+            ShowBalloon(Loc.T("msg.updateTitle"), Loc.T("msg.updateAvailable", found.LatestVersion), found.Url);
+    }
+
+    // Manual check from the tray menu. The result is a window, not a notification: with
+    // notifications switched off a balloon would leave the menu entry looking broken.
+    // async void: guard the whole body so a failure surfaces as a dialog, not an unhandled exception.
     private async void CheckForUpdates()
     {
         // Store edition: updates are delivered by the Microsoft Store, and a GitHub exe couldn't
         // replace an MSIX install anyway - send the user to the product page instead.
-        if (AppInfo.IsPackaged)
+        if (AppInfo.IsPackaged) { OpenUrl(AppInfo.StoreUri); return; }
+        if (_updateChecking) return;
+
+        // An older result is confirmed against GitHub first, so it can't hide a later release.
+        if (_update is { } fresh && LastCheckIsFresh()) { AskToDownload(fresh); return; }
+
+        _updateChecking = true;
+        var loading = new LoadingWindow(_cfg.ExcludeFromScreenCapture);
+        loading.SetStatus(Loc.T("loading.updates"));
+        loading.Show();
+        UpdateService.UpdateInfo? info;
+        try { info = await UpdateService.CheckAsync(AppInfo.Version); }
+        catch { info = null; }
+        finally { try { loading.Close(); } catch { } _updateChecking = false; }
+
+        // A failed check must not discard what we already know - offer that instead of an error.
+        if (info == null)
         {
-            try { Process.Start(new ProcessStartInfo(AppInfo.StoreUri) { UseShellExecute = true }); }
-            catch (Exception ex) { ShowBalloon(Loc.T("msg.error"), ex.Message); }
+            if (_update is { } known) AskToDownload(known);
+            else Notice(Loc.T("msg.error"), Loc.T("msg.updateFailed"));
             return;
         }
-        try
-        {
-            var info = await UpdateService.CheckAsync(AppInfo.Version);
-            if (info == null) { ShowBalloon(Loc.T("msg.error"), Loc.T("msg.updateFailed")); return; }
-            if (info.IsNewer)
-            {
-                _pendingUpdateUrl = info.Url;
-                ShowBalloon(Loc.T("msg.updateTitle"), Loc.T("msg.updateAvailable", info.LatestVersion));
-            }
-            else
-            {
-                _pendingUpdateUrl = null;
-                ShowBalloon("VaultType", Loc.T("msg.upToDate", AppInfo.Version));
-            }
-        }
-        catch
-        {
-            ShowBalloon(Loc.T("msg.error"), Loc.T("msg.updateFailed"));
-        }
+        _cfg.LastUpdateCheckUtc = DateTimeOffset.UtcNow;
+        RememberUpdate(info);
+        if (_update is { } found) AskToDownload(found);
+        else Notice(Loc.T("msg.updateNoneTitle"), Loc.T("msg.upToDate", AppInfo.Version));
+    }
+
+    private void AskToDownload(UpdateService.UpdateInfo info)
+    {
+        var w = new ConfirmWindow(Loc.T("msg.updateTitle"), Loc.T("msg.updateQuestion", info.LatestVersion),
+                                  _cfg.ExcludeFromScreenCapture, Loc.T("msg.updateOpen"));
+        if (w.ShowDialog() == true) OpenUrl(info.Url);
+    }
+
+    // One-button dialog for a result that needs no decision.
+    private void Notice(string heading, string message)
+        => new ConfirmWindow(heading, message, _cfg.ExcludeFromScreenCapture,
+                             Loc.T("common.ok"), showCancel: false).ShowDialog();
+
+    private void OpenUrl(string url)
+    {
+        try { Process.Start(new ProcessStartInfo(url) { UseShellExecute = true }); }
+        catch (Exception ex) { Notice(Loc.T("msg.error"), ex.Message); }
     }
 
     // ---- Screenshot mode (README assets) ----
@@ -1053,12 +1154,18 @@ public partial class App : Application
 
     // ---- Tray ----
     private TrayMenuWindow? _trayMenu;
+    private Drawing.Icon? _iconPlain;
+    private Drawing.Icon? _iconBadge;
+    private string? _balloonUrl;   // opened when the balloon currently on screen is clicked
 
     private void SetupTray()
     {
         // No WinForms menu: a left click triggers the configured action, a right click opens the
         // custom WPF menu (design "TrayMenu") at the cursor.
-        _tray = new WinForms.NotifyIcon { Icon = BuildIcon(), Visible = true, Text = $"VaultType {AppInfo.Version}" };
+        _tray = new WinForms.NotifyIcon
+        {
+            Icon = _iconPlain ??= BuildIcon(false), Visible = true, Text = $"VaultType {AppInfo.Version}",
+        };
         _tray.MouseUp += (_, e) =>
         {
             if (e.Button == WinForms.MouseButtons.Right) Dispatcher.Invoke(ShowTrayMenu);
@@ -1066,9 +1173,9 @@ public partial class App : Application
         };
         _tray.BalloonTipClicked += (_, __) =>
         {
-            if (_pendingUpdateUrl == null) return;
-            try { Process.Start(new ProcessStartInfo(_pendingUpdateUrl) { UseShellExecute = true }); } catch { }
-            _pendingUpdateUrl = null;
+            if (_balloonUrl is not { } url) return;
+            _balloonUrl = null;
+            try { Process.Start(new ProcessStartInfo(url) { UseShellExecute = true }); } catch { }
         };
         UpdateTray();
     }
@@ -1102,7 +1209,7 @@ public partial class App : Application
             CheckUpdates = CheckForUpdates,
             OpenSettings = OpenSettings,
             Exit = ExitApp,
-        }, _cfg.ExcludeFromScreenCapture);
+        }, _cfg.ExcludeFromScreenCapture, _update?.LatestVersion);
         // Run the picked action only after the menu window is fully closed (avoids the
         // "Show/ShowDialog while a window is closing" crash), and guarded so it can't kill the app.
         menu.Closed += (_, __) =>
@@ -1141,8 +1248,27 @@ public partial class App : Application
 
     private void UpdateTray()
     {
-        if (_tray != null) _tray.Text = AnyUnlocked ? $"VaultType — {Loc.T("tray.unlocked", TotalItems)}" : $"VaultType — {Loc.T("tray.locked")}";
+        if (_tray != null)
+        {
+            string text = $"VaultType — {(AnyUnlocked ? Loc.T("tray.unlocked", TotalItems) : Loc.T("tray.locked"))}";
+            if (_update != null) text += $" · {Loc.T("tray.updateTip", _update.LatestVersion)}";
+            // NotifyIcon.Text throws past 127 characters; cut at a whole character, never mid-pair.
+            if (text.Length > 127) text = text[..(char.IsHighSurrogate(text[126]) ? 126 : 127)];
+            _tray.Text = text;
+            ApplyTrayBadge();
+        }
         SyncPasskeyMetadata();
+    }
+
+    // Both icons are built once and kept: the frequent UpdateTray calls (unlock, lock, sync) must
+    // not churn through GDI handles.
+    private void ApplyTrayBadge()
+    {
+        bool badge = _update != null;
+        _iconPlain ??= BuildIcon(false);
+        if (badge) _iconBadge ??= BuildIcon(true);
+        var want = badge ? _iconBadge : _iconPlain;
+        if (!ReferenceEquals(_tray.Icon, want)) _tray.Icon = want;
     }
 
     // Keep Windows' passkey picker in sync with the vault: every unlock/lock/sync path funnels
@@ -1165,7 +1291,7 @@ public partial class App : Application
         catch { }
     }
 
-    private static Drawing.Icon BuildIcon()
+    private static Drawing.Icon BuildIcon(bool badge)
     {
         // The app icon (window/taskbar/exe) keeps its designed margin, but that margin (~45% fill)
         // makes the notification-area icon look tiny next to others. So for the tray we crop the
@@ -1180,7 +1306,7 @@ public partial class App : Application
                 using var src = srcIcon.ToBitmap();
                 Drawing.Rectangle glyph = OpaqueBounds(src);
                 int size = Math.Max(16, WinForms.SystemInformation.SmallIconSize.Width);
-                return CropFillIcon(src, glyph, size);
+                return CropFillIcon(src, glyph, size, badge);
             }
         }
         catch { }
@@ -1194,8 +1320,23 @@ public partial class App : Application
             using var path = RoundedRect(3f, 3f, 26f, 26f, 7f);
             using var green = new Drawing.SolidBrush(Drawing.ColorTranslator.FromHtml("#3FAE77"));
             g.FillPath(green, path);
+            if (badge) DrawBadge(g, 32);
         }
         return Drawing.Icon.FromHandle(bmp.GetHicon());
+    }
+
+    // The design's Danger red, not the accent green: the icon it sits on is green itself, so a
+    // green dot would read as part of the glyph at 16 px.
+    private static void DrawBadge(Drawing.Graphics g, int size)
+    {
+        g.SmoothingMode = Drawing.Drawing2D.SmoothingMode.AntiAlias;
+        float d = Math.Max(7f, size * 0.5f);
+        var box = new Drawing.RectangleF(size - d, size - d, d, d);
+        using (var ring = new Drawing.SolidBrush(Drawing.Color.FromArgb(8, 12, 16)))
+            g.FillEllipse(ring, box);
+        box.Inflate(-d * 0.24f, -d * 0.24f);
+        using (var dot = new Drawing.SolidBrush(Drawing.ColorTranslator.FromHtml("#E5484D")))
+            g.FillEllipse(dot, box);
     }
 
     // Tight bounding box of the non-transparent pixels (alpha > 8).
@@ -1232,7 +1373,7 @@ public partial class App : Application
 
     // Draw the glyph region scaled to fill a square canvas of `size` edge-to-edge (aspect ratio
     // preserved), so it reads as large as the neighbouring tray icons.
-    private static Drawing.Icon CropFillIcon(Drawing.Bitmap src, Drawing.Rectangle glyph, int size)
+    private static Drawing.Icon CropFillIcon(Drawing.Bitmap src, Drawing.Rectangle glyph, int size, bool badge)
     {
         var bmp = new Drawing.Bitmap(size, size, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
         using (var g = Drawing.Graphics.FromImage(bmp))
@@ -1246,6 +1387,7 @@ public partial class App : Application
             float w = glyph.Width * scale, h = glyph.Height * scale;
             float x = (size - w) / 2f, y = (size - h) / 2f;
             g.DrawImage(src, new Drawing.RectangleF(x, y, w, h), glyph, Drawing.GraphicsUnit.Pixel);
+            if (badge) DrawBadge(g, size);
         }
         IntPtr hicon = bmp.GetHicon();
         try { return (Drawing.Icon)Drawing.Icon.FromHandle(hicon).Clone(); }
@@ -1266,8 +1408,11 @@ public partial class App : Application
         return p;
     }
 
-    private void ShowBalloon(string title, string text)
+    // `clickUrl` makes the balloon clickable. It is cleared by the next balloon, so a click never
+    // opens something the message on screen didn't offer.
+    private void ShowBalloon(string title, string text, string? clickUrl = null)
     {
+        _balloonUrl = clickUrl;
         try { _tray.BalloonTipTitle = title; _tray.BalloonTipText = text; _tray.ShowBalloonTip(4000); }
         catch { }
     }
@@ -1528,7 +1673,10 @@ public partial class App : Application
         LockVault(false);
         _sshAgent?.Dispose();
         _passkeyIpc?.Dispose();
+        _updateTimer?.Stop();
         try { _tray.Visible = false; _tray.Dispose(); } catch { }
+        _iconPlain?.Dispose();
+        _iconBadge?.Dispose();
         _hotkey?.Dispose();
         _idle?.Dispose();
         _fgTracker?.Dispose();

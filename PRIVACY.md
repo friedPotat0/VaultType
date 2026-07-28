@@ -1,6 +1,6 @@
 # VaultType privacy policy
 
-*Last updated: 2026-07-22*
+*Last updated: 2026-07-28*
 
 VaultType is a Windows client for Bitwarden and Vaultwarden vaults. This policy describes what
 data the application handles and where it goes. The short version: **VaultType collects nothing.**
@@ -37,7 +37,9 @@ VaultType connects only to:
    server does with your data is governed by its operator's privacy policy (for the Bitwarden
    cloud, see [Bitwarden's privacy policy](https://bitwarden.com/privacy/)).
 2. **GitHub** (`api.github.com`) - for the update check, which requests the latest release
-   version. The check only runs when you trigger it manually (tray menu or Settings); the
+   version. It runs when you trigger it manually (tray menu or Settings), and additionally in the
+   background - at most once a day - if you switch *Check for updates automatically* on under
+   Settings > General. That setting is **off by default**, so unless you turn it on the
    application never contacts GitHub on its own. No personal data is sent; GitHub sees an
    ordinary HTTPS request from your IP address.
 

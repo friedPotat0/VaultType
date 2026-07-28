@@ -49,6 +49,7 @@ secrets.
 - [Installation](#installation)
 - [Configuration](#configuration)
 - [Usage](#usage)
+- [Updates](#updates)
 - [Auto-type sequences](#auto-type-sequences)
 - [SSH agent](#ssh-agent)
 - [Passkeys](#passkeys-experimental)
@@ -186,7 +187,8 @@ password or vault data.
   which also means the app runs on WDAC-locked machines that only allow Microsoft-signed binaries.
 - The application opens **no network connections** except to *your* configured vault server
   (API + favicons, the latter can be disabled) and the *Check for updates* action (a version
-  check against GitHub).
+  check against GitHub). That check runs when you ask for it; the daily background check is a
+  setting you switch on, off by default.
 
 > [!NOTE]
 > No user-space password manager - VaultType or KeePass - can fully defend against an attacker who
@@ -306,7 +308,21 @@ vault if you want a different one.
 
 The **tray menu** shows each account with its state (entry count, or a lock you can click to
 unlock), and offers *Auto-type*, *Sync*, *Lock* per account or *Lock all*, *Check for updates*,
-*Settings* and *Exit*.
+*Settings* and *Exit*. The check reports back in a window rather than a notification, so it works
+just as well with notifications switched off for the app.
+
+## Updates
+
+The installer and portable editions check GitHub for a newer release when you ask them to - from
+the tray menu or from Settings. Switch *Check for updates automatically* on under
+*Settings > General* and VaultType additionally looks once a day in the background; it is off by
+default, and never runs in the Store edition, which the Microsoft Store keeps current by itself.
+
+Once a newer release is known, the tray icon carries a red dot, the tray menu names the version
+instead of offering another check, and the Settings updates row links straight to the download.
+Those stay put until you have installed it, so the news does not depend on catching a
+notification. The version is announced once as a notification too - only once per release, and
+only if you enabled the background check.
 
 ## Auto-type sequences
 

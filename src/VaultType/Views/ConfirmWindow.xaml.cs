@@ -9,12 +9,18 @@ public partial class ConfirmWindow : Window
 {
     private readonly bool _excludeCapture;
 
-    public ConfirmWindow(string heading, string message, bool excludeCapture)
+    // `confirmText` overrides the "Yes" label; `showCancel: false` turns the dialog into a plain
+    // notice with a single button to dismiss it.
+    public ConfirmWindow(string heading, string message, bool excludeCapture,
+                         string? confirmText = null, bool showCancel = true)
     {
         InitializeComponent();
         _excludeCapture = excludeCapture;
         Heading.Text = heading;
         Message.Text = message;
+        if (confirmText != null) YesBtn.Content = confirmText;
+        // Collapsing leaves the confirm button in its own column, so the layout stays put.
+        if (!showCancel) NoBtn.Visibility = Visibility.Collapsed;
 
         MouseLeftButtonDown += (_, e) => { if (e.ButtonState == MouseButtonState.Pressed) { try { DragMove(); } catch { } } };
         Loaded += OnLoaded;
