@@ -15,6 +15,11 @@
         </Border.Effect>
 
         <Grid>
+            <!-- The window sizes itself to its content, and the API-key method shows enough fields
+                 to outgrow a laptop screen at 200% scaling - the submit button then sits below the
+                 desktop edge, out of reach. The window is capped to the work area in the
+                 constructor, so this takes over instead of the card growing past the screen. -->
+            <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
             <StackPanel Margin="22,18,22,24">
                 <!-- header -->
                 <StackPanel Orientation="Horizontal" Margin="0,0,46,0">
@@ -281,6 +286,7 @@
                     </StackPanel>
                 </Button>
             </StackPanel>
+            </ScrollViewer>
 
             <!-- close -->
             <Button x:Name="CloseBtn" Style="{StaticResource CloseButton}"

@@ -69,6 +69,9 @@ public partial class SignInWindow : Window
     public SignInWindow(bool excludeCapture, string emailPrefill = "", string serverPrefill = "")
     {
         InitializeComponent();
+        // Never taller than the desktop: the API-key layout alone is ~950 DIP, which is more than a
+        // 13" laptop at 200% scaling has left after the taskbar. Beyond this the card scrolls.
+        MaxHeight = SystemParameters.WorkArea.Height;
         _excludeCapture = excludeCapture;
 
         _serverIndex = string.Equals(serverPrefill, AccountConfig.UsCloud, StringComparison.OrdinalIgnoreCase) ? 0
