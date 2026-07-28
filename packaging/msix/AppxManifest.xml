@@ -26,7 +26,12 @@
   </Properties>
 
   <Dependencies>
-    <TargetDeviceFamily Name="Windows.Desktop" MinVersion="10.0.26100.6725" MaxVersionTested="10.0.26200.8875" />
+    <!--
+      Windows 10 2004 is the floor for the app itself. The passkey provider needs 24H2 (build
+      26100), but it is off by default and PasskeyProvider.Supported checks the build at runtime -
+      so gating the whole package on 24H2 would lock everyone else out of a working app.
+    -->
+    <TargetDeviceFamily Name="Windows.Desktop" MinVersion="10.0.19041.0" MaxVersionTested="10.0.26200.8875" />
   </Dependencies>
 
   <Resources>
