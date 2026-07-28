@@ -401,7 +401,7 @@ public partial class App : Application
             // Keep the API client secret as wipeable bytes the backend owns (like the master
             // password), not a managed string that would linger unwipeable in the heap.
             byte[] clientSecret = useApiKey && win.ClientSecret != null
-                ? SecureStringUtil.ToUtf8Bytes(win.ClientSecret) : Array.Empty<byte>();
+                ? SecureStringUtil.ToTrimmedUtf8Bytes(win.ClientSecret) : Array.Empty<byte>();
             string? tfCode = string.IsNullOrWhiteSpace(win.TwoFactorCode) ? null : win.TwoFactorCode.Trim();
             int? tfProv = tfCode != null ? win.TwoFactorMethod : (int?)null;
             string prefUnlock = win.PreferredUnlock;
