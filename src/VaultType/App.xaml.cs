@@ -1080,16 +1080,16 @@ public partial class App : Application
                 {
                     FirstName = first, LastName = last,
                     Email = Box("alex.doe@example.com"), Phone = Box("+49 30 000000"),
-                    Address1 = Box("Beispielweg 1"), PostalCode = Box("10115"), City = Box("Berlin"),
-                    Country = Box("Deutschland"),
+                    Address1 = Box("1 Example Street"), PostalCode = Box("10115"), City = Box("Berlin"),
+                    Country = Box("Germany"),
                 },
             };
 
         return new List<VaultItem>
         {
             It("GitHub", "alex.doe@example.com", "github.com", totp: true),
-            Card("Visa privat", "Visa", "4242", "Alex Doe"),
-            Identity("Privatanschrift", "Alex", "Doe"),
+            Card("Visa Personal", "Visa", "4242", "Alex Doe"),
+            Identity("Home address", "Alex", "Doe"),
             It("Google", "alex.doe@example.com", "google.com", totp: true),
             It("Amazon AWS", "iam-admin", "aws.amazon.com", seq: "{USERNAME}{TAB}{PASSWORD}{ENTER}"),
             It("Proxmox VE", "root@pam", "pve.example.lan", seq: "{USERNAME}{TAB}{PASSWORD}{ENTER}"),
