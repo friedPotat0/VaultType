@@ -97,6 +97,7 @@ internal static class Native
     public const uint INPUT_KEYBOARD = 1;
     public const uint KEYEVENTF_KEYUP = 0x0002, KEYEVENTF_UNICODE = 0x0004;
     public const ushort VK_TAB = 0x09, VK_RETURN = 0x0D;
+    public const ushort VK_MENU = 0x12, VK_ESCAPE = 0x1B, VK_DOWN = 0x28;   // Alt, Esc, arrow down
 
     [StructLayout(LayoutKind.Sequential)]
     public struct KEYBDINPUT { public ushort wVk; public ushort wScan; public uint dwFlags; public uint time; public IntPtr dwExtraInfo; }

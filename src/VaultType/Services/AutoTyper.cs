@@ -161,16 +161,20 @@ public static class AutoTyper
             // The form may have moved on since the scan; skip what we can no longer focus rather
             // than abandoning the fields further down.
             if (!run.Finder.FocusAt(field)) continue;
-            ClearField(run, run.ClearFieldEnabled);
 
             if (customWins)
             {
+                ClearField(run, run.ClearFieldEnabled);
                 TypeSecret(run, custom!.Value);
                 usedCustom.Add(custom.Name);
             }
             else
             {
-                TypeGroupValue(run, field.Group, splitStreet);
+                if (!(field.IsChoice && TrySelectGroupValue(run, field)))
+                {
+                    ClearField(run, run.ClearFieldEnabled);
+                    TypeGroupValue(run, field.Group, splitStreet);
+                }
                 handled.Add(field.Group);
                 foreach (var c in Conflicts(field.Group)) handled.Add(c);
             }
@@ -181,6 +185,49 @@ public static class AutoTyper
         // stayed empty. An empty field name means "nothing here fits this entry" rather than one
         // particular field being absent.
         if (filled == 0) throw new FieldMissing("");
+    }
+
+    // Expiry month and year are often drop-down lists rather than text boxes. Typing "07" into one of
+    // those selects nothing, or the wrong entry when the list words its entries differently, so the
+    // matching entry is picked from the list instead. False sends the caller back to typing.
+    private static bool TrySelectGroupValue(Run run, FieldFinder.DetectedField field)
+    {
+        var card = run.Item.Card;
+        Func<string, bool>? isMatch = null;
+        if (field.Group == FieldGroup.CardExpMonth)
+        {
+            int month = RevealNumber(run, card?.ExpMonth);
+            if (month is >= 1 and <= 12) isMatch = entry => ExpiryOptions.MonthMatches(entry, month);
+        }
+        else if (field.Group == FieldGroup.CardExpYear)
+        {
+            int year = RevealNumber(run, card?.ExpYear);
+            if (year is >= 0 and < 100) year += 2000;
+            if (year > 0) isMatch = entry => ExpiryOptions.YearMatches(entry, year);
+        }
+        if (isMatch == null) return false;
+
+        Guard(run.Target);
+        return run.Finder.SelectOptionAt(field, isMatch,
+            openWithKeyboard: () => SendCombo(run.Target, Native.VK_MENU, Native.VK_DOWN),
+            closeWithKeyboard: () => SendVk(run.Target, Native.VK_ESCAPE));
+    }
+
+    // A stored number (expiry month or year) as an int, or -1. Comparing list entries against it
+    // needs the value outside the locked buffer; an int is the smallest form that allows it, and the
+    // expiry date is the least sensitive part of a card. No managed string copy is ever made.
+    private static int RevealNumber(Run run, SecretBox? box)
+    {
+        if (box == null || !run.Protector.IsActive) return -1;
+        using LockedBuffer plain = run.Protector.Reveal(box);
+        int value = 0, digits = 0;
+        foreach (byte b in plain.Span.Slice(0, box.Cipher.Length))
+        {
+            if (b < '0' || b > '9') continue;
+            if (++digits > 4) return -1;
+            value = value * 10 + (b - '0');
+        }
+        return digits == 0 ? -1 : value;
     }
 
     // A custom field whose name matches this form field's label or id, plus how specific that match
@@ -672,6 +719,17 @@ public static class AutoTyper
         SendKeyEvent(MakeKey(VK_A, true));
         SendKeyEvent(MakeKey(VK_CONTROL, true));
         Thread.Sleep(25);
+    }
+
+    // A modifier plus a key (Alt+Down opens a drop-down list), with the same per-event gaps as
+    // ClearField so the modifier isn't missed.
+    private static void SendCombo(IntPtr target, ushort modifier, ushort key)
+    {
+        Guard(target);
+        SendKeyEvent(MakeKey(modifier, false));
+        SendKeyEvent(MakeKey(key, false));
+        SendKeyEvent(MakeKey(key, true));
+        SendKeyEvent(MakeKey(modifier, true));
     }
 
     private static void SendKeyEvent(Native.INPUT input)

@@ -41,6 +41,7 @@ public sealed class FieldFinder
         public string Label = "";
         public string Id = "";
         public bool Required;
+        public bool IsChoice;
         public int[] RuntimeId = Array.Empty<int>();
     }
 
@@ -51,6 +52,7 @@ public sealed class FieldFinder
         public string Label = "";      // normalised, for matching custom field names
         public string Id = "";         // normalised
         public bool Required;
+        public bool IsChoice;          // a drop-down list rather than a text box
         internal int Index;
         internal int Generation;
     }
@@ -96,6 +98,7 @@ public sealed class FieldFinder
                 Label = c.Label,
                 Id = c.Id,
                 Required = c.Required,
+                IsChoice = c.IsChoice,
                 Index = i,
                 Generation = _generation,
             });
@@ -112,6 +115,178 @@ public sealed class FieldFinder
         if (list == null || field.Generation != _generation) return false;
         if (field.Index < 0 || field.Index >= list.Count) return false;
         return SetFocus(list[field.Index]);
+    }
+
+    // ---- drop-down lists ----
+
+    private static readonly Condition OptionCondition =
+        new PropertyCondition(AutomationElement.ControlTypeProperty, ControlType.ListItem);
+    private static readonly Condition TextCondition =
+        new PropertyCondition(AutomationElement.ControlTypeProperty, ControlType.Text);
+
+    // Pick the entry of a drop-down list that isMatch accepts, instead of typing into it. Covers
+    // native <select> boxes, whose entries the tree lists even while closed, and the script-built
+    // lists many checkouts use, whose entries only exist once the list is open. False when the field
+    // isn't a list, no entry matched, or the choice didn't stick - the caller then types instead.
+    // Opening and closing go through the automation interface first; the keyboard callbacks are
+    // the fallback for lists that don't support it.
+    public bool SelectOptionAt(DetectedField field, Func<string, bool> isMatch,
+                               Action openWithKeyboard, Action closeWithKeyboard)
+    {
+        var list = _cache;
+        if (list == null || field.Generation != _generation) return false;
+        if (field.Index < 0 || field.Index >= list.Count || !list[field.Index].IsChoice) return false;
+        var box = list[field.Index].Element;
+
+        try
+        {
+            var options = OptionsOf(box, known: null);
+            if (options.Count == 0)
+            {
+                var known = AllOptionKeys();
+                options = OpenAndWait(box, known, keyboard: false, openWithKeyboard);
+                if (options.Count == 0) options = OpenAndWait(box, known, keyboard: true, openWithKeyboard);
+            }
+
+            var target = options.FirstOrDefault(o => isMatch(NameOf(o)));
+            if (target != null && Choose(box, target)) return true;
+
+            CloseIfOpen(box, closeWithKeyboard);
+            return false;
+        }
+        catch
+        {
+            CloseIfOpen(box, closeWithKeyboard);
+            return false;
+        }
+    }
+
+    private List<AutomationElement> OpenAndWait(AutomationElement box, HashSet<string> known,
+                                                bool keyboard, Action openWithKeyboard)
+    {
+        if (keyboard) openWithKeyboard();
+        else
+        {
+            try
+            {
+                if (!box.TryGetCurrentPattern(ExpandCollapsePattern.Pattern, out var p)) return new();
+                ((ExpandCollapsePattern)p).Expand();
+            }
+            catch { return new(); }
+        }
+
+        // The entries are rendered by the page's script once it reacts to the open request.
+        for (int waited = 0; waited < 600; waited += 50)
+        {
+            Thread.Sleep(50);
+            var options = OptionsOf(box, known);
+            if (options.Count > 0) return options;
+        }
+        return new();
+    }
+
+    // The list's entries: inside the field itself, or - for script-built lists, which usually draw
+    // their entries in a popup elsewhere on the page - the list items that weren't there before
+    // the list was opened.
+    private List<AutomationElement> OptionsOf(AutomationElement box, HashSet<string>? known)
+    {
+        var found = new List<AutomationElement>();
+        foreach (AutomationElement o in box.FindAll(TreeScope.Descendants, OptionCondition)) found.Add(o);
+        if (found.Count > 0 || known == null) return found;
+
+        var root = AutomationElement.FromHandle(_hwnd);
+        foreach (AutomationElement o in root.FindAll(TreeScope.Descendants, OptionCondition))
+            if (!known.Contains(Key(o))) found.Add(o);
+        return found;
+    }
+
+    private HashSet<string> AllOptionKeys()
+    {
+        var keys = new HashSet<string>(StringComparer.Ordinal);
+        var root = AutomationElement.FromHandle(_hwnd);
+        foreach (AutomationElement o in root.FindAll(TreeScope.Descendants, OptionCondition)) keys.Add(Key(o));
+        return keys;
+    }
+
+    private static string Key(AutomationElement e)
+    {
+        try { return string.Join(",", e.GetRuntimeId()); }
+        catch { return ""; }
+    }
+
+    private static string NameOf(AutomationElement e)
+    {
+        try { return e.Current.Name ?? ""; }
+        catch { return ""; }
+    }
+
+    // Select the entry, then make sure the page took it: a list can accept the selection on the
+    // automation side while its script never notices. Selecting is tried before invoking because
+    // that is what native lists implement; script-built entries often only react to an invoke.
+    private static bool Choose(AutomationElement box, AutomationElement option)
+    {
+        string name = NameOf(option).Trim();
+        if (name.Length == 0) return false;
+
+        if (TryPattern(option, SelectionItemPattern.Pattern, p => ((SelectionItemPattern)p).Select())
+            && Confirmed(box, name)) return true;
+        return TryPattern(option, InvokePattern.Pattern, p => ((InvokePattern)p).Invoke())
+               && Confirmed(box, name);
+    }
+
+    private static bool TryPattern(AutomationElement e, AutomationPattern pattern, Action<object> act)
+    {
+        try
+        {
+            if (!e.TryGetCurrentPattern(pattern, out var p)) return false;
+            act(p);
+            return true;
+        }
+        catch { return false; }
+    }
+
+    // The field now shows the chosen entry: as its value (native lists) or as the text inside the
+    // closed field (script-built ones). While the list is still open its entries can be part of the
+    // field too, so that second check only counts once it has closed.
+    private static bool Confirmed(AutomationElement box, string name)
+    {
+        for (int waited = 0; waited <= 450; waited += 50)
+        {
+            try
+            {
+                if (box.TryGetCurrentPattern(ValuePattern.Pattern, out var vp)
+                    && string.Equals(((ValuePattern)vp).Current.Value?.Trim(), name, StringComparison.OrdinalIgnoreCase))
+                    return true;
+
+                if (!IsExpanded(box))
+                {
+                    foreach (AutomationElement t in box.FindAll(TreeScope.Descendants, TextCondition))
+                        if (string.Equals(NameOf(t).Trim(), name, StringComparison.OrdinalIgnoreCase)) return true;
+                }
+            }
+            catch { }
+            Thread.Sleep(50);
+        }
+        return false;
+    }
+
+    private static bool IsExpanded(AutomationElement box)
+    {
+        try
+        {
+            return box.TryGetCurrentPattern(ExpandCollapsePattern.Pattern, out var p)
+                   && ((ExpandCollapsePattern)p).Current.ExpandCollapseState == ExpandCollapseState.Expanded;
+        }
+        catch { return false; }
+    }
+
+    private static void CloseIfOpen(AutomationElement box, Action closeWithKeyboard)
+    {
+        if (!IsExpanded(box)) return;
+        try { ((ExpandCollapsePattern)box.GetCurrentPattern(ExpandCollapsePattern.Pattern)).Collapse(); }
+        catch { }
+        Thread.Sleep(50);
+        if (IsExpanded(box)) closeWithKeyboard();
     }
 
     // Aliases this short ("mm", "yy", "nr") only count when they are the entire label. As a partial
@@ -260,6 +435,7 @@ public sealed class FieldFinder
             cache.Add(AutomationElement.RuntimeIdProperty);
             cache.Add(AutomationElement.BoundingRectangleProperty);
             cache.Add(AutomationElement.FrameworkIdProperty);
+            cache.Add(AutomationElement.ControlTypeProperty);
             cache.TreeScope = TreeScope.Element | TreeScope.Descendants;
 
             var cond = new OrCondition(
@@ -290,6 +466,7 @@ public sealed class FieldFinder
                             // shops only validate in JavaScript and mark mandatory fields with an
                             // asterisk in the label instead, so both count.
                             Required = IsRequired(e) || rawLabel.Contains('*'),
+                            IsChoice = e.Cached.ControlType == ControlType.ComboBox,
                             RuntimeId = (int[]?)e.GetCachedPropertyValue(AutomationElement.RuntimeIdProperty)
                                         ?? Array.Empty<int>(),
                         });
