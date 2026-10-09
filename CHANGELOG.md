@@ -1,6 +1,53 @@
 # Changelog
 
 All notable changes to this project are documented here.
+## [1.2.3] - 2026-10-09
+
+### Features
+
+- Fill checkout and registration forms from card and identity entries
+- *(updates)* Indicate available updates outside of notifications (#4)
+- *(autotype)* Pick the card expiry from drop-down lists
+- *(installer)* Install into Program Files by default and migrate per-user installs
+
+### Bug Fixes
+
+- Suggest the full host for remembering when host matching is the default
+- Always remember the full host regardless of the default match rule
+- Ask for the account e-mail when signing in with an API key
+- Keep trashed vault entries out of the picker and entry counts
+- Send the clear-field Ctrl+A as separate key events
+- Raise the default typing delay to 25 ms
+- *(signin)* Keep the sign-in window inside the screen and scroll when it does not fit
+- *(msix)* Lower the minimum Windows version so the package is not gated on 24H2
+- *(signin)* Trim whitespace from a pasted API client secret
+- *(autotype)* Find card fields in browsers before the page is accessible and below the fold
+- *(unlock)* Report an unreachable server instead of a JSON parse error
+
+### Performance
+
+- *(picker)* Virtualize the grouped entry list and share pending icon lookups
+
+### Refactor
+
+- Remove all runtime logging and dev-only diagnostics
+
+### Documentation
+
+- Update changelog for v1.2.0 [skip ci]
+- *(legal)* Complete third-party notices and fix policy statements
+- Add Bitwarden cloud regions to the bug report form (#1)
+- Document window title matching for desktop apps (#3)
+- Document the raised typing delay and the API-key e-mail field
+- Use English mock data and refresh the outdated screenshots
+- Recapture the sign-in screenshot that predates the account e-mail field
+- *(store)* Refresh the listing screenshots
+
+### Miscellaneous
+
+- *(release)* Ship the portable build as a zip with license texts
+- Drop an unused using left over from the removed debug output
+
 ## [1.2.0] - 2026-07-21
 
 ### Features
