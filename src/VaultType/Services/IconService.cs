@@ -17,6 +17,9 @@ public sealed class IconService : IDisposable
     private readonly string _cacheDir;
     private readonly HttpClient _http = new() { Timeout = TimeSpan.FromSeconds(6) };
     private readonly Dictionary<string, ImageSource?> _mem = new(StringComparer.OrdinalIgnoreCase);
+    // Lookups still running. The picker asks for every visible entry on each search keystroke, so
+    // without this one slow domain would be fetched (and written to the cache) once per keystroke.
+    private readonly Dictionary<string, Task<ImageSource?>> _pending = new(StringComparer.OrdinalIgnoreCase);
 
     public IconService(string serverUrl, bool showIcons, string cacheDir)
     {
@@ -26,11 +29,19 @@ public sealed class IconService : IDisposable
         try { Directory.CreateDirectory(_cacheDir); } catch { }
     }
 
-    public async Task<ImageSource?> GetAsync(string domain)
+    public Task<ImageSource?> GetAsync(string domain)
     {
-        if (!_enabled || string.IsNullOrWhiteSpace(domain)) return null;
-        if (_mem.TryGetValue(domain, out var cached)) return cached;
+        if (!_enabled || string.IsNullOrWhiteSpace(domain)) return Task.FromResult<ImageSource?>(null);
+        if (_mem.TryGetValue(domain, out var cached)) return Task.FromResult(cached);
+        if (_pending.TryGetValue(domain, out var running)) return running;
 
+        var task = LoadAsync(domain);
+        _pending[domain] = task;
+        return task;
+    }
+
+    private async Task<ImageSource?> LoadAsync(string domain)
+    {
         byte[]? bytes = null;
         string file = Path.Combine(_cacheDir, Sanitize(domain) + ".png");
         try
@@ -52,6 +63,7 @@ public sealed class IconService : IDisposable
 
         ImageSource? img = bytes is { Length: > 0 } ? LoadBitmap(bytes) : null;
         _mem[domain] = img;
+        _pending.Remove(domain);
         return img;
     }
 

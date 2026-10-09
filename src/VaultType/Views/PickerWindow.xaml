@@ -159,8 +159,16 @@
 
                 <!-- entry list, grouped into logins / identities / cards -->
                 <!-- sized for three section headings, which take about 90px of the height -->
+                <!-- Grouping switches WPF's virtualization off unless asked for explicitly. Without
+                     it every search keystroke builds a full row for each hit, which takes seconds
+                     on a vault with a few hundred entries. -->
                 <ListBox x:Name="List" Style="{StaticResource ItemList}" MaxHeight="330"
                          Margin="20,4,6,4"
+                         ScrollViewer.CanContentScroll="True"
+                         VirtualizingPanel.IsVirtualizing="True"
+                         VirtualizingPanel.IsVirtualizingWhenGrouping="True"
+                         VirtualizingPanel.VirtualizationMode="Recycling"
+                         VirtualizingPanel.ScrollUnit="Pixel"
                          ItemContainerStyle="{StaticResource ItemContainer}" ItemTemplate="{StaticResource ItemTemplate}"
                          MouseDoubleClick="List_DoubleClick" PreviewMouseRightButtonDown="List_RightDown"
                          ContextMenuOpening="List_ContextMenuOpening">
@@ -169,6 +177,12 @@
                          the rows away from the ungrouped alignment. -->
                     <ListBox.GroupStyle>
                         <GroupStyle>
+                            <!-- the groups are hosted by this panel, not the ListBox's own -->
+                            <GroupStyle.Panel>
+                                <ItemsPanelTemplate>
+                                    <VirtualizingStackPanel />
+                                </ItemsPanelTemplate>
+                            </GroupStyle.Panel>
                             <GroupStyle.ContainerStyle>
                                 <Style TargetType="GroupItem">
                                     <Setter Property="Template">
