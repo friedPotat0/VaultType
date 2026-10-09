@@ -189,6 +189,10 @@ password or vault data.
   (API + favicons, the latter can be disabled) and the *Check for updates* action (a version
   check against GitHub). That check runs when you ask for it; the daily background check is a
   setting you switch on, off by default.
+- **The program file itself is write-protected** in the Store edition (the `WindowsApps` folder,
+  with the package signature checked by Windows) and in the installer edition (*Program Files*).
+  A per-user install or the portable build lives in a folder your account can write to, so
+  another program running as you could replace it with a tampered copy.
 
 > [!NOTE]
 > No user-space password manager - VaultType or KeePass - can fully defend against an attacker who
@@ -213,12 +217,16 @@ Pick one of three ways to install:
   Store-signed (no SmartScreen warning), updates automatically, and it is the **packaged edition** -
   the only one that can act as a [Windows passkey provider](#passkeys-experimental).
 - **Installer** - `VaultType-<version>-Setup.exe` from the [latest release](../../releases/latest).
-  Installs VaultType into your user profile with a Start-menu shortcut and an uninstaller; no admin
-  rights needed. You can delete the downloaded setup afterwards.
+  Installs VaultType into *Program Files* with a Start-menu shortcut and an uninstaller. It asks for
+  admin rights once, because only there is `VaultType.exe` protected from being swapped by other
+  programs running under your account. An earlier per-user installation is removed on the way.
+  Without admin rights, `VaultType-<version>-Setup.exe /CURRENTUSER` still installs into your user
+  profile, at the cost of that protection. You can delete the downloaded setup afterwards.
 - **Portable** - `VaultType-<version>-win-x64.zip` from the [latest release](../../releases/latest)
   (contains `VaultType.exe` plus the license and third-party notices).
   A single self-contained file you run directly; keep it somewhere permanent (not your Downloads
-  folder, where it's easy to delete by accident).
+  folder, where it's easy to delete by accident). Like a per-user install, a copy in a folder you
+  can write to can also be replaced by other programs running as you.
 
 Then, either way:
 
