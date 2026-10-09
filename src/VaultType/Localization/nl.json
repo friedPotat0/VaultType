@@ -27,6 +27,7 @@
   "unlock.errClientSecret": "Voer het API-Client-Secret in.",
   "unlock.errPin": "Voer je PIN in.",
   "unlock.errPinWrong": "Onjuiste PIN.",
+  "unlock.errUnreachable": "De server is niet bereikbaar. Controleer je internet- of VPN-verbinding.",
   "signin.title": "Aanmelden",
   "signin.hint": "Verbind VaultType met je Bitwarden- of Vaultwarden-kluis.",
   "signin.serverUrl": "Server-URL",

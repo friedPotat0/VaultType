@@ -27,6 +27,7 @@
   "unlock.errClientSecret": "请输入 API-Client-Secret。",
   "unlock.errPin": "请输入 PIN。",
   "unlock.errPinWrong": "PIN 错误。",
+  "unlock.errUnreachable": "无法连接到服务器。请检查你的网络或 VPN 连接。",
   "signin.title": "登录",
   "signin.hint": "将 VaultType 连接到您的 Bitwarden 或 Vaultwarden 保管库。",
   "signin.serverUrl": "服务器 URL",

@@ -27,6 +27,7 @@
   "unlock.errClientSecret": "Введите API-Client-Secret.",
   "unlock.errPin": "Введите PIN.",
   "unlock.errPinWrong": "Неверный PIN.",
+  "unlock.errUnreachable": "Сервер недоступен. Проверьте подключение к интернету или VPN.",
   "signin.title": "Войти",
   "signin.hint": "Подключите VaultType к вашему хранилищу Bitwarden или Vaultwarden.",
   "signin.serverUrl": "URL сервера",

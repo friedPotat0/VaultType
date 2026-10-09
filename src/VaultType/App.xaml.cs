@@ -438,6 +438,7 @@ public partial class App : Application
             if (loginRes == null) { pendingError = failMsg.Length > 0 ? failMsg : Loc.T("unlock.errMaster"); continue; }
             if (loginRes.Status == LoginStatus.TwoFactorRequired) { pendingError = Loc.T("unlock.twofa"); continue; }
             if (loginRes.Status == LoginStatus.NewDeviceVerificationRequired) { pendingError = loginRes.Error; continue; }
+            if (loginRes.Status == LoginStatus.ServerUnreachable) { pendingError = Loc.T("unlock.errUnreachable"); continue; }
             if (loginRes.Status != LoginStatus.Success) { pendingError = loginRes.Error.Length > 0 ? loginRes.Error : Loc.T("unlock.errMaster"); continue; }
 
             if (email.Length > 0) s.Cfg.AccountEmail = email;
@@ -538,6 +539,11 @@ public partial class App : Application
             loading.Close();
 
             if (unlockRes == UnlockStatus.NeedsLogin) return await RunSignInFlow(s, isNew: false);
+            if (unlockRes == UnlockStatus.ServerUnreachable)
+            {
+                pendingError = Loc.T("unlock.errUnreachable");
+                continue;
+            }
             if (unlockRes == UnlockStatus.WrongPassword)
             {
                 pendingError = Loc.T(viaPin ? "unlock.errPinWrong" : "unlock.errMaster");

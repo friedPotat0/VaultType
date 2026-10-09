@@ -9,8 +9,8 @@ using VaultType.Vault.Models;
 
 namespace VaultType.Vault;
 
-public enum LoginStatus { Success, TwoFactorRequired, NewDeviceVerificationRequired, Failed }
-public enum UnlockStatus { Success, WrongPassword, NeedsLogin, Failed }
+public enum LoginStatus { Success, TwoFactorRequired, NewDeviceVerificationRequired, ServerUnreachable, Failed }
+public enum UnlockStatus { Success, WrongPassword, NeedsLogin, ServerUnreachable, Failed }
 
 public sealed class LoginResult
 {
@@ -118,6 +118,7 @@ public sealed class VaultBackend : IDisposable
             await CompleteAuthAsync(email, kdf, masterKey, token, ct).ConfigureAwait(false);
             return LoginResult.Ok();
         }
+        catch (ServerUnreachableException) { return new LoginResult { Status = LoginStatus.ServerUnreachable }; }
         catch (HttpRequestException ex) { return LoginResult.Fail(ex.Message); }
         finally
         {
@@ -143,6 +144,7 @@ public sealed class VaultBackend : IDisposable
             await CompleteAuthAsync(email, kdf, masterKey, token, ct).ConfigureAwait(false);
             return LoginResult.Ok();
         }
+        catch (ServerUnreachableException) { return new LoginResult { Status = LoginStatus.ServerUnreachable }; }
         catch (HttpRequestException ex) { return LoginResult.Fail(ex.Message); }
         finally
         {
@@ -182,6 +184,7 @@ public sealed class VaultBackend : IDisposable
         { CryptographicOperations.ZeroMemory(masterPassword); return UnlockStatus.NeedsLogin; }
 
         byte[]? masterKey = null;
+        bool keysSwapped = false, unlocked = false;
         try
         {
             var kdf = new KdfConfig { Type = (KdfType)state.Kdf, Iterations = state.KdfIterations, MemoryMiB = state.KdfMemory, Parallelism = state.KdfParallelism };
@@ -193,6 +196,7 @@ public sealed class VaultBackend : IDisposable
 
             _crypto?.Dispose();
             _crypto = crypto;
+            keysSwapped = true;
             _refreshToken = state.RefreshToken;
 
             if (!await RefreshAccessTokenAsync(ct).ConfigureAwait(false))
@@ -208,11 +212,14 @@ public sealed class VaultBackend : IDisposable
             _crypto.Unlock(masterKey, sync.Profile?.Key ?? state.ProtectedUserKey, sync.Profile?.PrivateKey ?? state.ProtectedPrivateKey, sync.Profile?.Organizations ?? new());
             DecryptAll(sync);
             RearmEphemeralPin(state);
+            unlocked = true;
             return UnlockStatus.Success;
         }
+        catch (ServerUnreachableException) { return UnlockStatus.ServerUnreachable; }
         catch (HttpRequestException) { return UnlockStatus.Failed; }
         finally
         {
+            if (keysSwapped && !unlocked) AbandonUnlock();
             if (masterKey != null) CryptographicOperations.ZeroMemory(masterKey);
             CryptographicOperations.ZeroMemory(masterPassword);
         }
@@ -343,6 +350,7 @@ public sealed class VaultBackend : IDisposable
     {
         byte[]? pinKey = null;
         byte[]? userKeyRaw = null;
+        bool keysSwapped = false, unlocked = false;
         try
         {
             var state = PersistedSession.Load(_statePath);
@@ -364,6 +372,7 @@ public sealed class VaultBackend : IDisposable
             crypto.UnlockWithUserKeyRaw((byte[])userKeyRaw.Clone(), state.ProtectedPrivateKey, Array.Empty<OrganizationModel>());
             _crypto?.Dispose();
             _crypto = crypto;
+            keysSwapped = true;
             _refreshToken = state.RefreshToken;
 
             if (!await RefreshAccessTokenAsync(ct).ConfigureAwait(false)) return UnlockStatus.NeedsLogin;
@@ -381,11 +390,14 @@ public sealed class VaultBackend : IDisposable
                 try { state.Save(_statePath); } catch { }
             }
             DecryptAll(sync);
+            unlocked = true;
             return UnlockStatus.Success;
         }
+        catch (ServerUnreachableException) { return UnlockStatus.ServerUnreachable; }
         catch (HttpRequestException) { return UnlockStatus.Failed; }
         finally
         {
+            if (keysSwapped && !unlocked) AbandonUnlock();
             if (pinKey != null) CryptographicOperations.ZeroMemory(pinKey);
             if (userKeyRaw != null) CryptographicOperations.ZeroMemory(userKeyRaw);
             CryptographicOperations.ZeroMemory(pin);
@@ -613,7 +625,18 @@ public sealed class VaultBackend : IDisposable
             }
             return true;
         }
-        catch (HttpRequestException) { return false; }
+        // Only a rejected refresh token means "sign in again"; an unreachable server is reported
+        // as such instead of throwing the user back to the sign-in screen.
+        catch (HttpRequestException ex) when (ex is not ServerUnreachableException) { return false; }
+    }
+
+    // A failed unlock must not leave the key material behind: Unlocked would report true for a
+    // vault without any items.
+    private void AbandonUnlock()
+    {
+        _crypto?.Dispose();
+        _crypto = null;
+        _accessToken = null;
     }
 
     private static KdfConfig ToKdf(PreloginResponse pre)

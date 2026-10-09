@@ -27,6 +27,7 @@
   "unlock.errClientSecret": "API-Client-Secret を入力してください。",
   "unlock.errPin": "PIN を入力してください。",
   "unlock.errPinWrong": "PIN が違います。",
+  "unlock.errUnreachable": "サーバーに接続できません。インターネットまたは VPN の接続を確認してください。",
   "signin.title": "サインイン",
   "signin.hint": "VaultType を Bitwarden または Vaultwarden のボルトに接続します。",
   "signin.serverUrl": "サーバー URL",

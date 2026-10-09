@@ -39,11 +39,15 @@ public sealed class VaultApiClient : IDisposable
 
     public async Task<PreloginResponse> PreloginAsync(string email, CancellationToken ct = default)
     {
-        using var resp = await _http.PostAsJsonAsync($"{_base}/identity/accounts/prelogin",
-            new { email }, ct).ConfigureAwait(false);
+        using var req = new HttpRequestMessage(HttpMethod.Post, $"{_base}/identity/accounts/prelogin")
+        {
+            Content = JsonContent.Create(new { email }),
+        };
+        using var resp = await SendAsync(req, ct).ConfigureAwait(false);
+        string raw = await resp.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
+        ThrowIfNotFromServer(resp);
         resp.EnsureSuccessStatusCode();
-        var pre = await resp.Content.ReadFromJsonAsync<PreloginResponse>(Json.Options, ct).ConfigureAwait(false);
-        return pre ?? throw new InvalidOperationException("Empty prelogin response.");
+        return ParseJson<PreloginResponse>(raw) ?? throw new InvalidOperationException("Empty prelogin response.");
     }
 
     // Password grant. authHash is the base64 master-password auth hash (never the raw password).
@@ -116,9 +120,10 @@ public sealed class VaultApiClient : IDisposable
         if (!string.IsNullOrEmpty(email))
             req.Headers.TryAddWithoutValidation("auth-email", Base64Url(Encoding.UTF8.GetBytes(email)));
 
-        using var resp = await _http.SendAsync(req, ct).ConfigureAwait(false);
+        using var resp = await SendAsync(req, ct).ConfigureAwait(false);
         string raw = await resp.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
-        var token = JsonSerializer.Deserialize<TokenResponse>(raw, Json.Options) ?? new TokenResponse();
+        ThrowIfNotFromServer(resp);
+        var token = ParseJson<TokenResponse>(raw) ?? new TokenResponse();
         return (token, raw, resp.IsSuccessStatusCode);
     }
 
@@ -126,11 +131,12 @@ public sealed class VaultApiClient : IDisposable
     {
         using var req = new HttpRequestMessage(HttpMethod.Get, $"{_base}/api/sync?excludeDomains=true");
         req.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", accessToken);
-        using var resp = await _http.SendAsync(req, ct).ConfigureAwait(false);
+        using var resp = await SendAsync(req, ct).ConfigureAwait(false);
         string raw = await resp.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
+        ThrowIfNotFromServer(resp);
         if (!resp.IsSuccessStatusCode)
             throw new HttpRequestException($"Sync failed ({(int)resp.StatusCode}): {Truncate(raw, 300)}");
-        var sync = JsonSerializer.Deserialize<SyncResponse>(raw, Json.Options) ?? new SyncResponse();
+        var sync = ParseJson<SyncResponse>(raw) ?? new SyncResponse();
         AttachRawCiphers(raw, sync);
         return (sync, raw);
     }
@@ -171,7 +177,7 @@ public sealed class VaultApiClient : IDisposable
     {
         using var req = new HttpRequestMessage(HttpMethod.Delete, $"{_base}/api/ciphers/{cipherId}");
         req.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", accessToken);
-        using var resp = await _http.SendAsync(req, ct).ConfigureAwait(false);
+        using var resp = await SendAsync(req, ct).ConfigureAwait(false);
         if (!resp.IsSuccessStatusCode)
         {
             string raw = await resp.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
@@ -186,11 +192,38 @@ public sealed class VaultApiClient : IDisposable
             Content = new StringContent(cipherJson, Encoding.UTF8, "application/json"),
         };
         req.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", accessToken);
-        using var resp = await _http.SendAsync(req, ct).ConfigureAwait(false);
+        using var resp = await SendAsync(req, ct).ConfigureAwait(false);
         string raw = await resp.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
         if (!resp.IsSuccessStatusCode)
             throw new HttpRequestException($"{method} cipher failed ({(int)resp.StatusCode}): {Truncate(raw, 300)}");
         return raw;
+    }
+
+    // A failed connection (DNS, refused, timeout) becomes ServerUnreachableException so callers can
+    // tell "can't reach the server" apart from "the server said no".
+    private async Task<HttpResponseMessage> SendAsync(HttpRequestMessage req, CancellationToken ct)
+    {
+        try { return await _http.SendAsync(req, ct).ConfigureAwait(false); }
+        catch (HttpRequestException ex) { throw new ServerUnreachableException(ex); }
+        catch (TaskCanceledException ex) when (!ct.IsCancellationRequested) { throw new ServerUnreachableException(ex); }
+    }
+
+    // Something answered, but not the vault: a reverse proxy's gateway error, a captive portal, or
+    // another host owning the name while the VPN in front of the vault is down. Bitwarden and
+    // Vaultwarden answer their errors in JSON, so a non-JSON error body never came from them.
+    private static void ThrowIfNotFromServer(HttpResponseMessage resp)
+    {
+        int code = (int)resp.StatusCode;
+        if (code is 502 or 503 or 504) throw new ServerUnreachableException();
+        if (!resp.IsSuccessStatusCode
+            && resp.Content.Headers.ContentType?.MediaType?.Contains("json", StringComparison.OrdinalIgnoreCase) != true)
+            throw new ServerUnreachableException();
+    }
+
+    private static T? ParseJson<T>(string raw) where T : class
+    {
+        try { return JsonSerializer.Deserialize<T>(raw, Json.Options); }
+        catch (JsonException ex) { throw new ServerUnreachableException(ex); }
     }
 
     public static string Base64Url(ReadOnlySpan<byte> data)
@@ -199,4 +232,12 @@ public sealed class VaultApiClient : IDisposable
     private static string Truncate(string s, int n) => s.Length <= n ? s : s[..n];
 
     public void Dispose() => _http.Dispose();
+}
+
+// The configured server could not be reached, or whatever answered in its place wasn't a
+// Bitwarden/Vaultwarden server. Never carries the response body.
+public sealed class ServerUnreachableException : HttpRequestException
+{
+    public ServerUnreachableException(Exception? inner = null)
+        : base("The vault server is not reachable.", inner) { }
 }

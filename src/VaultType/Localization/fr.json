@@ -27,6 +27,7 @@
   "unlock.errClientSecret": "Veuillez saisir l'API-Client-Secret.",
   "unlock.errPin": "Veuillez saisir votre PIN.",
   "unlock.errPinWrong": "PIN incorrect.",
+  "unlock.errUnreachable": "Le serveur est injoignable. Vérifiez votre connexion Internet ou VPN.",
   "signin.title": "Se connecter",
   "signin.hint": "Connectez VaultType à votre coffre Bitwarden ou Vaultwarden.",
   "signin.serverUrl": "URL du serveur",
