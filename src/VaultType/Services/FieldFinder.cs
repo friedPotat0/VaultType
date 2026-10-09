@@ -25,6 +25,16 @@ public sealed class FieldFinder
     // A backstop against pathological pages, not a working limit - real forms are far below this.
     private const int MaxCandidates = 2000;
 
+    // Chromium-based browsers only build a page's accessibility tree once a client asks for it, and
+    // drop it again after a while without one. The first scan after switching back to the browser
+    // then sees the toolbar but none of the form, so a scan without a single recognisable field is
+    // repeated a few times while the page catches up.
+    private static readonly int[] SettleDelaysMs = { 100, 200, 300 };
+
+    // UIA frameworks of browser content. Their IsOffscreen means "outside the viewport", which also
+    // covers every field further down a long form - focusing such a field scrolls it into view.
+    private static readonly HashSet<string> BrowserFrameworks = new(StringComparer.OrdinalIgnoreCase) { "Chrome", "Gecko" };
+
     private sealed class Candidate
     {
         public AutomationElement Element = null!;
@@ -56,10 +66,18 @@ public sealed class FieldFinder
         if (_cache == null)
         {
             _cache = Scan();
+            for (int i = 0; i < SettleDelaysMs.Length && !AnyRecognised(_cache); i++)
+            {
+                Thread.Sleep(SettleDelaysMs[i]);
+                _cache = Scan();
+            }
             _generation++;
         }
         return _cache;
     }
+
+    private static bool AnyRecognised(List<Candidate> list)
+        => list.Any(c => Classify(c.Label, c.Id, out _) != FieldGroup.None);
 
     // Every input field this form exposes, in document order starting at the caret, each with the
     // group recognised for it (if any) and whether the form marks it as required.
@@ -240,11 +258,17 @@ public sealed class FieldFinder
             cache.Add(AutomationElement.IsEnabledProperty);
             cache.Add(AutomationElement.IsRequiredForFormProperty);
             cache.Add(AutomationElement.RuntimeIdProperty);
+            cache.Add(AutomationElement.BoundingRectangleProperty);
+            cache.Add(AutomationElement.FrameworkIdProperty);
             cache.TreeScope = TreeScope.Element | TreeScope.Descendants;
 
             var cond = new OrCondition(
                 new PropertyCondition(AutomationElement.ControlTypeProperty, ControlType.Edit),
                 new PropertyCondition(AutomationElement.ControlTypeProperty, ControlType.ComboBox));
+
+            System.Windows.Rect window;
+            try { window = root.Current.BoundingRectangle; }
+            catch { window = System.Windows.Rect.Empty; }
 
             using (cache.Activate())
             {
@@ -254,7 +278,8 @@ public sealed class FieldFinder
                     if (result.Count >= MaxCandidates) break;
                     try
                     {
-                        if (e.Cached.IsOffscreen || !e.Cached.IsEnabled) continue;
+                        if (!e.Cached.IsEnabled) continue;
+                        if (e.Cached.IsOffscreen && !ScrolledOutOfView(e, window)) continue;
                         string rawLabel = e.Cached.Name ?? "";
                         result.Add(new Candidate
                         {
@@ -275,6 +300,18 @@ public sealed class FieldFinder
         }
         catch { /* UIA unavailable, window gone, or the app exposes nothing */ }
         return result;
+    }
+
+    // A browser field that is only offscreen because it sits further down the page. Anything else
+    // stays excluded, in particular the honeypot fields shops park far to the left or above the page
+    // to catch bots that fill in everything.
+    private static bool ScrolledOutOfView(AutomationElement e, System.Windows.Rect window)
+    {
+        if (window.IsEmpty || !BrowserFrameworks.Contains(e.Cached.FrameworkId ?? "")) return false;
+        var r = e.Cached.BoundingRectangle;
+        return !r.IsEmpty && r.Width > 0 && r.Height > 0
+               && r.Right > window.Left && r.Left < window.Right
+               && r.Top >= window.Top;
     }
 
     // Not every provider supports IsRequiredForForm; treat an unavailable value as "not required"
