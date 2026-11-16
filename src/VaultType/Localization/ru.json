@@ -254,5 +254,7 @@
   "passkey.unlockForKey": "Сайт хочет использовать passkey — разблокируйте хранилище, чтобы продолжить.",
   "passkey.confirmTitle": "Passkey",
   "passkey.confirmUse": "«{0}» хочет использовать passkey для «{1}». Разрешить?",
-  "passkey.confirmCreate": "Сохранить новый passkey для «{0}» в аккаунте «{1}»?"
+  "passkey.confirmCreate": "Сохранить новый passkey для «{0}» в аккаунте «{1}»?",
+  "ssh.approveAppUntilLock": "Разрешить только для «{0}» до блокировки хранилища",
+  "ssh.approveUntilLock": "Разрешить этот ключ всем приложениям до блокировки хранилища"
 }

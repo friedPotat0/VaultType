@@ -483,7 +483,12 @@ tool pick them up automatically, no key files on disk.
 
 - **Ed25519** and **RSA** keys are supported (rsa-sha2-256/512 signatures).
 - *Confirm each use* (on by default) pops a dialog before every signature, naming the requesting
-  key - nothing signs silently.
+  key - nothing signs silently. To stop being asked for the same key, tick one of the options in
+  that dialog: *Approve only for '<program>' until the vault is locked* (bound to that program's
+  full path, so another file with the same name doesn't qualify) or *Approve this key for all
+  applications until the vault is locked*. Locking the vault (manually, by the idle timer or by
+  signing out) revokes both. The program is whatever opens the agent pipe - for `git` and
+  terminals that is usually `ssh.exe`, not the editor or Git client on top of it.
 - **Locked vaults still advertise their keys**: a signature request for a key in a locked vault
   brings up the unlock window first, then signs. You don't have to pre-unlock before pushing.
 - *Manage keys* opens a list of every SSH key across your vaults, with its fingerprint, a

@@ -254,5 +254,7 @@
   "passkey.unlockForKey": "Un sitio web quiere usar una llave de acceso: desbloquea la bóveda para continuar.",
   "passkey.confirmTitle": "Llave de acceso",
   "passkey.confirmUse": "«{0}» quiere usar la llave de acceso de «{1}». ¿Permitir?",
-  "passkey.confirmCreate": "¿Guardar una nueva llave de acceso para «{0}» en la cuenta «{1}»?"
+  "passkey.confirmCreate": "¿Guardar una nueva llave de acceso para «{0}» en la cuenta «{1}»?",
+  "ssh.approveAppUntilLock": "Aprobar solo para «{0}» hasta bloquear la bóveda",
+  "ssh.approveUntilLock": "Aprobar esta clave para todas las aplicaciones hasta bloquear la bóveda"
 }

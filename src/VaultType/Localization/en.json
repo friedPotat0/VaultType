@@ -254,5 +254,7 @@
   "passkey.unlockForKey": "A website wants to use a passkey – unlock the vault to continue.",
   "passkey.confirmTitle": "Passkey",
   "passkey.confirmUse": "“{0}” wants to use the passkey for “{1}”. Allow?",
-  "passkey.confirmCreate": "Save a new passkey for “{0}” in the “{1}” account?"
+  "passkey.confirmCreate": "Save a new passkey for “{0}” in the “{1}” account?",
+  "ssh.approveAppUntilLock": "Approve only for '{0}' until the vault is locked",
+  "ssh.approveUntilLock": "Approve this key for all applications until the vault is locked"
 }

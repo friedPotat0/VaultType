@@ -254,5 +254,7 @@
   "passkey.unlockForKey": "某个网站想使用通行密钥——请解锁保管库以继续。",
   "passkey.confirmTitle": "通行密钥",
   "passkey.confirmUse": "“{0}”想使用“{1}”的通行密钥。允许吗？",
-  "passkey.confirmCreate": "要将“{0}”的新通行密钥保存到账户“{1}”吗？"
+  "passkey.confirmCreate": "要将“{0}”的新通行密钥保存到账户“{1}”吗？",
+  "ssh.approveAppUntilLock": "在密码库锁定前，仅允许“{0}”使用",
+  "ssh.approveUntilLock": "在密码库锁定前，允许所有应用程序使用此密钥"
 }

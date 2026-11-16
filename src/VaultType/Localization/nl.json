@@ -254,5 +254,7 @@
   "passkey.unlockForKey": "Een website wil een passkey gebruiken – ontgrendel de kluis om door te gaan.",
   "passkey.confirmTitle": "Passkey",
   "passkey.confirmUse": "“{0}” wil de passkey voor “{1}” gebruiken. Toestaan?",
-  "passkey.confirmCreate": "Een nieuwe passkey voor “{0}” opslaan in het account “{1}”?"
+  "passkey.confirmCreate": "Een nieuwe passkey voor “{0}” opslaan in het account “{1}”?",
+  "ssh.approveAppUntilLock": "Alleen voor “{0}” goedkeuren tot de kluis wordt vergrendeld",
+  "ssh.approveUntilLock": "Deze sleutel voor alle toepassingen goedkeuren tot de kluis wordt vergrendeld"
 }

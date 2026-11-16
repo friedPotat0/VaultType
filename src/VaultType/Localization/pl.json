@@ -254,5 +254,7 @@
   "passkey.unlockForKey": "Witryna chce użyć passkeya – odblokuj sejf, aby kontynuować.",
   "passkey.confirmTitle": "Passkey",
   "passkey.confirmUse": "„{0}” chce użyć passkeya dla „{1}”. Zezwolić?",
-  "passkey.confirmCreate": "Zapisać nowy passkey dla „{0}” na koncie „{1}”?"
+  "passkey.confirmCreate": "Zapisać nowy passkey dla „{0}” na koncie „{1}”?",
+  "ssh.approveAppUntilLock": "Zezwalaj tylko dla „{0}” do zablokowania sejfu",
+  "ssh.approveUntilLock": "Zezwalaj na ten klucz wszystkim aplikacjom do zablokowania sejfu"
 }

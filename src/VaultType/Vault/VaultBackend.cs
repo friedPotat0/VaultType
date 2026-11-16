@@ -51,6 +51,10 @@ public sealed class VaultBackend : IDisposable
     public List<SshKeyEntry> SshKeys { get; private set; } = new();
     public List<Fido2Entry> Passkeys { get; private set; } = new();
     public bool Unlocked => _crypto?.IsUnlocked == true || _mockUnlocked;
+
+    // Bumped by every Lock(). Anything granted "until the vault is locked" remembers the value it
+    // was granted under and is void as soon as the two differ, whichever path did the locking.
+    public int LockGeneration { get; private set; }
     public bool HasPersistedSession => PersistedSession.Load(_statePath) != null;
 
     // Dev/preview only: pretend to be unlocked with the given items so the --screenshots
@@ -502,6 +506,7 @@ public sealed class VaultBackend : IDisposable
 
     public void Lock()
     {
+        LockGeneration++;
         _crypto?.Dispose(); _crypto = null;
         Protector?.Dispose(); Protector = null;
         Items = new List<VaultItem>();

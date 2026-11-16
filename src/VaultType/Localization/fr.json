@@ -254,5 +254,7 @@
   "passkey.unlockForKey": "Un site web veut utiliser une clé d'accès – déverrouillez le coffre pour continuer.",
   "passkey.confirmTitle": "Clé d'accès",
   "passkey.confirmUse": "« {0} » veut utiliser la clé d'accès pour « {1} ». Autoriser ?",
-  "passkey.confirmCreate": "Enregistrer une nouvelle clé d'accès pour « {0} » dans le compte « {1} » ?"
+  "passkey.confirmCreate": "Enregistrer une nouvelle clé d'accès pour « {0} » dans le compte « {1} » ?",
+  "ssh.approveAppUntilLock": "Approuver uniquement pour « {0} » jusqu'au verrouillage",
+  "ssh.approveUntilLock": "Approuver cette clé pour toutes les applications jusqu'au verrouillage"
 }

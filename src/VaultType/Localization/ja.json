@@ -254,5 +254,7 @@
   "passkey.unlockForKey": "ウェブサイトがパスキーを使用しようとしています。続行するにはボルトのロックを解除してください。",
   "passkey.confirmTitle": "パスキー",
   "passkey.confirmUse": "「{0}」が「{1}」のパスキーを使用しようとしています。許可しますか？",
-  "passkey.confirmCreate": "「{0}」の新しいパスキーをアカウント「{1}」に保存しますか？"
+  "passkey.confirmCreate": "「{0}」の新しいパスキーをアカウント「{1}」に保存しますか？",
+  "ssh.approveAppUntilLock": "保管庫をロックするまで「{0}」にのみ許可する",
+  "ssh.approveUntilLock": "保管庫をロックするまで、すべてのアプリケーションにこのキーを許可する"
 }

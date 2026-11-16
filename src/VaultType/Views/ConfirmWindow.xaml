@@ -25,6 +25,7 @@
 
                 <TextBlock x:Name="Heading" Foreground="{StaticResource TextPrimary}" FontSize="18" FontWeight="SemiBold" Margin="0,16,0,4" />
                 <TextBlock x:Name="Message" Foreground="{StaticResource TextSecondary}" FontSize="13" TextWrapping="Wrap" LineHeight="19" />
+                <StackPanel x:Name="OptionsPanel" Margin="0,6,0,0" Visibility="Collapsed" />
 
                 <Grid Margin="0,20,0,0">
                     <Grid.ColumnDefinitions>

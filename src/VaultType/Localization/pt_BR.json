@@ -254,5 +254,7 @@
   "passkey.unlockForKey": "Um site quer usar uma chave de acesso – desbloqueie o cofre para continuar.",
   "passkey.confirmTitle": "Chave de acesso",
   "passkey.confirmUse": "“{0}” quer usar a chave de acesso de “{1}”. Permitir?",
-  "passkey.confirmCreate": "Salvar uma nova chave de acesso para “{0}” na conta “{1}”?"
+  "passkey.confirmCreate": "Salvar uma nova chave de acesso para “{0}” na conta “{1}”?",
+  "ssh.approveAppUntilLock": "Aprovar somente para “{0}” até bloquear o cofre",
+  "ssh.approveUntilLock": "Aprovar esta chave para todos os aplicativos até bloquear o cofre"
 }

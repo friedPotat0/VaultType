@@ -28,6 +28,11 @@ public sealed class AgentKey
 // the request was denied (vault stayed locked, or the user declined).
 public readonly record struct AgentSignMaterial(SecretBox? Pem, SecretProtector? Protector);
 
+// The process on the other end of the agent pipe. Name is for display; Path (the full image path,
+// null when it can't be determined) is what a per-application approval is bound to, so another
+// program that merely shares the file name doesn't inherit it.
+public readonly record struct AgentClient(string Name, string? Path);
+
 // A Windows OpenSSH agent: serves the vaults' SSH keys on the well-known named pipe
 // \\.\pipe\openssh-ssh-agent (ssh-agent wire protocol). Supports request-identities and
 // sign-request for ed25519 and RSA keys; everything else answers SSH_AGENT_FAILURE. Keys from a
@@ -47,14 +52,14 @@ public sealed class SshAgentService : IDisposable
     private readonly Func<IReadOnlyList<AgentKey>> _listKeys;
     // For a sign request: unlock the owning vault if needed, confirm if enabled, and return the
     // private key material (or an empty material to deny). Runs on a pipe thread; App marshals to UI.
-    private readonly Func<byte[], string, AgentSignMaterial> _authorizeSign;
+    private readonly Func<byte[], AgentClient, AgentSignMaterial> _authorizeSign;
     private CancellationTokenSource? _cts;
     private Task? _listener;
 
     public string? LastError { get; private set; }
 
     public SshAgentService(Func<IReadOnlyList<AgentKey>> listKeys,
-                           Func<byte[], string, AgentSignMaterial> authorizeSign)
+                           Func<byte[], AgentClient, AgentSignMaterial> authorizeSign)
     {
         _listKeys = listKeys;
         _authorizeSign = authorizeSign;
@@ -141,7 +146,7 @@ public sealed class SshAgentService : IDisposable
 
     private async Task ServeAsync(NamedPipeServerStream pipe, CancellationToken ct)
     {
-        string client = ClientExe(pipe);
+        AgentClient client = ClientInfo(pipe);
         try
         {
             var lenBuf = new byte[4];
@@ -177,7 +182,7 @@ public sealed class SshAgentService : IDisposable
         return true;
     }
 
-    private byte[] Handle(byte[] msg, string client)
+    private byte[] Handle(byte[] msg, AgentClient client)
     {
         try
         {
@@ -205,7 +210,7 @@ public sealed class SshAgentService : IDisposable
         return ms.ToArray();
     }
 
-    private byte[] Sign(byte[] msg, string client)
+    private byte[] Sign(byte[] msg, AgentClient client)
     {
         int o = 1;
         byte[] blob = ReadString(msg, ref o);
@@ -245,16 +250,46 @@ public sealed class SshAgentService : IDisposable
         catch { return Array.Empty<byte>(); }
     }
 
-    private static string ClientExe(NamedPipeServerStream pipe)
+    private static AgentClient ClientInfo(NamedPipeServerStream pipe)
     {
         try
         {
-            if (GetNamedPipeClientProcessId(pipe.SafePipeHandle.DangerousGetHandle(), out uint pid))
-                return System.Diagnostics.Process.GetProcessById((int)pid).ProcessName + ".exe";
+            if (!GetNamedPipeClientProcessId(pipe.SafePipeHandle.DangerousGetHandle(), out uint pid))
+                return new AgentClient("?", null);
+            string? path = ImagePath(pid);
+            string name = path != null
+                ? Path.GetFileName(path)
+                : System.Diagnostics.Process.GetProcessById((int)pid).ProcessName + ".exe";
+            return new AgentClient(name, path);
         }
-        catch { }
-        return "?";
+        catch { return new AgentClient("?", null); }
     }
+
+    // Limited-information access works for elevated and other-bitness processes too, unlike
+    // Process.MainModule.
+    private static string? ImagePath(uint pid)
+    {
+        IntPtr h = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, false, pid);
+        if (h == IntPtr.Zero) return null;
+        try
+        {
+            var buf = new StringBuilder(1024);
+            int size = buf.Capacity;
+            return QueryFullProcessImageName(h, 0, buf, ref size) ? buf.ToString(0, size) : null;
+        }
+        finally { CloseHandle(h); }
+    }
+
+    private const uint PROCESS_QUERY_LIMITED_INFORMATION = 0x1000;
+
+    [DllImport("kernel32.dll", SetLastError = true)]
+    private static extern IntPtr OpenProcess(uint access, bool inherit, uint pid);
+
+    [DllImport("kernel32.dll", SetLastError = true, CharSet = CharSet.Unicode, EntryPoint = "QueryFullProcessImageNameW")]
+    private static extern bool QueryFullProcessImageName(IntPtr process, int flags, StringBuilder exeName, ref int size);
+
+    [DllImport("kernel32.dll", SetLastError = true)]
+    private static extern bool CloseHandle(IntPtr handle);
 
     [DllImport("kernel32.dll", SetLastError = true)]
     private static extern bool GetNamedPipeClientProcessId(IntPtr pipe, out uint clientProcessId);

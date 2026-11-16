@@ -1471,7 +1471,7 @@ public partial class App : Application
 
     // Resolve the private key for a sign request (called on the agent's pipe thread). If the owning
     // vault is locked, show the unlock window first; then honour the confirm-before-use setting.
-    private AgentSignMaterial AuthorizeSshSign(byte[] publicBlob, string client)
+    private AgentSignMaterial AuthorizeSshSign(byte[] publicBlob, AgentClient client)
     {
         return Dispatcher.Invoke(() =>
         {
@@ -1501,14 +1501,49 @@ public partial class App : Application
             // The key's own re-prompt flag, on top of the global confirm-each-use setting.
             if (!RepromptSatisfied(owner, live.Reprompt, freshMasterPassword)) return default;
 
-            if (_cfg.SshConfirmEachUse)
+            if (_cfg.SshConfirmEachUse && !SshApprovedUntilLock(owner, publicBlob, client))
             {
+                // "Only this application" needs a known program path to bind to; without one the
+                // option would silently approve whatever else shows up under that name.
+                var options = new List<string>();
+                if (client.Path != null) options.Add(Loc.T("ssh.approveAppUntilLock", client.Name));
+                options.Add(Loc.T("ssh.approveUntilLock"));
                 var w = new ConfirmWindow(Loc.T("ssh.confirmTitle"),
-                    Loc.T("ssh.confirmMsg", client, keyName), _cfg.ExcludeFromScreenCapture);
+                    Loc.T("ssh.confirmMsg", client.Name, keyName), _cfg.ExcludeFromScreenCapture,
+                    options: options);
                 if (w.ShowDialog() != true) return default;
+                int choice = w.SelectedOption;
+                bool forApp = client.Path != null && choice == 0;
+                bool forAll = choice == options.Count - 1;
+                if (forApp)
+                    _sshApprovals[SshApprovalKey(owner, publicBlob, client.Path)] = owner.Backend.LockGeneration;
+                else if (forAll)
+                    _sshApprovals[SshApprovalKey(owner, publicBlob, null)] = owner.Backend.LockGeneration;
             }
             return new AgentSignMaterial(live.PrivateKey, owner.Protector);
         });
+    }
+
+    // SSH keys approved "until locked": account id + public key blob + the approved program's full
+    // path (empty for "all applications"), mapped to the owning vault's lock generation at
+    // approval time. Locking that vault (manually, idle timer, lock-all, logout) bumps the
+    // generation and voids the approval. Only touched on the UI thread (inside AuthorizeSshSign's
+    // Dispatcher.Invoke).
+    private readonly Dictionary<string, int> _sshApprovals = new();
+
+    private static string SshApprovalKey(VaultSession s, byte[] publicBlob, string? appPath)
+        => s.Cfg.Id + "|" + Convert.ToBase64String(publicBlob) + "|" + (appPath?.ToUpperInvariant() ?? "");
+
+    private bool SshApprovedUntilLock(VaultSession s, byte[] publicBlob, AgentClient client)
+        => ApprovalValid(s, SshApprovalKey(s, publicBlob, null))
+           || (client.Path != null && ApprovalValid(s, SshApprovalKey(s, publicBlob, client.Path)));
+
+    private bool ApprovalValid(VaultSession s, string key)
+    {
+        if (!_sshApprovals.TryGetValue(key, out int gen)) return false;
+        if (s.Unlocked && gen == s.Backend.LockGeneration) return true;
+        _sshApprovals.Remove(key);
+        return false;
     }
 
     // Register/unregister with Windows and host the pipe the plugin COM process forwards passkey

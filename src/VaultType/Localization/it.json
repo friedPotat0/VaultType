@@ -254,5 +254,7 @@
   "passkey.unlockForKey": "Un sito web vuole usare una passkey: sblocca la cassaforte per continuare.",
   "passkey.confirmTitle": "Passkey",
   "passkey.confirmUse": "«{0}» vuole usare la passkey di «{1}». Consentire?",
-  "passkey.confirmCreate": "Salvare una nuova passkey per «{0}» nell'account «{1}»?"
+  "passkey.confirmCreate": "Salvare una nuova passkey per «{0}» nell'account «{1}»?",
+  "ssh.approveAppUntilLock": "Approva solo per «{0}» fino al blocco della cassaforte",
+  "ssh.approveUntilLock": "Approva questa chiave per tutte le applicazioni fino al blocco della cassaforte"
 }

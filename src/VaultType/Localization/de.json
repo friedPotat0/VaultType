@@ -254,5 +254,7 @@
   "passkey.unlockForKey": "Eine Website möchte einen Passkey nutzen – entsperre den Vault, um fortzufahren.",
   "passkey.confirmTitle": "Passkey",
   "passkey.confirmUse": "„{0}“ möchte den Passkey für „{1}“ verwenden. Zulassen?",
-  "passkey.confirmCreate": "Neuen Passkey für „{0}“ im Konto „{1}“ speichern?"
+  "passkey.confirmCreate": "Neuen Passkey für „{0}“ im Konto „{1}“ speichern?",
+  "ssh.approveAppUntilLock": "Nur für '{0}' bis zum Sperren genehmigen",
+  "ssh.approveUntilLock": "Für alle Anwendungen bis zum Sperren genehmigen"
 }
