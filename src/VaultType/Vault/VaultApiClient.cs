@@ -197,7 +197,7 @@ public sealed class VaultApiClient : IDisposable
         return false;
     }
 
-    // PUT a full cipher object back (read-modify-write). cipherJson is the complete object.
+    // PUT a full cipher object back (read-modify-write).
     public async Task<string> PutCipherAsync(string accessToken, string cipherId, string cipherJson, CancellationToken ct = default)
         => await SendCipherAsync(HttpMethod.Put, $"{_base}/api/ciphers/{cipherId}", accessToken, cipherJson, ct).ConfigureAwait(false);
 

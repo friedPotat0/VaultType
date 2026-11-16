@@ -44,7 +44,6 @@ public static class CipherJson
         uris.Add(new JsonObject { ["uri"] = encryptedUri, ["match"] = null });
         login["uris"] = uris;
 
-        // Preserve passkeys verbatim if the item carries any.
         if (TryGetArray(c.Raw, "login", "fido2Credentials", out var fido)) login["fido2Credentials"] = fido;
 
         var body = new JsonObject

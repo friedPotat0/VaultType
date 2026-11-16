@@ -244,7 +244,7 @@ public partial class App : Application
         finally { _busy = false; }
     }
 
-    // Drive the initial setup on the first launch: get the CLI in place, then add the first account.
+    // First launch: walk the user through adding the first account.
     private async Task RunFirstTimeSetup()
     {
         if (_busy) return;
@@ -803,7 +803,7 @@ public partial class App : Application
     private void OpenSettings()
     {
         // The settings are modal but a tray click spins its own message loop - don't stack a
-        // second settings dialog on top of the first (easy to trigger now that a plain left
+        // second settings dialog on top of the first (easy to trigger, since a plain left
         // click opens the settings by default).
         if (_settingsOpen) return;
         _settingsOpen = true;
@@ -1187,7 +1187,6 @@ public partial class App : Application
     // mock cards and identities stay decryptable after LoadMockUnlocked adopts it.
     private static readonly SecretProtector MockProtector = new();
 
-    // A non-null, empty session key so a mock VaultSession reads as "unlocked" for screenshots.
     // Mock entries - display data only, no real secrets - covering every entry type and badge state.
     private static List<VaultItem> BuildMockItems()
     {
@@ -1336,8 +1335,7 @@ public partial class App : Application
     private void ShowTrayMenu()
     {
         if (_trayMenu != null) { try { _trayMenu.Close(); } catch { } _trayMenu = null; }
-        // Run each action on the next dispatcher turn (after the menu has fully closed) and guarded,
-        // so a tray action can never take the whole app down.
+        // Next dispatcher turn plus a catch-all, so a tray action can never take the whole app down.
         void Safe(Action a) => Dispatcher.BeginInvoke((Action)(() =>
         {
             try { a(); } catch (Exception ex) { ShowBalloon(Loc.T("msg.error"), ex.Message); }
@@ -1354,7 +1352,7 @@ public partial class App : Application
             Exit = ExitApp,
         }, _cfg.ExcludeFromScreenCapture, _update?.LatestVersion);
         // Run the picked action only after the menu window is fully closed (avoids the
-        // "Show/ShowDialog while a window is closing" crash), and guarded so it can't kill the app.
+        // "Show/ShowDialog while a window is closing" crash).
         menu.Closed += (_, __) =>
         {
             if (_trayMenu == menu) _trayMenu = null;
@@ -1379,7 +1377,6 @@ public partial class App : Application
         return Loc.T("tray.syncAgoDays", (int)span.TotalDays);
     }
 
-    // Lock a single account.
     private void LockOne(VaultSession s)
     {
         if (!s.Unlocked) return;

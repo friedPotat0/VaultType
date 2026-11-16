@@ -293,7 +293,7 @@ public partial class UnlockWindow : Window
         string s;
         if (tokens.Length >= 2) s = string.Concat(tokens[0][0], tokens[1][0]);          // alex.doe -> AD
         else if (tokens.Length == 1 && !RoleWords.Contains(tokens[0]))
-            s = tokens[0].Length >= 2 ? tokens[0][..2] : tokens[0];                      // christian -> CH
+            s = tokens[0].Length >= 2 ? tokens[0][..2] : tokens[0];                      // alex -> AL
         else s = DomainInitials(domain);                                                // info -> domain
         if (s.Length == 0) s = e.Length > 0 ? e[..1] : "?";
         return s.ToUpperInvariant();
@@ -309,11 +309,11 @@ public partial class UnlockWindow : Window
 
     internal static string ServerHost(string url)
     {
-        string r = url ?? "";
-        int i = r.IndexOf("://", StringComparison.Ordinal);
-        if (i >= 0) r = r[(i + 3)..];
-        int s = r.IndexOfAny(new[] { '/', '?', '#' });
-        if (s >= 0) r = r[..s];
-        return r;
+        string host = url ?? "";
+        int scheme = host.IndexOf("://", StringComparison.Ordinal);
+        if (scheme >= 0) host = host[(scheme + 3)..];
+        int pathStart = host.IndexOfAny(new[] { '/', '?', '#' });
+        if (pathStart >= 0) host = host[..pathStart];
+        return host;
     }
 }

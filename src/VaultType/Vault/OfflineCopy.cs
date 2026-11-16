@@ -36,8 +36,8 @@ public static class OfflineCopy
     public static void Write(string path, Document doc)
     {
         byte[] json = JsonSerializer.SerializeToUtf8Bytes(doc);
-        byte[] sealed_;
-        try { sealed_ = ProtectedData.Protect(json, Entropy, DataProtectionScope.CurrentUser); }
+        byte[] sealedJson;
+        try { sealedJson = ProtectedData.Protect(json, Entropy, DataProtectionScope.CurrentUser); }
         finally { CryptographicOperations.ZeroMemory(json); }
 
         string dir = Path.GetDirectoryName(path)!;
@@ -54,7 +54,7 @@ public static class OfflineCopy
                    FileShare.None, 4096, FileOptions.WriteThrough, security))
         {
             fs.Write(Magic);
-            fs.Write(sealed_);
+            fs.Write(sealedJson);
         }
 
         if (File.Exists(path)) File.SetAttributes(path, FileAttributes.Normal);

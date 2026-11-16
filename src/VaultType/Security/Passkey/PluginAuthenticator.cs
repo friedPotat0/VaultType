@@ -21,12 +21,13 @@ public sealed class PluginAuthenticator : IPluginAuthenticator
     public int GetAssertion(IntPtr request, IntPtr response)
         => Handle(request, response, Ceremony.GetAssertion);
 
-    // Windows calls this when the user aborts (or the ceremony times out). The ceremony code polls
-    // the cancellation token. Unlike MakeCredential/GetAssertion this does NOT verify the request
-    // signature: the only effect is aborting an in-flight ceremony, and the transaction id is a
-    // 128-bit random GUID a caller would have to already know - so the blast radius is a self-DoS,
-    // not a security bypass. (Signature verification isn't added here because the exact bytes
-    // Windows signs for a cancel request aren't documented and can't be reproduced reliably.)
+    // Windows calls this when the user aborts (or the ceremony times out). The ceremony checks for a
+    // cancelled transaction id between its steps. Unlike MakeCredential/GetAssertion this does NOT
+    // verify the request signature: the only effect is aborting an in-flight ceremony, and the
+    // transaction id is a 128-bit random GUID a caller would have to already know - so the blast
+    // radius is a self-DoS, not a security bypass. (Signature verification isn't added here because
+    // the exact bytes Windows signs for a cancel request aren't documented and can't be reproduced
+    // reliably.)
     public int CancelOperation(IntPtr request)
     {
         PasskeyComHost.Touch();

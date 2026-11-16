@@ -72,7 +72,6 @@ public partial class TrayMenuWindow : Window
     {
         Root.Children.Clear();
 
-        // account rows
         foreach (var s in _sessions) Root.Children.Add(AccountRow(s));
         if (_sessions.Count > 0) Root.Children.Add(Divider());
 
@@ -191,10 +190,10 @@ public partial class TrayMenuWindow : Window
 
     private static ControlTemplate TransparentButtonTemplate()
     {
-        var t = new ControlTemplate(typeof(Button));
-        var presenter = new FrameworkElementFactory(typeof(ContentPresenter));
-        t.VisualTree = presenter;
-        return t;
+        return new ControlTemplate(typeof(Button))
+        {
+            VisualTree = new FrameworkElementFactory(typeof(ContentPresenter)),
+        };
     }
 
     private FrameworkElement Divider() => new Border

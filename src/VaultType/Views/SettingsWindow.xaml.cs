@@ -135,7 +135,7 @@ public partial class SettingsWindow : Window
         MouseLeftButtonDown += (_, e) => { if (e.ButtonState == MouseButtonState.Pressed) { try { DragMove(); } catch { } } };
         Loaded += OnLoaded;
 
-        NavVaults.IsChecked = true;   // open on the vaults tab
+        NavVaults.IsChecked = true;
     }
 
     private void RefreshLabels()
@@ -208,14 +208,10 @@ public partial class SettingsWindow : Window
         RefreshLabels();
     }
 
-
     private void OnLoaded(object? sender, RoutedEventArgs e)
     {
         if (_excludeCapture)
-        {
-            var h = new WindowInteropHelper(this).Handle;
-            Native.SetWindowDisplayAffinity(h, Native.WDA_EXCLUDEFROMCAPTURE);
-        }
+            Native.SetWindowDisplayAffinity(new WindowInteropHelper(this).Handle, Native.WDA_EXCLUDEFROMCAPTURE);
     }
 
     // ---- vault list ----
@@ -335,14 +331,14 @@ public partial class SettingsWindow : Window
 
     private FrameworkElement Glyph(string key, double size)
     {
-        var canvas = new Canvas { Width = 24, Height = 24 };
-        canvas.Children.Add(new Path
+        var path = new Path
         {
             Data = (Geometry)FindResource(key),
             Stroke = new SolidColorBrush(Colors.White) { Opacity = 0 },   // placeholder, replaced below
-        });
+        };
+        var canvas = new Canvas { Width = 24, Height = 24 };
+        canvas.Children.Add(path);
         // stroke follows the button foreground so hover recolours the glyph
-        var path = (Path)canvas.Children[0];
         path.SetBinding(System.Windows.Shapes.Shape.StrokeProperty,
             new System.Windows.Data.Binding("Foreground") { RelativeSource = new System.Windows.Data.RelativeSource(System.Windows.Data.RelativeSourceMode.FindAncestor, typeof(Button), 1) });
         path.StrokeThickness = 1.7;

@@ -109,7 +109,6 @@ public static class Matcher
         }
     }
 
-    // entries that match the current foreground context
     public static List<VaultItem> FindMatches(IReadOnlyList<VaultItem> all, ForegroundInfo ctx, int defaultMatch)
     {
         var res = new List<VaultItem>();

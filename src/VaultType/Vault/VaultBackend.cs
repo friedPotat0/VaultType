@@ -23,7 +23,7 @@ public sealed class LoginResult
 
 // The native replacement for BitwardenCli: one instance per account, holding that account's HTTP
 // client, decrypted key material, decrypted items and OAuth tokens. All Bitwarden/Vaultwarden crypto
-// happens in-process now (see AccountCrypto / Kdf / EncString). Verified end-to-end against a real
+// happens in-process (see AccountCrypto / Kdf / EncString). Verified end-to-end against a real
 // Vaultwarden and Bitwarden.eu (see VaultLiveTest).
 public sealed partial class VaultBackend : IDisposable
 {
@@ -574,10 +574,8 @@ public sealed partial class VaultBackend : IDisposable
     // fromServer: false when the data comes from the offline copy, which must not count as a sync.
     private void DecryptAll(SyncResponse sync, bool fromServer = true)
     {
-        // Serialise the state swap so a background sync (CreatePasskeyAsync fires one off) can't
-        // overlap another DecryptAll while it replaces the Protector and item lists together. Reveal
-        // is guarded inside SecretProtector, so a swap during an in-flight reveal fails cleanly
-        // rather than corrupting.
+        // See _decryptGate. Reveal is guarded inside SecretProtector, so a swap during an in-flight
+        // reveal fails cleanly rather than corrupting.
         lock (_decryptGate)
         {
             // Every successful sync path (login, unlock, manual/background sync) ends here, so this

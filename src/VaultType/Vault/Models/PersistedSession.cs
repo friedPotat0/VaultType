@@ -82,11 +82,7 @@ public sealed class PersistedSession
     {
         if (string.IsNullOrEmpty(plaintext)) return null;
         byte[] bytes = Encoding.UTF8.GetBytes(plaintext);
-        try
-        {
-            byte[] sealed_ = ProtectedData.Protect(bytes, null, DataProtectionScope.CurrentUser);
-            return Convert.ToBase64String(sealed_);
-        }
+        try { return Convert.ToBase64String(ProtectedData.Protect(bytes, null, DataProtectionScope.CurrentUser)); }
         finally { CryptographicOperations.ZeroMemory(bytes); }
     }
 

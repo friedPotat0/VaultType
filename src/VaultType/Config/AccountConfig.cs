@@ -8,7 +8,7 @@ namespace VaultType.Config;
 public enum AccountKind { Vaultwarden, BitwardenUS, BitwardenEU }
 
 // One vault account. Non-secret only: a display name, a badge colour, the server and the last
-// email we used. Each account keeps its own bw.exe session store and icon cache under its own
+// email we used. Each account keeps its own session state and icon cache under its own
 // directory, so several accounts stay fully isolated from one another.
 public sealed class AccountConfig
 {

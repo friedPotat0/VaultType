@@ -18,10 +18,7 @@ public partial class LoadingWindow : Window
     private void OnLoaded(object? sender, RoutedEventArgs e)
     {
         if (_excludeCapture)
-        {
-            var h = new WindowInteropHelper(this).Handle;
-            Native.SetWindowDisplayAffinity(h, Native.WDA_EXCLUDEFROMCAPTURE);
-        }
+            Native.SetWindowDisplayAffinity(new WindowInteropHelper(this).Handle, Native.WDA_EXCLUDEFROMCAPTURE);
     }
 
     public void SetStatus(string text) => StatusText.Text = text;

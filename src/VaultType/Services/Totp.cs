@@ -70,10 +70,10 @@ public static class Totp
             if (steam)
             {
                 const string alphabet = "23456789BCDFGHJKMNPQRTVWXY";
-                var sb = new char[5];
+                var chars = new char[5];
                 int val = bin;
-                for (int i = 0; i < 5; i++) { sb[i] = alphabet[val % alphabet.Length]; val /= alphabet.Length; }
-                return new string(sb);
+                for (int i = 0; i < 5; i++) { chars[i] = alphabet[val % alphabet.Length]; val /= alphabet.Length; }
+                return new string(chars);
             }
 
             int mod = 1;
@@ -104,7 +104,7 @@ public static class Totp
         if (count == buf.Length) return buf;
         var result = new byte[count];
         Array.Copy(buf, result, count);
-        CryptographicOperations.ZeroMemory(buf);   // wipe the sensitive intermediate seed bytes
+        CryptographicOperations.ZeroMemory(buf);
         return result;
     }
 }

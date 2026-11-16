@@ -124,7 +124,7 @@ public sealed class AppConfig
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
         "VaultType");
 
-    // one sub-folder per account (its bw.exe session store + icon cache)
+    // one sub-folder per account (its session state + icon cache)
     [JsonIgnore]
     public static string AccountsDir { get; } = Path.Combine(DataDir, "accounts");
 

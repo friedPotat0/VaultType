@@ -104,8 +104,7 @@ secrets.
 ## Screenshots
 
 The picker is context-aware: logins for the active window or URL come first, with identities and
-cards in their own sections below, and you can search the whole vault at any time. Every window
-shares the same clean, dark interface.
+cards in their own sections below, and you can search the whole vault at any time.
 
 <div align="center">
 <table>

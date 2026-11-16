@@ -116,10 +116,7 @@ public partial class SignInWindow : Window
     private void OnLoaded(object? sender, RoutedEventArgs e)
     {
         if (_excludeCapture)
-        {
-            var h = new WindowInteropHelper(this).Handle;
-            Native.SetWindowDisplayAffinity(h, Native.WDA_EXCLUDEFROMCAPTURE);
-        }
+            Native.SetWindowDisplayAffinity(new WindowInteropHelper(this).Handle, Native.WDA_EXCLUDEFROMCAPTURE);
         Activate();
         if (IsSelfHosted && UrlBox.Text.Length == 0) UrlBox.Focus();
         else if (_method == "email" && EmailBox.Text.Length == 0) EmailBox.Focus();
@@ -175,7 +172,6 @@ public partial class SignInWindow : Window
         host.Children.Clear();
         foreach (var (key, id) in items)
         {
-            string idCopy = id;
             var pill = new RadioButton
             {
                 Style = (Style)FindResource("SegPill"),
@@ -183,7 +179,7 @@ public partial class SignInWindow : Window
                 IsChecked = id == selected,
                 GroupName = host.Name,
             };
-            pill.Checked += (_, __) => pick(idCopy);
+            pill.Checked += (_, __) => pick(id);
             host.Children.Add(pill);
         }
     }

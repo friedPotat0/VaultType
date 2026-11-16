@@ -46,7 +46,7 @@ public sealed class IdleLockService : IDisposable
         if (tick != _lastInputTick)
         {
             _lastInputTick = tick;
-            _lastActivity = DateTime.UtcNow;   // there was input
+            _lastActivity = DateTime.UtcNow;
         }
 
         if (DateTime.UtcNow - _lastActivity >= TimeSpan.FromMinutes(_timeoutMinutes))

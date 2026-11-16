@@ -72,10 +72,7 @@ public partial class PickerWindow : Window
     private void OnLoaded(object? sender, RoutedEventArgs e)
     {
         if (_excludeCapture)
-        {
-            var h = new WindowInteropHelper(this).Handle;
-            Native.SetWindowDisplayAffinity(h, Native.WDA_EXCLUDEFROMCAPTURE);
-        }
+            Native.SetWindowDisplayAffinity(new WindowInteropHelper(this).Handle, Native.WDA_EXCLUDEFROMCAPTURE);
         Rebuild();
         BuildChips();
         ShowDefault();

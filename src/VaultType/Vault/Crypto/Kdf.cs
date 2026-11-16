@@ -67,8 +67,7 @@ public static class Kdf
         {
             byte[] enc = HKDF.Expand(HashAlgorithmName.SHA256, prk, 32, "enc"u8.ToArray());
             byte[] mac = HKDF.Expand(HashAlgorithmName.SHA256, prk, 32, "mac"u8.ToArray());
-            var key = new SymmetricCryptoKey(enc, mac);
-            return key;
+            return new SymmetricCryptoKey(enc, mac);
         }
         finally { CryptographicOperations.ZeroMemory(prk); }
     }

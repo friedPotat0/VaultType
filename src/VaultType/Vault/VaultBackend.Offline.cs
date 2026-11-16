@@ -192,10 +192,7 @@ public sealed partial class VaultBackend
         try
         {
             if (File.Exists(PendingPath))
-            {
-                string sealed_ = File.ReadAllText(PendingPath);
-                list = JsonSerializer.Deserialize<List<PendingUri>>(_crypto.DecryptWithUserKey(sealed_)) ?? new();
-            }
+                list = JsonSerializer.Deserialize<List<PendingUri>>(_crypto.DecryptWithUserKey(File.ReadAllText(PendingPath))) ?? new();
         }
         catch { /* unreadable (e.g. sealed with a rotated key): start over */ }
         _pending = list;

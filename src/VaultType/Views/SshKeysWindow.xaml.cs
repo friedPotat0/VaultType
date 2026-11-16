@@ -46,10 +46,7 @@ public partial class SshKeysWindow : Window
         MouseLeftButtonDown += (_, e) => { if (e.ButtonState == MouseButtonState.Pressed) { try { DragMove(); } catch { } } };
         if (excludeCapture)
             Loaded += (_, __) =>
-            {
-                var h = new WindowInteropHelper(this).Handle;
-                Native.SetWindowDisplayAffinity(h, Native.WDA_EXCLUDEFROMCAPTURE);
-            };
+                Native.SetWindowDisplayAffinity(new WindowInteropHelper(this).Handle, Native.WDA_EXCLUDEFROMCAPTURE);
     }
 
     // Status line for the settings row and this window's header.
@@ -140,13 +137,13 @@ public partial class SshKeysWindow : Window
 
         // actions: copy + toggle
         var actions = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
-        var copyCanvas = new Canvas { Width = 24, Height = 24 };
-        copyCanvas.Children.Add(new Path
+        var copyPath = new Path
         {
             Data = (Geometry)FindResource("IconCopy"),
             StrokeThickness = 1.7, StrokeStartLineCap = PenLineCap.Round, StrokeEndLineCap = PenLineCap.Round,
-        });
-        var copyPath = (Path)copyCanvas.Children[0];
+        };
+        var copyCanvas = new Canvas { Width = 24, Height = 24 };
+        copyCanvas.Children.Add(copyPath);
         var copy = new Button { Style = (Style)FindResource("FlatIconButton"), ToolTip = Loc.T("ssh.copyPub") };
         copyPath.SetBinding(System.Windows.Shapes.Shape.StrokeProperty,
             new System.Windows.Data.Binding("Foreground") { RelativeSource = new System.Windows.Data.RelativeSource(System.Windows.Data.RelativeSourceMode.FindAncestor, typeof(Button), 1) });
@@ -193,7 +190,7 @@ public partial class SshKeysWindow : Window
     private static string MidTruncate(string s, int max)
     {
         if (s.Length <= max) return s;
-        int head = (max - 1 + 1) / 2, tail = (max - 1) / 2;
+        int head = max / 2, tail = (max - 1) / 2;
         return s[..head] + "…" + s[^tail..];
     }
 
