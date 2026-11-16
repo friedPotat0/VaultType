@@ -180,6 +180,14 @@ public sealed class VaultApiClient : IDisposable
         }
     }
 
+    // Parse a stored sync body exactly like a live response, raw ciphers included (offline copy).
+    public static SyncResponse ParseSync(string raw)
+    {
+        var sync = ParseJson<SyncResponse>(raw) ?? new SyncResponse();
+        AttachRawCiphers(raw, sync);
+        return sync;
+    }
+
     private static bool TryGetPropertyCI(JsonElement obj, string name, out JsonElement value)
     {
         value = default;

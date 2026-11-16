@@ -278,12 +278,22 @@ public partial class App : Application
 
         try
         {
-            await s.Backend.AddUriAsync(item.Id, uri);
-            var iu = new ItemUri { Value = uri };   // no explicit match -> follows the configured default
-            Matcher.FillHostDomain(iu);
-            item.Uris.Add(iu);
-            ShowBalloon(Loc.T("msg.savedTitle"), Loc.T("msg.savedMsg", item.Name, label));
+            var result = await s.Backend.AddUriAsync(item.Id, uri);
+            if (!item.Uris.Any(u => string.Equals(u.Value, uri, StringComparison.OrdinalIgnoreCase)))
+            {
+                var iu = new ItemUri { Value = uri };   // no explicit match -> follows the configured default
+                Matcher.FillHostDomain(iu);
+                item.Uris.Add(iu);
+            }
+            if (result == UriSaveResult.Queued)
+            {
+                ShowBalloon(Loc.T("msg.queuedTitle"), Loc.T("msg.queuedMsg", item.Name, label));
+                EnsureReconnectTimer();
+            }
+            else
+                ShowBalloon(Loc.T("msg.savedTitle"), Loc.T("msg.savedMsg", item.Name, label));
         }
+
         catch (Exception ex) { ShowBalloon(Loc.T("msg.error"), ex.Message); }
     }
 
@@ -560,6 +570,7 @@ public partial class App : Application
             _cfg.Save();
             _idle.Arm(_cfg.IdleTimeoutMinutes);
             UpdateTray();
+            ReportUnlockState(s);
             return true;
         }
     }
@@ -606,20 +617,129 @@ public partial class App : Application
         {
             viaMasterPassword = !viaPin;
             s.Cfg.LastUnlockedUtc = DateTimeOffset.UtcNow;
-            _cfg.Save(); _idle.Arm(_cfg.IdleTimeoutMinutes); UpdateTray(); return true;
+            _cfg.Save(); _idle.Arm(_cfg.IdleTimeoutMinutes); UpdateTray(); ReportUnlockState(s); return true;
         }
         return false;
     }
 
-    // Network changes (VPN/tailnet switch, Wi-Fi) drop the stale connection pools, so the next
-    // request opens fresh connections on the new network.
+    // After an unlock: say so when the vault was opened from the offline copy (read-only), and
+    // surface a failure to write the offline copy instead of letting it go stale unnoticed.
+    private void ReportUnlockState(VaultSession s)
+    {
+        if (s.Backend.IsOffline)
+        {
+            string when = s.Backend.OfflineCopySavedUtc?.ToLocalTime().ToString("g") ?? "?";
+            ShowBalloon(Loc.T("msg.offlineTitle"), Loc.T("msg.offlineMsg", when));
+            EnsureReconnectTimer();
+        }
+        ReportOfflineCopyError(s);
+        if (s.Backend.PendingCount > 0) EnsureReconnectTimer();
+    }
+
+    private readonly Dictionary<string, string> _shownCopyErrors = new();
+
+    private void ReportOfflineCopyError(VaultSession s)
+    {
+        string? err = s.Backend.OfflineCopyError;
+        if (err == null) { _shownCopyErrors.Remove(s.Cfg.Id); return; }
+        if (_shownCopyErrors.TryGetValue(s.Cfg.Id, out var shown) && shown == err) return;
+        _shownCopyErrors[s.Cfg.Id] = err;
+        ShowBalloon(Loc.T("msg.offlineCopyErrTitle"), Loc.T("msg.offlineCopyErr", err));
+    }
+
+    // ---- reconnecting: offline copy -> server, queued website/app bindings ----
+
+    private System.Windows.Threading.DispatcherTimer? _reconnectTimer;
+    private System.Windows.Threading.DispatcherTimer? _netDebounce;
+    private bool _reconnecting;
+
+    // Network changes (VPN/tailnet switch, Wi-Fi) drop the stale connection pools and trigger an
+    // immediate attempt; the timer retries every minute while there is something to catch up on.
     private void SetupNetworkWatch()
     {
         System.Net.NetworkInformation.NetworkChange.NetworkAddressChanged += (_, _) =>
             Dispatcher.BeginInvoke(() =>
             {
                 foreach (var s in _sessions) s.Backend.ResetConnections();
+                // Interfaces flap several times during a switch; act once it has settled.
+                _netDebounce ??= new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromSeconds(4) };
+                _netDebounce.Tick -= NetDebounceTick;
+                _netDebounce.Tick += NetDebounceTick;
+                _netDebounce.Stop();
+                _netDebounce.Start();
             });
+    }
+
+    private void NetDebounceTick(object? sender, EventArgs e)
+    {
+        _netDebounce?.Stop();
+        _ = ReconnectAsync();
+    }
+
+    private bool NeedsReconnect => _sessions.Any(s => s.Unlocked && (s.Backend.IsOffline || s.Backend.PendingCount > 0));
+
+    private void EnsureReconnectTimer()
+    {
+        if (_reconnectTimer == null)
+        {
+            _reconnectTimer = new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromMinutes(1) };
+            _reconnectTimer.Tick += (_, _) => _ = ReconnectAsync();
+        }
+        if (!_reconnectTimer.IsEnabled) _reconnectTimer.Start();
+    }
+
+    private async Task ReconnectAsync()
+    {
+        if (_reconnecting) return;
+        if (!NeedsReconnect) { _reconnectTimer?.Stop(); return; }
+        _reconnecting = true;
+        try
+        {
+            int sent = 0;
+            bool cameOnline = false;
+            foreach (var s in _sessions.Where(x => x.Unlocked).ToList())
+            {
+                try
+                {
+                    if (s.Backend.IsOffline)
+                    {
+                        int before = s.Backend.PendingCount;
+                        if (await Task.Run(() => s.Backend.TryGoOnlineAsync()))
+                        {
+                            cameOnline = true;
+                            sent += Math.Max(0, before - s.Backend.PendingCount);
+                            ReportOfflineCopyError(s);
+                        }
+                    }
+                    else if (s.Backend.PendingCount > 0)
+                    {
+                        sent += await Task.Run(() => s.Backend.FlushPendingAsync());
+                    }
+                }
+                catch { /* still unreachable or session expired: the next tick tries again */ }
+            }
+            if (sent > 0 || cameOnline)
+            {
+                if (cameOnline) _cfg.Save();   // LastSyncUtc moved
+                UpdateTray();
+                if (cameOnline) ShowBalloon(Loc.T("msg.onlineTitle"), sent > 0 ? Loc.T("msg.onlineSent", sent) : Loc.T("msg.onlineMsg"));
+                else ShowBalloon(Loc.T("msg.pendingSentTitle"), Loc.T("msg.onlineSent", sent));
+            }
+            if (!NeedsReconnect) _reconnectTimer?.Stop();
+        }
+        finally { _reconnecting = false; }
+    }
+
+    // Settings saved: remove copies that are no longer wanted (feature off, or moved to another
+    // folder) and write fresh ones for unlocked vaults right away.
+    private void ApplyOfflineCopySettings(bool wasEnabled, string oldFolder)
+    {
+        bool folderChanged = !string.Equals(oldFolder, _cfg.OfflineCopyFolder, StringComparison.OrdinalIgnoreCase);
+        if (wasEnabled && (!_cfg.OfflineCopyEnabled || folderChanged))
+            foreach (var s in _sessions)
+                OfflineCopy.Delete(OfflineCopy.PathFor(oldFolder, s.Cfg.Id, s.Cfg.DataDir));
+        if (_cfg.OfflineCopyEnabled && (!wasEnabled || folderChanged) && _sessions.Any(x => x.Unlocked && !x.Backend.IsOffline))
+            SyncNow();
     }
 
     // Ask for the master password when an entry carries the re-prompt flag. Skipped when the vault
@@ -665,7 +785,9 @@ public partial class App : Application
             foreach (var s in _sessions.Where(x => x.Unlocked).ToList())
             {
                 try { await Task.Run(() => s.Backend.SyncAsync()); }
+                catch (ServerUnreachableException) { firstErr ??= Loc.T("unlock.errUnreachable"); }
                 catch (Exception ex) { firstErr ??= ex.Message; }
+                ReportOfflineCopyError(s);
             }
             _cfg.Save();   // persist the accounts' fresh LastSyncUtc stamps
             UpdateTray();
@@ -693,6 +815,8 @@ public partial class App : Application
         _hotkey.Unregister();                 // don't let the global hotkey fire while it is being edited
         string prevLang = _cfg.Language;
         string prevHotkey = _cfg.Hotkey;
+        bool prevOfflineCopy = _cfg.OfflineCopyEnabled;
+        string prevOfflineFolder = _cfg.OfflineCopyFolder;
         bool langChanged = false;
         bool addAccount = false;
         bool hotkeyFailed;
@@ -732,6 +856,7 @@ public partial class App : Application
             if (AnyUnlocked) _idle.Arm(_cfg.IdleTimeoutMinutes);
             ApplyPasskeyProvider();
             ApplyBackgroundUpdateCheck();
+            ApplyOfflineCopySettings(prevOfflineCopy, prevOfflineFolder);
             UpdateTray();
             langChanged = !string.Equals(prevLang, _cfg.Language, StringComparison.OrdinalIgnoreCase);
         }
@@ -1269,6 +1394,7 @@ public partial class App : Application
         if (_tray != null)
         {
             string text = $"VaultType — {(AnyUnlocked ? Loc.T("tray.unlocked", TotalItems) : Loc.T("tray.locked"))}";
+            if (_sessions.Any(x => x.Unlocked && x.Backend.IsOffline)) text += $" · {Loc.T("tray.offline")}";
             if (_update != null) text += $" · {Loc.T("tray.updateTip", _update.LatestVersion)}";
             // NotifyIcon.Text throws past 127 characters; cut at a whole character, never mid-pair.
             if (text.Length > 127) text = text[..(char.IsHighSurrogate(text[126]) ? 126 : 127)];

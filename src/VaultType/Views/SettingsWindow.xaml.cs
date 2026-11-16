@@ -78,6 +78,8 @@ public partial class SettingsWindow : Window
         AutostartTgl.IsChecked = cfg.Autostart;
         SshAgentTgl.IsChecked = cfg.SshAgentEnabled;
         SshConfirmTgl.IsChecked = cfg.SshConfirmEachUse;
+        OfflineCopyTgl.IsChecked = cfg.OfflineCopyEnabled;
+        _offlineFolder = cfg.OfflineCopyFolder;
         PkProviderTgl.IsChecked = cfg.PasskeyProviderEnabled;
         PkHelloTgl.IsChecked = cfg.PasskeyRequireHello;
 
@@ -143,6 +145,10 @@ public partial class SettingsWindow : Window
         LangLabel.Text = LangName(_lang);
         SshAgentRows.Visibility = SshAgentTgl.IsChecked == true ? Visibility.Visible : Visibility.Collapsed;
         PkHelloRow.Visibility = PkProviderTgl.IsChecked == true ? Visibility.Visible : Visibility.Collapsed;
+        OfflineFolderRow.Visibility = OfflineCopyTgl.IsChecked == true ? Visibility.Visible : Visibility.Collapsed;
+        OfflineFolderText.Text = _offlineFolder.Length == 0 ? Loc.T("settings.offlineFolderDefaultHint") : _offlineFolder;
+        OfflineFolderText.ToolTip = _offlineFolder.Length == 0 ? null : _offlineFolder;
+        OfflineFolderResetBtn.Visibility = _offlineFolder.Length == 0 ? Visibility.Collapsed : Visibility.Visible;
         SshKeyStatus.Text = SshStatusProvider?.Invoke() ?? Loc.T("ssh.none");
     }
 
@@ -182,6 +188,26 @@ public partial class SettingsWindow : Window
 
     private void SshAgent_Toggled(object sender, RoutedEventArgs e) { if (SshAgentRows != null) RefreshLabels(); }
     private void PkProvider_Toggled(object sender, RoutedEventArgs e) { if (PkHelloRow != null) RefreshLabels(); }
+    private void OfflineCopy_Toggled(object sender, RoutedEventArgs e) { if (OfflineFolderRow != null) RefreshLabels(); }
+
+    // Folder for the offline copies; empty = each account's data folder. Applied on Save.
+    private string _offlineFolder = "";
+
+    private void OfflineFolderPick_Click(object sender, RoutedEventArgs e)
+    {
+        var dlg = new Microsoft.Win32.OpenFolderDialog { Title = Loc.T("settings.offlineFolder") };
+        if (_offlineFolder.Length > 0 && System.IO.Directory.Exists(_offlineFolder)) dlg.InitialDirectory = _offlineFolder;
+        if (dlg.ShowDialog(this) != true) return;
+        _offlineFolder = dlg.FolderName;
+        RefreshLabels();
+    }
+
+    private void OfflineFolderReset_Click(object sender, RoutedEventArgs e)
+    {
+        _offlineFolder = "";
+        RefreshLabels();
+    }
+
 
     private void OnLoaded(object? sender, RoutedEventArgs e)
     {
@@ -521,6 +547,8 @@ public partial class SettingsWindow : Window
 
         _cfg.SshAgentEnabled = SshAgentTgl.IsChecked == true;
         _cfg.SshConfirmEachUse = SshConfirmTgl.IsChecked == true;
+        _cfg.OfflineCopyEnabled = OfflineCopyTgl.IsChecked == true;
+        _cfg.OfflineCopyFolder = _offlineFolder;
         // A disabled toggle means "can't work here", not "off" - keep the stored value so the
         // setting survives a round trip through an unpackaged build (the config file is shared).
         if (PkProviderTgl.IsEnabled)

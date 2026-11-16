@@ -53,6 +53,7 @@ secrets.
 - [Auto-type sequences](#auto-type-sequences)
 - [SSH agent](#ssh-agent)
 - [Passkeys](#passkeys-experimental)
+- [Offline access](#offline-access)
 - [Languages](#languages)
 - [Building from source](#building-from-source)
 - [Contributing](#contributing)
@@ -166,7 +167,9 @@ password or vault data.
 - **Nothing decrypted touches the disk.** Per account, only the key envelopes needed to unlock
   (master-key-wrapped user key, DPAPI-sealed refresh token, optional PIN envelope) plus non-secret
   metadata are stored under `%LOCALAPPDATA%\VaultType` - a folder whose ACL is restricted to your
-  user. Vault items themselves are re-fetched from the server on every unlock.
+  user. Vault items themselves are re-fetched from the server on every unlock. The optional
+  [offline copy](#offline-access) is the only place vault items are stored, and it stays encrypted
+  end to end: sealed with your user key and additionally with DPAPI.
 - Windows are hidden from screen capture (`WDA_EXCLUDEFROMCAPTURE`), legacy DLL/hook injection is
   blocked (`ProcessExtensionPointDisablePolicy`), and the app refuses to run under a debugger.
 - **Auto-type aborts instantly** if focus leaves the target window - no stray characters end up
@@ -275,6 +278,8 @@ Everything below is adjustable in the Settings window; the file itself lives in
 | `AntiDebugger` | `true` | Exit if a debugger attaches |
 | `SshAgentEnabled` | `false` | Serve vault SSH keys on the OpenSSH agent pipe |
 | `SshConfirmEachUse` | `true` | Ask before every SSH signature |
+| `OfflineCopyEnabled` | `false` | Keep an encrypted, read-only [offline copy](#offline-access) of each vault on this PC |
+| `OfflineCopyFolder` | `""` | Folder for the offline copies (empty = each account's data folder) |
 | `SshDisabledKeys` | `[]` | SSH keys switched off in the agent (managed in the key list) |
 | `PasskeyProviderEnabled` | `false` | Register as a Windows 11 passkey provider (experimental) |
 | `PasskeyRequireHello` | `true` | Gate passkey use behind Windows Hello |
@@ -515,6 +520,32 @@ agent.
 > *Settings -> Integration* is greyed out with a note saying exactly that. Alternatively you can
 > build the MSIX package yourself (`packaging/msix/build-msix.ps1`). Windows 11 24H2 or later is
 > required either way.
+
+## Offline access
+
+**Remembered websites and apps** are never lost to a missing connection: if the server can't be
+reached (VPN down, wrong Tailscale tailnet, no internet) when you confirm *Remember this entry?*,
+VaultType applies the binding on this PC straight away and queues it, sealed with your user key.
+As soon as the server is reachable again - VaultType retries on every network change and once a
+minute - the queued bindings are written to the vault, each onto the entry as the server has it
+at that moment.
+
+**Offline copy** (*Settings -> Security -> Offline copy*, off by default): VaultType keeps an
+encrypted copy of each vault on this PC, so you can still open it when the server is down - like
+a KeePass file, but read-only:
+
+- **Encrypted twice.** The copy holds the vault exactly as the server sends it (every item still
+  end-to-end encrypted), sealed once more with your account's user key - which only opens with
+  your master password or PIN, neither of which is stored in the file. The whole file is then
+  sealed with Windows DPAPI, so a copied file is useless on another machine or under another
+  Windows account. Its access rights are limited to your user and it carries the read-only flag.
+- **The online vault stays the source of truth.** The copy is replaced after every successful
+  sync and is never written back. Opened from the copy, the vault is read-only - auto-type,
+  copying and the SSH agent work, while editing is blocked until the server is reachable again;
+  VaultType then switches back on its own and syncs.
+- When the server can't be reached at unlock and a copy exists, VaultType opens it and says so,
+  including the date of the copy. Signing out of an account or switching the feature off deletes
+  its copies.
 
 ## Languages
 

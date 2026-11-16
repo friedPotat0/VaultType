@@ -91,6 +91,10 @@ public sealed class AccountCrypto : IDisposable
     public string EncryptWithUserKey(string plaintext)
         => EncString.EncryptString(plaintext, _userKey ?? throw new InvalidOperationException("Account is locked."));
 
+    // Counterpart of EncryptWithUserKey, for VaultType's own user-key-sealed files.
+    public string DecryptWithUserKey(string encString)
+        => EncString.Parse(encString).DecryptToString(_userKey ?? throw new InvalidOperationException("Account is locked."));
+
     // Encrypt a value with a cipher's effective content key (per-item key if present, else wrapping key).
     public string EncryptForCipher(CipherModel c, string plaintext)
     {

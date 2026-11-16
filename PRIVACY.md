@@ -20,11 +20,20 @@ access rights are restricted to your Windows user account:
 - **Per-account session data** - the cryptographic key envelopes needed to unlock your vault
   (protected by your master password or PIN) and a refresh token sealed with Windows DPAPI.
   Your decrypted vault contents are **never written to disk**; they are re-fetched from your
-  vault server on every unlock and held only in protected memory.
+  vault server on every unlock and held only in protected memory (only the optional, encrypted
+  offline copy below keeps them on disk).
 - **Favicon cache** - icons downloaded from your own vault server, if the icon feature is
   enabled.
 - **Public metadata caches** - non-secret SSH public keys and passkey metadata, so those
   features can list entries while the vault is locked.
+- **Queued website/app bindings** - if you ask VaultType to remember a website or app for an
+  entry while your vault server can't be reached, the binding is kept, encrypted with your vault
+  key, until it has been sent to the server.
+- **Offline copy (optional, off by default)** - if you switch on *Offline copy*, an encrypted copy
+  of your vault is stored on your device, in the account folder or a folder you choose. It is
+  encrypted with your vault key (which only your master password or PIN can unlock) and
+  additionally with Windows DPAPI, and is never sent anywhere. Switching the feature off or
+  signing out deletes it.
 
 VaultType writes no log files. Uninstalling VaultType and deleting this folder removes all of it.
 

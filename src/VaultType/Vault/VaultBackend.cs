@@ -25,7 +25,7 @@ public sealed class LoginResult
 // client, decrypted key material, decrypted items and OAuth tokens. All Bitwarden/Vaultwarden crypto
 // happens in-process now (see AccountCrypto / Kdf / EncString). Verified end-to-end against a real
 // Vaultwarden and Bitwarden.eu (see VaultLiveTest).
-public sealed class VaultBackend : IDisposable
+public sealed partial class VaultBackend : IDisposable
 {
     private readonly AppConfig _app;
     private readonly AccountConfig _acc;
@@ -171,7 +171,7 @@ public sealed class VaultBackend : IDisposable
         _refreshToken = token.RefreshToken;
 
         // First sync gives us the authoritative profile keys.
-        var (sync, _) = await Api().SyncAsync(_accessToken!, ct).ConfigureAwait(false);
+        var (sync, rawSync) = await Api().SyncAsync(_accessToken!, ct).ConfigureAwait(false);
         string userKeyEnc = sync.Profile?.Key ?? token.Key ?? throw new InvalidOperationException("No protected user key returned.");
         string? privKeyEnc = sync.Profile?.PrivateKey ?? token.PrivateKey;
 
@@ -180,7 +180,9 @@ public sealed class VaultBackend : IDisposable
         _crypto.Unlock(masterKey, userKeyEnc, privKeyEnc, sync.Profile?.Organizations ?? new());
 
         SaveState(email, kdf, userKeyEnc, privKeyEnc);
+        IsOffline = false;
         DecryptAll(sync);
+        SaveOfflineCopy(rawSync);
         var st = PersistedSession.Load(_statePath);
         if (st != null) RearmEphemeralPin(st);
     }
@@ -208,23 +210,32 @@ public sealed class VaultBackend : IDisposable
             keysSwapped = true;
             _refreshToken = state.RefreshToken;
 
-            if (!await RefreshAccessTokenAsync(ct).ConfigureAwait(false))
-            {
-                // Offline or refresh expired: keep the vault unlocked from cache is not possible
-                // without ciphers; require a fresh login.
-                return UnlockStatus.NeedsLogin;
-            }
-            var (sync, _) = await Api().SyncAsync(_accessToken!, ct).ConfigureAwait(false);
+            // A rejected refresh token needs a fresh sign-in.
+            if (!await RefreshAccessTokenAsync(ct).ConfigureAwait(false)) return UnlockStatus.NeedsLogin;
+            var (sync, rawSync) = await Api().SyncAsync(_accessToken!, ct).ConfigureAwait(false);
             // Re-unwrap org keys now that we have the profile (unlock above used no orgs).
             _crypto.Dispose();
             _crypto = new AccountCrypto();
             _crypto.Unlock(masterKey, sync.Profile?.Key ?? state.ProtectedUserKey, sync.Profile?.PrivateKey ?? state.ProtectedPrivateKey, sync.Profile?.Organizations ?? new());
+            IsOffline = false;
             DecryptAll(sync);
+            SaveOfflineCopy(rawSync);
             RearmEphemeralPin(state);
             unlocked = true;
             return UnlockStatus.Success;
         }
-        catch (ServerUnreachableException) { ResetConnections(); return UnlockStatus.ServerUnreachable; }
+        catch (ServerUnreachableException)
+        {
+            ResetConnections();
+            // The password was right (the user key is unwrapped): open the offline copy if there is one.
+            if (keysSwapped && TryOpenOfflineCopy(state.ProtectedPrivateKey))
+            {
+                RearmEphemeralPin(state);
+                unlocked = true;
+                return UnlockStatus.Success;
+            }
+            return UnlockStatus.ServerUnreachable;
+        }
         catch (HttpRequestException) { return UnlockStatus.Failed; }
         finally
         {
@@ -360,9 +371,11 @@ public sealed class VaultBackend : IDisposable
         byte[]? pinKey = null;
         byte[]? userKeyRaw = null;
         bool keysSwapped = false, unlocked = false;
+        PersistedSession? pinState = null;
         try
         {
             var state = PersistedSession.Load(_statePath);
+            pinState = state;
             if (state?.RefreshToken == null) return UnlockStatus.NeedsLogin;
             string? envelope = state.PinProtectedUserKey;
             if (envelope == null)
@@ -385,7 +398,7 @@ public sealed class VaultBackend : IDisposable
             _refreshToken = state.RefreshToken;
 
             if (!await RefreshAccessTokenAsync(ct).ConfigureAwait(false)) return UnlockStatus.NeedsLogin;
-            var (sync, _) = await Api().SyncAsync(_accessToken!, ct).ConfigureAwait(false);
+            var (sync, rawSync) = await Api().SyncAsync(_accessToken!, ct).ConfigureAwait(false);
 
             // Re-unlock with the profile's org keys now that we have them.
             _crypto.Dispose();
@@ -398,11 +411,27 @@ public sealed class VaultBackend : IDisposable
                 state.PinFailedAttempts = 0;
                 try { state.Save(_statePath); } catch { }
             }
+            IsOffline = false;
             DecryptAll(sync);
+            SaveOfflineCopy(rawSync);
             unlocked = true;
             return UnlockStatus.Success;
         }
-        catch (ServerUnreachableException) { ResetConnections(); return UnlockStatus.ServerUnreachable; }
+        catch (ServerUnreachableException)
+        {
+            ResetConnections();
+            if (keysSwapped && TryOpenOfflineCopy(pinState?.ProtectedPrivateKey))
+            {
+                if (pinState is { PinFailedAttempts: not 0 })
+                {
+                    pinState.PinFailedAttempts = 0;
+                    try { pinState.Save(_statePath); } catch { }
+                }
+                unlocked = true;
+                return UnlockStatus.Success;
+            }
+            return UnlockStatus.ServerUnreachable;
+        }
         catch (HttpRequestException) { return UnlockStatus.Failed; }
         finally
         {
@@ -413,25 +442,29 @@ public sealed class VaultBackend : IDisposable
         }
     }
 
+    // Pull the vault from the server. While open from the offline copy this is the attempt to go
+    // back online (throws ServerUnreachableException if the server still can't be reached).
+    // Afterwards any queued website/app bindings are sent.
     public async Task SyncAsync(CancellationToken ct = default)
     {
         if (!Unlocked) return;
-        await EnsureAccessTokenAsync(ct).ConfigureAwait(false);
-        var (sync, _) = await Api().SyncAsync(_accessToken!, ct).ConfigureAwait(false);
-        DecryptAll(sync);
+        if (IsOffline)
+        {
+            if (!await TryGoOnlineAsync(ct).ConfigureAwait(false))
+                throw new ServerUnreachableException();
+            return;
+        }
+        await SyncCoreAsync(ct).ConfigureAwait(false);
+        await FlushPendingAsync(ct).ConfigureAwait(false);
     }
 
-    // Add a URI to an item (read-modify-write), then re-sync so the new URI is reflected.
-    public async Task<bool> AddUriAsync(string itemId, string uri, CancellationToken ct = default)
+    private async Task SyncCoreAsync(CancellationToken ct)
     {
-        if (!Unlocked) return false;
-        var cipher = _ciphers.FirstOrDefault(c => c.Id == itemId);
-        if (cipher == null || _crypto == null) return false;
+        if (!Unlocked || IsOffline) return;
         await EnsureAccessTokenAsync(ct).ConfigureAwait(false);
-        string body = CipherJson.BuildAddUriBody(cipher, _crypto.EncryptForCipher(cipher, uri));
-        await Api().PutCipherAsync(_accessToken!, itemId, body, ct).ConfigureAwait(false);
-        await SyncAsync(ct).ConfigureAwait(false);
-        return true;
+        var (sync, rawSync) = await Api().SyncAsync(_accessToken!, ct).ConfigureAwait(false);
+        DecryptAll(sync);
+        SaveOfflineCopy(rawSync);
     }
 
     // Create a passkey for a relying party: generate a fresh P-256 key, store it as a new login
@@ -519,6 +552,8 @@ public sealed class VaultBackend : IDisposable
         Passkeys = new List<Fido2Entry>();
         _ciphers = new List<CipherModel>();
         _accessToken = null;
+        IsOffline = false;
+        lock (_pendingGate) _pending = null;   // the queue file stays; it's sealed with the user key
         // Keep the persisted session (refresh token + protected keys) so the vault can be unlocked
         // again without a full sign-in.
     }
@@ -530,11 +565,14 @@ public sealed class VaultBackend : IDisposable
         PersistedSession.Delete(_statePath);
         SshKeyMeta.Delete(_acc.SshMetaPath);
         PasskeyMeta.Delete(_acc.PasskeyMetaPath);
+        DeleteOfflineCopy();
+        try { if (File.Exists(PendingPath)) File.Delete(PendingPath); } catch { }
     }
 
     // ---- internals ----
 
-    private void DecryptAll(SyncResponse sync)
+    // fromServer: false when the data comes from the offline copy, which must not count as a sync.
+    private void DecryptAll(SyncResponse sync, bool fromServer = true)
     {
         // Serialise the state swap so a background sync (CreatePasskeyAsync fires one off) can't
         // overlap another DecryptAll while it replaces the Protector and item lists together. Reveal
@@ -544,7 +582,7 @@ public sealed class VaultBackend : IDisposable
         {
             // Every successful sync path (login, unlock, manual/background sync) ends here, so this
             // is the one spot that stamps the account's last-sync time. Persisting is the caller's job.
-            _acc.LastSyncUtc = DateTimeOffset.UtcNow;
+            if (fromServer) _acc.LastSyncUtc = DateTimeOffset.UtcNow;
             _ciphers = sync.Ciphers;
             Protector?.Dispose();
             Protector = new SecretProtector();
@@ -586,6 +624,7 @@ public sealed class VaultBackend : IDisposable
                     // skip an item we can't decrypt rather than fail the whole vault
                 }
             }
+            if (!_mockUnlocked) OverlayPending(items, sync.Ciphers);
             Items = items;
             SshKeys = sshKeys;
             Passkeys = passkeys;
@@ -613,6 +652,8 @@ public sealed class VaultBackend : IDisposable
 
     private async Task EnsureAccessTokenAsync(CancellationToken ct)
     {
+        // Open from the offline copy: nothing may be written to (or fetched from) the server.
+        if (IsOffline) throw new VaultOfflineException();
         if (_accessToken != null && DateTimeOffset.UtcNow < _accessExpiry) return;
         if (!await RefreshAccessTokenAsync(ct).ConfigureAwait(false))
             throw new InvalidOperationException("Session expired - please sign in again.");

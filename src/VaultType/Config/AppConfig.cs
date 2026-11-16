@@ -92,6 +92,16 @@ public sealed class AppConfig
     public string? KnownUpdateVersion { get; set; }
     public string? KnownUpdateUrl { get; set; }
 
+    // ---- offline copy ----
+
+    // Keep an encrypted, read-only copy of every account's vault on this PC, so the vault can be
+    // opened (read-only) while the server is unreachable. The online vault stays the only source
+    // of truth: the copy is replaced after every successful sync and never written back.
+    public bool OfflineCopyEnabled { get; set; }
+
+    // Folder for the copies; empty = each account's own data folder under %AppData%.
+    public string OfflineCopyFolder { get; set; } = "";
+
     // ---- integration (design "Integration" section) ----
 
     // serve vault SSH keys over the Windows OpenSSH agent named pipe

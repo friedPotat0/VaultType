@@ -320,6 +320,32 @@
                                     </StackPanel>
                                     <ToggleButton Grid.Column="2" x:Name="AntiDbgTgl" Style="{StaticResource ToggleSwitch}" VerticalAlignment="Center" />
                                 </Grid>
+                                <Grid Margin="0,0,0,14">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" /><ColumnDefinition Width="16" /><ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel VerticalAlignment="Center">
+                                        <TextBlock Style="{StaticResource RowTitle}" Text="{local:Tr settings.offlineCopy}" />
+                                        <TextBlock Style="{StaticResource RowSub}" Text="{local:Tr settings.offlineCopyHint}" TextWrapping="Wrap" />
+                                    </StackPanel>
+                                    <ToggleButton Grid.Column="2" x:Name="OfflineCopyTgl" Style="{StaticResource ToggleSwitch}" VerticalAlignment="Center"
+                                                  Checked="OfflineCopy_Toggled" Unchecked="OfflineCopy_Toggled" />
+                                </Grid>
+                                <Grid x:Name="OfflineFolderRow" Margin="0,0,0,14">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" /><ColumnDefinition Width="16" /><ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel VerticalAlignment="Center">
+                                        <TextBlock Style="{StaticResource RowTitle}" Text="{local:Tr settings.offlineFolder}" />
+                                        <TextBlock x:Name="OfflineFolderText" Style="{StaticResource RowSub}" TextTrimming="CharacterEllipsis" />
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+                                        <Button x:Name="OfflineFolderResetBtn" Style="{StaticResource OutlineButton}" Margin="0,0,8,0"
+                                                Content="{local:Tr settings.offlineFolderDefault}" Click="OfflineFolderReset_Click" />
+                                        <Button Style="{StaticResource OutlineButton}"
+                                                Content="{local:Tr settings.offlineFolderPick}" Click="OfflineFolderPick_Click" />
+                                    </StackPanel>
+                                </Grid>
                             </StackPanel>
 
                             <!-- ===== Integration ===== -->
