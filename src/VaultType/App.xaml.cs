@@ -166,6 +166,7 @@ public partial class App : Application
         ApplySshAgent();
         ApplyPasskeyProvider();
         ApplyBackgroundUpdateCheck();
+        SetupNetworkWatch();
         if (hotkeyOk)
         {
             // greet only on the very first start after installation, not on every launch
@@ -608,6 +609,17 @@ public partial class App : Application
             _cfg.Save(); _idle.Arm(_cfg.IdleTimeoutMinutes); UpdateTray(); return true;
         }
         return false;
+    }
+
+    // Network changes (VPN/tailnet switch, Wi-Fi) drop the stale connection pools, so the next
+    // request opens fresh connections on the new network.
+    private void SetupNetworkWatch()
+    {
+        System.Net.NetworkInformation.NetworkChange.NetworkAddressChanged += (_, _) =>
+            Dispatcher.BeginInvoke(() =>
+            {
+                foreach (var s in _sessions) s.Backend.ResetConnections();
+            });
     }
 
     // Ask for the master password when an entry carries the re-prompt flag. Skipped when the vault

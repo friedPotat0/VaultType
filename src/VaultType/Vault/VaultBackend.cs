@@ -84,6 +84,11 @@ public sealed class VaultBackend : IDisposable
         _deviceId = PersistedSession.Load(_statePath)?.DeviceIdentifier ?? Guid.NewGuid().ToString();
     }
 
+    // Drop the HTTP client's connection pool. The next request opens fresh connections and
+    // resolves the server name again, so a network or VPN switch is picked up straight away
+    // instead of failing against connections that were opened on the previous network.
+    public void ResetConnections() => _api?.ResetConnections();
+
     private VaultApiClient Api()
     {
         string server = string.IsNullOrWhiteSpace(_acc.ServerUrl) ? AccountConfig.UsCloud : _acc.ServerUrl;
@@ -122,7 +127,7 @@ public sealed class VaultBackend : IDisposable
             await CompleteAuthAsync(email, kdf, masterKey, token, ct).ConfigureAwait(false);
             return LoginResult.Ok();
         }
-        catch (ServerUnreachableException) { return new LoginResult { Status = LoginStatus.ServerUnreachable }; }
+        catch (ServerUnreachableException) { ResetConnections(); return new LoginResult { Status = LoginStatus.ServerUnreachable }; }
         catch (HttpRequestException ex) { return LoginResult.Fail(ex.Message); }
         finally
         {
@@ -148,7 +153,7 @@ public sealed class VaultBackend : IDisposable
             await CompleteAuthAsync(email, kdf, masterKey, token, ct).ConfigureAwait(false);
             return LoginResult.Ok();
         }
-        catch (ServerUnreachableException) { return new LoginResult { Status = LoginStatus.ServerUnreachable }; }
+        catch (ServerUnreachableException) { ResetConnections(); return new LoginResult { Status = LoginStatus.ServerUnreachable }; }
         catch (HttpRequestException ex) { return LoginResult.Fail(ex.Message); }
         finally
         {
@@ -219,7 +224,7 @@ public sealed class VaultBackend : IDisposable
             unlocked = true;
             return UnlockStatus.Success;
         }
-        catch (ServerUnreachableException) { return UnlockStatus.ServerUnreachable; }
+        catch (ServerUnreachableException) { ResetConnections(); return UnlockStatus.ServerUnreachable; }
         catch (HttpRequestException) { return UnlockStatus.Failed; }
         finally
         {
@@ -397,7 +402,7 @@ public sealed class VaultBackend : IDisposable
             unlocked = true;
             return UnlockStatus.Success;
         }
-        catch (ServerUnreachableException) { return UnlockStatus.ServerUnreachable; }
+        catch (ServerUnreachableException) { ResetConnections(); return UnlockStatus.ServerUnreachable; }
         catch (HttpRequestException) { return UnlockStatus.Failed; }
         finally
         {

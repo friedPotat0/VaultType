@@ -11,7 +11,7 @@ namespace VaultType.Vault;
 // base host (the web-vault reverse proxy), so a single base URL is enough.
 public sealed class VaultApiClient : IDisposable
 {
-    private readonly HttpClient _http;
+    private HttpClient _http;
     private readonly string _base;
     private readonly string _deviceId;
     private readonly string _deviceName;
@@ -29,10 +29,34 @@ public sealed class VaultApiClient : IDisposable
         _base = serverUrl.TrimEnd('/');
         _deviceId = deviceIdentifier;
         _deviceName = deviceName;
-        _http = new HttpClient { Timeout = TimeSpan.FromSeconds(40) };
-        _http.DefaultRequestHeaders.Add("Bitwarden-Client-Name", "desktop");
-        _http.DefaultRequestHeaders.Add("Bitwarden-Client-Version", ClientVersion);
-        _http.DefaultRequestHeaders.Add("Device-Type", DeviceTypeWindowsDesktop.ToString());
+        _http = CreateClient();
+    }
+
+    private static HttpClient CreateClient()
+    {
+        // Pooled connections and the addresses they were opened to must not outlive a network
+        // change: after switching VPNs (e.g. another Tailscale tailnet) a kept-alive connection
+        // can still lead to the host that answered on the old network. Short lifetimes plus a
+        // fresh client after every unreachable result (see VaultBackend) keep that from sticking.
+        var handler = new SocketsHttpHandler
+        {
+            PooledConnectionLifetime = TimeSpan.FromMinutes(2),
+            PooledConnectionIdleTimeout = TimeSpan.FromSeconds(30),
+            ConnectTimeout = TimeSpan.FromSeconds(15),
+        };
+        var http = new HttpClient(handler) { Timeout = TimeSpan.FromSeconds(40) };
+        http.DefaultRequestHeaders.Add("Bitwarden-Client-Name", "desktop");
+        http.DefaultRequestHeaders.Add("Bitwarden-Client-Version", ClientVersion);
+        http.DefaultRequestHeaders.Add("Device-Type", DeviceTypeWindowsDesktop.ToString());
+        return http;
+    }
+
+    // Swap in a client with an empty connection pool. The old one is disposed a little later so a
+    // request still running on it (a background sync) isn't torn down mid-flight.
+    public void ResetConnections()
+    {
+        var old = Interlocked.Exchange(ref _http, CreateClient());
+        _ = Task.Delay(TimeSpan.FromSeconds(60)).ContinueWith(_ => old.Dispose(), TaskScheduler.Default);
     }
 
     public string ServerUrl => _base;
@@ -204,8 +228,8 @@ public sealed class VaultApiClient : IDisposable
     private async Task<HttpResponseMessage> SendAsync(HttpRequestMessage req, CancellationToken ct)
     {
         try { return await _http.SendAsync(req, ct).ConfigureAwait(false); }
-        catch (HttpRequestException ex) { throw new ServerUnreachableException(ex); }
-        catch (TaskCanceledException ex) when (!ct.IsCancellationRequested) { throw new ServerUnreachableException(ex); }
+        catch (HttpRequestException ex) { ResetConnections(); throw new ServerUnreachableException(ex); }
+        catch (TaskCanceledException ex) when (!ct.IsCancellationRequested) { ResetConnections(); throw new ServerUnreachableException(ex); }
     }
 
     // Something answered, but not the vault: a reverse proxy's gateway error, a captive portal, or
