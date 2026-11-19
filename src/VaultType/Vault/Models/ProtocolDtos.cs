@@ -14,6 +14,27 @@ internal static class Json
     };
 }
 
+// A "log in with device" request, as listed for the approving device. The public key (base64 SPKI
+// DER) belongs to the requesting browser; the user key is sent back encrypted to it.
+public sealed class AuthRequestModel
+{
+    public string? Id { get; set; }
+    public string? PublicKey { get; set; }
+    public string? RequestDeviceIdentifier { get; set; }
+    public string? RequestDeviceType { get; set; }
+    public int? RequestDeviceTypeValue { get; set; }
+    public string? RequestIpAddress { get; set; }
+    public string? RequestCountryName { get; set; }
+    public bool? RequestApproved { get; set; }
+    public DateTimeOffset? CreationDate { get; set; }
+    public DateTimeOffset? ResponseDate { get; set; }
+}
+
+public sealed class AuthRequestList
+{
+    public List<AuthRequestModel> Data { get; set; } = new();
+}
+
 public sealed class PreloginResponse
 {
     public int Kdf { get; set; }

@@ -14,14 +14,30 @@ public partial class ConfirmWindow : Window
     // `confirmText` overrides the "Yes" label; `showCancel: false` turns the dialog into a plain
     // notice with a single button to dismiss it. `options` adds unchecked check boxes below the
     // message, at most one of which can be ticked; read SelectedOption after a confirmed ShowDialog.
+    // `highlight` is shown boxed in a monospace font (a value to compare, like a fingerprint phrase).
+    // `focusCancel` puts the focus and the Enter key on the cancel button, for dialogs where saying
+    // yes by accident would do harm.
     public ConfirmWindow(string heading, string message, bool excludeCapture,
-                         string? confirmText = null, bool showCancel = true, IReadOnlyList<string>? options = null)
+                         string? confirmText = null, bool showCancel = true, IReadOnlyList<string>? options = null,
+                         string? highlight = null, string? cancelText = null, bool focusCancel = false)
     {
         InitializeComponent();
         _excludeCapture = excludeCapture;
+        _focusCancel = focusCancel;
         Heading.Text = heading;
         Message.Text = message;
         if (confirmText != null) YesBtn.Content = confirmText;
+        if (cancelText != null) NoBtn.Content = cancelText;
+        if (highlight != null)
+        {
+            HighlightText.Text = highlight;
+            HighlightBox.Visibility = Visibility.Visible;
+        }
+        if (focusCancel)
+        {
+            YesBtn.IsDefault = false;
+            NoBtn.IsDefault = true;
+        }
         // Collapsing leaves the confirm button in its own column, so the layout stays put.
         if (!showCancel) NoBtn.Visibility = Visibility.Collapsed;
         if (options is { Count: > 0 })
@@ -54,8 +70,11 @@ public partial class ConfirmWindow : Window
         if (_excludeCapture)
             Native.SetWindowDisplayAffinity(new WindowInteropHelper(this).Handle, Native.WDA_EXCLUDEFROMCAPTURE);
         Activate();
-        YesBtn.Focus();
+        if (_focusCancel) NoBtn.Focus();
+        else YesBtn.Focus();
     }
+
+    private readonly bool _focusCancel;
 
     private readonly List<CheckBox> _options = new();
 

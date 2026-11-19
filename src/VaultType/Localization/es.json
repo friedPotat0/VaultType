@@ -253,5 +253,17 @@
   "settings.offlineFolder": "Ubicación de la copia sin conexión",
   "settings.offlineFolderDefault": "Predeterminado",
   "settings.offlineFolderDefaultHint": "Carpeta de datos de VaultType (predeterminado)",
-  "settings.offlineFolderPick": "Elegir carpeta"
+  "settings.offlineFolderPick": "Elegir carpeta",
+  "tray.webVault": "Abrir bóveda web",
+  "tray.webVaultOf": "Abrir bóveda web: {0}",
+  "webVault.badUrl": "La dirección del servidor de esta bóveda no es una dirección web.",
+  "webVault.unlockFor": "Desbloquea para aprobar el inicio de sesión en el navegador",
+  "webVault.justNow": "ahora mismo",
+  "webVault.minutesAgo": "hace {0} min",
+  "webVault.approveTitle": "¿Aprobar el inicio de sesión en el navegador?",
+  "webVault.approveMsg": "Un dispositivo quiere iniciar sesión en la bóveda web de «{0}» ({1}).\n\nDispositivo: {2}\nUbicación: {3}\nSolicitado: {4}\n\nAprueba solo si el navegador muestra exactamente esta frase de huella:",
+  "webVault.approve": "Aprobar",
+  "webVault.deny": "Rechazar",
+  "webVault.expiredTitle": "La solicitud ya no es válida",
+  "webVault.expiredMsg": "La solicitud se respondió en otro lugar, se sustituyó por una más reciente o ha caducado. Vuelve a iniciar sesión en el navegador."
 }

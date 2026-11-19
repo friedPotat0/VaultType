@@ -253,5 +253,17 @@
   "settings.offlineFolder": "Lokalizacja kopii offline",
   "settings.offlineFolderDefault": "Domyślna",
   "settings.offlineFolderDefaultHint": "Folder danych VaultType (domyślny)",
-  "settings.offlineFolderPick": "Wybierz folder"
+  "settings.offlineFolderPick": "Wybierz folder",
+  "tray.webVault": "Otwórz sejf w przeglądarce",
+  "tray.webVaultOf": "Otwórz sejf w przeglądarce: {0}",
+  "webVault.badUrl": "Adres serwera tego sejfu nie jest adresem internetowym.",
+  "webVault.unlockFor": "Odblokuj, aby zatwierdzić logowanie w przeglądarce",
+  "webVault.justNow": "przed chwilą",
+  "webVault.minutesAgo": "{0} min temu",
+  "webVault.approveTitle": "Zatwierdzić logowanie w przeglądarce?",
+  "webVault.approveMsg": "Urządzenie chce zalogować się do sejfu internetowego „{0}” ({1}).\n\nUrządzenie: {2}\nLokalizacja: {3}\nŻądanie: {4}\n\nZatwierdź tylko wtedy, gdy przeglądarka pokazuje dokładnie tę frazę odcisku:",
+  "webVault.approve": "Zatwierdź",
+  "webVault.deny": "Odrzuć",
+  "webVault.expiredTitle": "Prośba nieważna",
+  "webVault.expiredMsg": "Na prośbę odpowiedziano gdzie indziej, zastąpiła ją nowsza albo wygasła. Rozpocznij logowanie w przeglądarce ponownie."
 }

@@ -253,5 +253,17 @@
   "settings.offlineFolder": "Emplacement de la copie hors ligne",
   "settings.offlineFolderDefault": "Par défaut",
   "settings.offlineFolderDefaultHint": "Dossier de données de VaultType (par défaut)",
-  "settings.offlineFolderPick": "Choisir un dossier"
+  "settings.offlineFolderPick": "Choisir un dossier",
+  "tray.webVault": "Ouvrir le coffre web",
+  "tray.webVaultOf": "Ouvrir le coffre web : {0}",
+  "webVault.badUrl": "L'adresse du serveur de ce coffre n'est pas une adresse web.",
+  "webVault.unlockFor": "Déverrouiller pour approuver la connexion dans le navigateur",
+  "webVault.justNow": "à l'instant",
+  "webVault.minutesAgo": "il y a {0} min",
+  "webVault.approveTitle": "Approuver la connexion dans le navigateur ?",
+  "webVault.approveMsg": "Un appareil veut se connecter au coffre web de « {0} » ({1}).\n\nAppareil : {2}\nLieu : {3}\nDemandé : {4}\n\nN'approuvez que si le navigateur affiche exactement cette phrase d'empreinte :",
+  "webVault.approve": "Approuver",
+  "webVault.deny": "Refuser",
+  "webVault.expiredTitle": "Demande plus valide",
+  "webVault.expiredMsg": "La demande a reçu une réponse ailleurs, a été remplacée par une plus récente ou a expiré. Relancez la connexion dans le navigateur."
 }

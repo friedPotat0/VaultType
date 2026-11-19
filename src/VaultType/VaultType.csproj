@@ -24,6 +24,7 @@
 
   <ItemGroup>
     <EmbeddedResource Include="Assets\vaulttype.ico" />
+    <EmbeddedResource Include="Assets\eff_large_wordlist.txt" />
     <EmbeddedResource Include="Localization\*.json" />
   </ItemGroup>
 

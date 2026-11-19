@@ -1176,6 +1176,12 @@ public partial class App : Application
                 new TrayMenuWindow.Actions());
             CaptureWindow(tray, System.IO.Path.Combine(outDir, "tray.png"));
 
+
+            var approve = new ConfirmWindow(Loc.T("webVault.approveTitle"),
+                Loc.T("webVault.approveMsg", "Private", "alex@example.com", "Firefox", "Germany (203.0.113.7)", Loc.T("webVault.justNow")),
+                false, confirmText: Loc.T("webVault.approve"), cancelText: Loc.T("webVault.deny"),
+                highlight: "turban-deftly-anime-chatroom-unselfish", focusCancel: true);
+            CaptureWindow(approve, System.IO.Path.Combine(outDir, "web-login-approval.png"));
             var confirm = new ConfirmWindow("Remember this entry?",
                 "Add 'https://github.com' to 'GitHub' so it is suggested for github.com next time?", false);
             CaptureWindow(confirm, System.IO.Path.Combine(outDir, "confirm.png"));
@@ -1348,6 +1354,7 @@ public partial class App : Application
         var menu = new TrayMenuWindow(_sessions, _cfg.Hotkey, SyncHint(), new TrayMenuWindow.Actions
         {
             SelectAccount = s => { if (!s.Unlocked) _ = UnlockSessionAsync(s); },
+            OpenWebVault = OpenWebVault,
             AutoType = OnHotkey,
             Sync = SyncNow,
             LockOne = LockOne,
@@ -1850,6 +1857,7 @@ public partial class App : Application
 
     private void ExitApp()
     {
+        StopLoginWatch();
         LockVault();
         _sshAgent?.Dispose();
         _passkeyIpc?.Dispose();

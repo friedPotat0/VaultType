@@ -253,5 +253,17 @@
   "settings.offlineFolder": "Расположение офлайн-копии",
   "settings.offlineFolderDefault": "По умолчанию",
   "settings.offlineFolderDefaultHint": "Папка данных VaultType (по умолчанию)",
-  "settings.offlineFolderPick": "Выбрать папку"
+  "settings.offlineFolderPick": "Выбрать папку",
+  "tray.webVault": "Открыть веб-хранилище",
+  "tray.webVaultOf": "Открыть веб-хранилище: {0}",
+  "webVault.badUrl": "Адрес сервера этого хранилища не является веб-адресом.",
+  "webVault.unlockFor": "Разблокируйте, чтобы подтвердить вход в браузере",
+  "webVault.justNow": "только что",
+  "webVault.minutesAgo": "{0} мин назад",
+  "webVault.approveTitle": "Подтвердить вход в браузере?",
+  "webVault.approveMsg": "Устройство хочет войти в веб-хранилище «{0}» ({1}).\n\nУстройство: {2}\nМестоположение: {3}\nЗапрошено: {4}\n\nПодтверждайте, только если браузер показывает точно такую же фразу отпечатка:",
+  "webVault.approve": "Подтвердить",
+  "webVault.deny": "Отклонить",
+  "webVault.expiredTitle": "Запрос больше не действителен",
+  "webVault.expiredMsg": "На запрос ответили в другом месте, его заменил более новый или срок его действия истёк. Начните вход в браузере заново."
 }

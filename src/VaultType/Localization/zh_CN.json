@@ -253,5 +253,17 @@
   "settings.offlineFolder": "离线副本位置",
   "settings.offlineFolderDefault": "默认",
   "settings.offlineFolderDefaultHint": "VaultType 数据文件夹（默认）",
-  "settings.offlineFolderPick": "选择文件夹"
+  "settings.offlineFolderPick": "选择文件夹",
+  "tray.webVault": "打开网页密码库",
+  "tray.webVaultOf": "打开网页密码库：{0}",
+  "webVault.badUrl": "此密码库的服务器地址不是网址。",
+  "webVault.unlockFor": "解锁以批准浏览器中的登录",
+  "webVault.justNow": "刚刚",
+  "webVault.minutesAgo": "{0} 分钟前",
+  "webVault.approveTitle": "批准浏览器中的登录？",
+  "webVault.approveMsg": "有设备想要登录“{0}”（{1}）的网页密码库。\n\n设备：{2}\n位置：{3}\n请求时间：{4}\n\n仅当浏览器显示完全相同的指纹短语时才批准：",
+  "webVault.approve": "批准",
+  "webVault.deny": "拒绝",
+  "webVault.expiredTitle": "请求已失效",
+  "webVault.expiredMsg": "该请求已在别处得到答复、被更新的请求取代或已过期。请在浏览器中重新开始登录。"
 }

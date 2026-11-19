@@ -253,5 +253,17 @@
   "settings.offlineFolder": "Posizione della copia offline",
   "settings.offlineFolderDefault": "Predefinito",
   "settings.offlineFolderDefaultHint": "Cartella dati di VaultType (predefinita)",
-  "settings.offlineFolderPick": "Scegli cartella"
+  "settings.offlineFolderPick": "Scegli cartella",
+  "tray.webVault": "Apri cassaforte web",
+  "tray.webVaultOf": "Apri cassaforte web: {0}",
+  "webVault.badUrl": "L'indirizzo del server di questa cassaforte non è un indirizzo web.",
+  "webVault.unlockFor": "Sblocca per approvare l'accesso nel browser",
+  "webVault.justNow": "proprio ora",
+  "webVault.minutesAgo": "{0} min fa",
+  "webVault.approveTitle": "Approvare l'accesso nel browser?",
+  "webVault.approveMsg": "Un dispositivo vuole accedere alla cassaforte web di «{0}» ({1}).\n\nDispositivo: {2}\nPosizione: {3}\nRichiesto: {4}\n\nApprova solo se il browser mostra esattamente questa frase impronta:",
+  "webVault.approve": "Approva",
+  "webVault.deny": "Rifiuta",
+  "webVault.expiredTitle": "Richiesta non più valida",
+  "webVault.expiredMsg": "La richiesta ha ricevuto risposta altrove, è stata sostituita da una più recente o è scaduta. Riavvia l'accesso nel browser."
 }

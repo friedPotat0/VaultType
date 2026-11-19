@@ -253,5 +253,17 @@
   "settings.offlineFolder": "オフラインコピーの保存場所",
   "settings.offlineFolderDefault": "既定",
   "settings.offlineFolderDefaultHint": "VaultType のデータフォルダー (既定)",
-  "settings.offlineFolderPick": "フォルダーを選択"
+  "settings.offlineFolderPick": "フォルダーを選択",
+  "tray.webVault": "ウェブ保管庫を開く",
+  "tray.webVaultOf": "ウェブ保管庫を開く: {0}",
+  "webVault.badUrl": "この保管庫のサーバーアドレスはウェブアドレスではありません。",
+  "webVault.unlockFor": "ブラウザーでのログインを承認するにはロックを解除してください",
+  "webVault.justNow": "たった今",
+  "webVault.minutesAgo": "{0} 分前",
+  "webVault.approveTitle": "ブラウザーでのログインを承認しますか？",
+  "webVault.approveMsg": "デバイスが「{0}」({1}) のウェブ保管庫にログインしようとしています。\n\nデバイス: {2}\n場所: {3}\n要求: {4}\n\nブラウザーにまったく同じフィンガープリントフレーズが表示されている場合のみ承認してください:",
+  "webVault.approve": "承認",
+  "webVault.deny": "拒否",
+  "webVault.expiredTitle": "リクエストは無効になりました",
+  "webVault.expiredMsg": "リクエストは別の場所で応答されたか、新しいリクエストに置き換えられたか、期限切れになりました。ブラウザーでログインをやり直してください。"
 }

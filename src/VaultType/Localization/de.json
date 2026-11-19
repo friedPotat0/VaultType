@@ -253,5 +253,17 @@
   "settings.offlineFolder": "Speicherort der Offline-Kopie",
   "settings.offlineFolderDefault": "Standard",
   "settings.offlineFolderDefaultHint": "Datenordner von VaultType (Standard)",
-  "settings.offlineFolderPick": "Ordner wählen"
+  "settings.offlineFolderPick": "Ordner wählen",
+  "tray.webVault": "Web-Tresor öffnen",
+  "tray.webVaultOf": "Web-Tresor öffnen: {0}",
+  "webVault.badUrl": "Die Serveradresse dieses Tresors ist keine Webadresse.",
+  "webVault.unlockFor": "Entsperren, um die Anmeldung im Browser freizugeben",
+  "webVault.justNow": "gerade eben",
+  "webVault.minutesAgo": "vor {0} Min.",
+  "webVault.approveTitle": "Anmeldung im Browser genehmigen?",
+  "webVault.approveMsg": "Ein Gerät möchte sich im Web-Tresor von '{0}' ({1}) anmelden.\n\nGerät: {2}\nOrt: {3}\nAngefragt: {4}\n\nGenehmige nur, wenn der Browser genau diese Fingerabdruck-Phrase anzeigt:",
+  "webVault.approve": "Genehmigen",
+  "webVault.deny": "Ablehnen",
+  "webVault.expiredTitle": "Anfrage nicht mehr gültig",
+  "webVault.expiredMsg": "Die Anfrage wurde anderswo beantwortet, durch eine neuere ersetzt oder ist abgelaufen. Starte die Anmeldung im Browser erneut."
 }

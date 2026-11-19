@@ -253,5 +253,17 @@
   "settings.offlineFolder": "Location of the offline copy",
   "settings.offlineFolderDefault": "Default",
   "settings.offlineFolderDefaultHint": "VaultType's data folder (default)",
-  "settings.offlineFolderPick": "Choose folder"
+  "settings.offlineFolderPick": "Choose folder",
+  "tray.webVault": "Open web vault",
+  "tray.webVaultOf": "Open web vault: {0}",
+  "webVault.badUrl": "The server address of this vault is not a web address.",
+  "webVault.unlockFor": "Unlock to approve the sign-in in the browser",
+  "webVault.justNow": "just now",
+  "webVault.minutesAgo": "{0} min ago",
+  "webVault.approveTitle": "Approve sign-in in the browser?",
+  "webVault.approveMsg": "A device wants to sign in to the web vault of '{0}' ({1}).\n\nDevice: {2}\nLocation: {3}\nRequested: {4}\n\nOnly approve if the browser shows exactly this fingerprint phrase:",
+  "webVault.approve": "Approve",
+  "webVault.deny": "Deny",
+  "webVault.expiredTitle": "Request no longer valid",
+  "webVault.expiredMsg": "The request was answered elsewhere, replaced by a newer one or has expired. Start the sign-in in the browser again."
 }

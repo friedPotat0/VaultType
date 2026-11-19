@@ -253,5 +253,17 @@
   "settings.offlineFolder": "Locatie van de offline kopie",
   "settings.offlineFolderDefault": "Standaard",
   "settings.offlineFolderDefaultHint": "Gegevensmap van VaultType (standaard)",
-  "settings.offlineFolderPick": "Map kiezen"
+  "settings.offlineFolderPick": "Map kiezen",
+  "tray.webVault": "Webkluis openen",
+  "tray.webVaultOf": "Webkluis openen: {0}",
+  "webVault.badUrl": "Het serveradres van deze kluis is geen webadres.",
+  "webVault.unlockFor": "Ontgrendel om de aanmelding in de browser goed te keuren",
+  "webVault.justNow": "zojuist",
+  "webVault.minutesAgo": "{0} min geleden",
+  "webVault.approveTitle": "Aanmelding in de browser goedkeuren?",
+  "webVault.approveMsg": "Een apparaat wil inloggen op de webkluis van “{0}” ({1}).\n\nApparaat: {2}\nLocatie: {3}\nAangevraagd: {4}\n\nKeur alleen goed als de browser precies deze vingerafdrukzin toont:",
+  "webVault.approve": "Goedkeuren",
+  "webVault.deny": "Weigeren",
+  "webVault.expiredTitle": "Verzoek niet meer geldig",
+  "webVault.expiredMsg": "Het verzoek is elders beantwoord, vervangen door een nieuwer verzoek of verlopen. Start het inloggen in de browser opnieuw."
 }

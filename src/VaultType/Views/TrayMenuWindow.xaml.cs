@@ -19,6 +19,7 @@ public partial class TrayMenuWindow : Window
     public sealed class Actions
     {
         public Action<VaultSession>? SelectAccount;
+        public Action<VaultSession>? OpenWebVault;
         public Action? AutoType;
         public Action? Sync;
         public Action<VaultSession>? LockOne;
@@ -77,6 +78,18 @@ public partial class TrayMenuWindow : Window
 
         Root.Children.Add(ActionRow("IconKeyboard", Loc.T("tray.autotype"), _hotkey, () => _actions.AutoType?.Invoke()));
         Root.Children.Add(ActionRow("IconSync", Loc.T("tray.sync"), _syncHint, () => _actions.Sync?.Invoke()));
+
+        if (_sessions.Count > 0)
+        {
+            Root.Children.Add(Divider());
+            // One entry per vault: each has its own web vault, and its own device approval.
+            foreach (var s in _sessions)
+            {
+                var session = s;
+                string label = _sessions.Count == 1 ? Loc.T("tray.webVault") : Loc.T("tray.webVaultOf", s.Cfg.Name);
+                Root.Children.Add(ActionRow("IconGlobe", label, null, () => _actions.OpenWebVault?.Invoke(session)));
+            }
+        }
 
         if (AnyUnlocked)
         {

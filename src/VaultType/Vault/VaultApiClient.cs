@@ -197,6 +197,51 @@ public sealed class VaultApiClient : IDisposable
         return false;
     }
 
+    // ---- log in with device: the approving side ----
+
+    // Requests waiting for an answer. Current servers filter on /pending; servers without that
+    // route (older Vaultwarden) list everything, so the caller filters the same way either way.
+    public async Task<List<AuthRequestModel>> GetPendingAuthRequestsAsync(string accessToken, CancellationToken ct = default)
+    {
+        var list = await GetAuthRequestListAsync($"{_base}/api/auth-requests/pending", accessToken, ct).ConfigureAwait(false);
+        return list ?? await GetAuthRequestListAsync($"{_base}/api/auth-requests", accessToken, ct).ConfigureAwait(false) ?? new();
+    }
+
+    // Null when the route doesn't exist on this server.
+    private async Task<List<AuthRequestModel>?> GetAuthRequestListAsync(string url, string accessToken, CancellationToken ct)
+    {
+        using var req = new HttpRequestMessage(HttpMethod.Get, url);
+        req.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", accessToken);
+        using var resp = await SendAsync(req, ct).ConfigureAwait(false);
+        if ((int)resp.StatusCode is 404 or 405) return null;
+        string raw = await resp.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
+        ThrowIfNotFromServer(resp);
+        if (!resp.IsSuccessStatusCode)
+            throw new HttpRequestException($"Listing login requests failed ({(int)resp.StatusCode}).");
+        return (ParseJson<AuthRequestList>(raw) ?? new AuthRequestList()).Data;
+    }
+
+    // One request as the server has it right now. Null when it is gone or expired.
+    public async Task<AuthRequestModel?> GetAuthRequestAsync(string accessToken, string id, CancellationToken ct = default)
+    {
+        using var req = new HttpRequestMessage(HttpMethod.Get, $"{_base}/api/auth-requests/{Uri.EscapeDataString(id)}");
+        req.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", accessToken);
+        using var resp = await SendAsync(req, ct).ConfigureAwait(false);
+        if ((int)resp.StatusCode == 404) return null;
+        string raw = await resp.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
+        ThrowIfNotFromServer(resp);
+        if (!resp.IsSuccessStatusCode)
+            throw new HttpRequestException($"Reading the login request failed ({(int)resp.StatusCode}).");
+        return ParseJson<AuthRequestModel>(raw);
+    }
+
+    // Approve (with the user key encrypted to the requester) or deny. deviceIdentifier is this
+    // client's own identifier from sign-in; the server only accepts answers from a known device.
+    public Task<string> PutAuthRequestAsync(string accessToken, string id, string? encryptedKey,
+        string deviceIdentifier, bool approve, CancellationToken ct = default)
+        => SendCipherAsync(HttpMethod.Put, $"{_base}/api/auth-requests/{Uri.EscapeDataString(id)}", accessToken,
+            JsonSerializer.Serialize(new { key = encryptedKey, deviceIdentifier, requestApproved = approve }), ct);
+
     // PUT a full cipher object back (read-modify-write).
     public async Task<string> PutCipherAsync(string accessToken, string cipherId, string cipherJson, CancellationToken ct = default)
         => await SendCipherAsync(HttpMethod.Put, $"{_base}/api/ciphers/{cipherId}", accessToken, cipherJson, ct).ConfigureAwait(false);

@@ -130,6 +130,16 @@ public static class CryptoSelfTest
             Check("RSA-OAEP-SHA1 (type 4) round-trip", orgKey.AsSpan().SequenceEqual(pt));
         }
 
+        // --- Fingerprint phrase (log in with device): Bitwarden SDK's own test vector ---
+        {
+            byte[] spki = Convert.FromBase64String(
+                "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAuyYs8W7NWf0Zv35Ueco93730dtRKi4Jhc6Snar+86drE+ruSfaCWMcbgsAoAj2Pm6KAzaJrTIVCqBERQ23OncpzjfcGAeyf+v3w/gSw/EjihMJ4AG5ICY4hLFYcGdgwa+7is+TVO0i6PEWjKQa3l2+mQo2XY7pg2ngHDMssV4gxSqq+qoBX3+FBhewCYdOV+3cebwsAzz7HwoFTxKViwNW8crbHonhZPhZgfIAzEkzo5MvzQg5azhLKW6vuPfaOQFC5HqPykVnh8OPzO0uzUi3+97CguAu4N2CgwVYXltZuw2fGamdVw3kjbxQPbOE1tL0j7gyTwYKkfUl2m8gMh1QIDAQAB");
+            string phrase = FingerprintPhrase.For("a09726a0-9590-49d1-a5f5-afe300b6a515", spki);
+            Check("Fingerprint phrase KAT", phrase == "turban-deftly-anime-chatroom-unselfish", phrase);
+            string upper = FingerprintPhrase.For("A09726A0-9590-49D1-A5F5-AFE300B6A515", spki);
+            Check("Fingerprint phrase ignores case", upper == phrase, upper);
+        }
+
         // --- SecureString -> UTF-8 marshaling (used to hand the master password to the backend) ---
         {
             const string s = "P@ss-wörd-🔐-123";

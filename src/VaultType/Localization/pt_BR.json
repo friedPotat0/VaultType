@@ -253,5 +253,17 @@
   "settings.offlineFolder": "Local da cópia offline",
   "settings.offlineFolderDefault": "Padrão",
   "settings.offlineFolderDefaultHint": "Pasta de dados do VaultType (padrão)",
-  "settings.offlineFolderPick": "Escolher pasta"
+  "settings.offlineFolderPick": "Escolher pasta",
+  "tray.webVault": "Abrir cofre web",
+  "tray.webVaultOf": "Abrir cofre web: {0}",
+  "webVault.badUrl": "O endereço do servidor deste cofre não é um endereço web.",
+  "webVault.unlockFor": "Desbloqueie para aprovar o login no navegador",
+  "webVault.justNow": "agora mesmo",
+  "webVault.minutesAgo": "há {0} min",
+  "webVault.approveTitle": "Aprovar o login no navegador?",
+  "webVault.approveMsg": "Um dispositivo quer entrar no cofre web de “{0}” ({1}).\n\nDispositivo: {2}\nLocal: {3}\nSolicitado: {4}\n\nAprove somente se o navegador mostrar exatamente esta frase de impressão digital:",
+  "webVault.approve": "Aprovar",
+  "webVault.deny": "Negar",
+  "webVault.expiredTitle": "Solicitação não é mais válida",
+  "webVault.expiredMsg": "A solicitação foi respondida em outro lugar, substituída por uma mais recente ou expirou. Inicie o login no navegador novamente."
 }
