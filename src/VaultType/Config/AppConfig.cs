@@ -157,6 +157,9 @@ public sealed class AppConfig
                     if (cfg != null)
                     {
                         if (cfg.Accounts.Count == 0) Migrate(cfg, json);
+                        // A value from a newer or development build that this one doesn't know
+                        // (the settings index their option list with it).
+                        if (cfg.TrayClickAction is < 0 or > 2) cfg.TrayClickAction = 2;
                         foreach (var a in cfg.Accounts) { try { Directory.CreateDirectory(a.BwDataDir); } catch { } }
                         return cfg;
                     }
