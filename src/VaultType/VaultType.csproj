@@ -46,7 +46,7 @@
          from the .NET BCL - are implemented in our own assembly (Vault/Crypto/) rather than pulled
          from a third-party DLL, precisely so the app runs on WDAC-locked machines that block
          non-Microsoft-signed binaries. -->
-    <PackageReference Include="System.Formats.Cbor" Version="9.0.0" />
+    <PackageReference Include="System.Formats.Cbor" Version="10.0.15" />
   </ItemGroup>
 
 </Project>
