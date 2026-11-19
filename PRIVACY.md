@@ -29,11 +29,11 @@ access rights are restricted to your Windows user account:
 - **Queued website/app bindings** - if you ask VaultType to remember a website or app for an
   entry while your vault server can't be reached, the binding is kept, encrypted with your vault
   key, until it has been sent to the server.
-- **Offline copy (optional, off by default)** - if you switch on *Offline copy*, an encrypted copy
-  of your vault is stored on your device, in the account folder or a folder you choose. It is
-  encrypted with your vault key (which only your master password or PIN can unlock) and
-  additionally with Windows DPAPI, and is never sent anywhere. Switching the feature off or
-  signing out deletes it.
+- **Offline copy (optional, off by default)** - for each vault you switch *Offline copy* on for, an
+  encrypted copy of that vault is stored on your device, in the account folder or a folder you
+  choose. It is encrypted with your vault key (which only your master password or PIN can unlock)
+  and additionally with Windows DPAPI, and is never sent anywhere. Switching it off for that
+  vault or removing the vault from VaultType deletes it.
 
 VaultType writes no log files. Uninstalling VaultType and deleting this folder removes all of it.
 
@@ -42,7 +42,9 @@ VaultType writes no log files. Uninstalling VaultType and deleting this folder r
 VaultType connects only to:
 
 1. **The vault server you configure** (your self-hosted Vaultwarden/Bitwarden server, or the
-   Bitwarden cloud) - to sign in, sync your vault, and optionally fetch website icons. What that
+   Bitwarden cloud) - to sign in, sync your vault, optionally fetch website icons, and - for a
+   few minutes after you choose *Open web vault* - to check for and answer the web vault's
+   "log in with device" request. What that
    server does with your data is governed by its operator's privacy policy (for the Bitwarden
    cloud, see [Bitwarden's privacy policy](https://bitwarden.com/privacy/)).
 2. **GitHub** (`api.github.com`) - for the update check, which requests the latest release

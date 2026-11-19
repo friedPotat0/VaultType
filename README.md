@@ -54,6 +54,7 @@ secrets.
 - [SSH agent](#ssh-agent)
 - [Passkeys](#passkeys-experimental)
 - [Offline access](#offline-access)
+- [Web vault](#web-vault)
 - [Languages](#languages)
 - [Building from source](#building-from-source)
 - [Contributing](#contributing)
@@ -89,6 +90,9 @@ secrets.
 - **Passkey provider** *(experimental, packaged edition only)* - register VaultType as a Windows 11
   passkey provider and use the FIDO2 credentials in your vault for website sign-ins, gated behind
   Windows Hello.
+- **Web vault sign-in by approval** - open your web vault from the tray and approve its "Log in
+  with device" request in VaultType, after comparing the fingerprint phrase. No master password
+  typed into the browser.
 - **PIN unlock** - unlock with a short PIN instead of the full master password, Bitwarden-style
   (wrong-PIN limit, optional "require master password after restart").
 - **Local TOTP** generation (RFC 6238, plus Steam Guard) - no clipboard, no extra network calls.
@@ -166,7 +170,9 @@ password or vault data.
 - **Nothing decrypted touches the disk.** Per account, only the key envelopes needed to unlock
   (master-key-wrapped user key, DPAPI-sealed refresh token, optional PIN envelope) plus non-secret
   metadata are stored under `%LOCALAPPDATA%\VaultType` - a folder whose ACL is restricted to your
-  user. Vault items themselves are re-fetched from the server on every unlock. The optional
+  user. Vault items themselves are re-fetched from the server on every unlock. The vault key is never
+  sent anywhere, except when you approve a web vault sign-in, and then only encrypted to that
+  browser's one-time key (see [Web vault](#web-vault)). The optional
   [offline copy](#offline-access) is the only place vault items are stored, and it stays encrypted
   end to end: sealed with your user key and additionally with DPAPI.
 - Windows are hidden from screen capture (`WDA_EXCLUDEFROMCAPTURE`), legacy DLL/hook injection is
@@ -277,8 +283,7 @@ Everything below is adjustable in the Settings window; the file itself lives in
 | `AntiDebugger` | `true` | Exit if a debugger attaches |
 | `SshAgentEnabled` | `false` | Serve vault SSH keys on the OpenSSH agent pipe |
 | `SshConfirmEachUse` | `true` | Ask before every SSH signature |
-| `OfflineCopyEnabled` | `false` | Keep an encrypted, read-only [offline copy](#offline-access) of each vault on this PC |
-| `OfflineCopyFolder` | `""` | Folder for the offline copies (empty = each account's data folder) |
+| `OfflineCopyFolder` | `""` | Folder for the [offline copies](#offline-access), one file per vault (empty = each account's data folder). Whether a vault keeps one is set per account (`OfflineCopy` in `Accounts`) |
 | `SshDisabledKeys` | `[]` | SSH keys switched off in the agent (managed in the key list) |
 | `PasskeyProviderEnabled` | `false` | Register as a Windows 11 passkey provider (experimental) |
 | `PasskeyRequireHello` | `true` | Gate passkey use behind Windows Hello |
@@ -491,7 +496,7 @@ tool pick them up automatically, no key files on disk.
   that dialog: *Approve only for '<program>' until the vault is locked* (bound to that program's
   full path, so another file with the same name doesn't qualify) or *Approve this key for all
   applications until the vault is locked*. Locking the vault (manually, by the idle timer or by
-  signing out) revokes both. The program is whatever opens the agent pipe - for `git` and
+  removing it from VaultType) revokes both. The program is whatever opens the agent pipe - for `git` and
   terminals that is usually `ssh.exe`, not the editor or Git client on top of it.
 - **Locked vaults still advertise their keys**: a signature request for a key in a locked vault
   brings up the unlock window first, then signs. You don't have to pre-unlock before pushing.
@@ -529,9 +534,10 @@ As soon as the server is reachable again - VaultType retries on every network ch
 minute - the queued bindings are written to the vault, each onto the entry as the server has it
 at that moment.
 
-**Offline copy** (*Settings -> Security -> Offline copy*, off by default): VaultType keeps an
-encrypted copy of each vault on this PC, so you can still open it when the server is down - like
-a KeePass file, but read-only:
+**Offline copy** (*Settings -> Security -> Offline copy*, switched on per vault, off by default):
+VaultType keeps an encrypted copy of each chosen vault on this PC, so you can still open it when
+the server is down - like a KeePass file, but read-only. Every vault has its own file, sealed with
+its own key:
 
 - **Encrypted twice.** The copy holds the vault exactly as the server sends it (every item still
   end-to-end encrypted), sealed once more with your account's user key - which only opens with
@@ -540,11 +546,38 @@ a KeePass file, but read-only:
   Windows account. Its access rights are limited to your user and it carries the read-only flag.
 - **The online vault stays the source of truth.** The copy is replaced after every successful
   sync and is never written back. Opened from the copy, the vault is read-only - auto-type,
-  copying and the SSH agent work, while editing is blocked until the server is reachable again;
-  VaultType then switches back on its own and syncs.
-- When the server can't be reached at unlock and a copy exists, VaultType opens it and says so,
-  including the date of the copy. Signing out of an account or switching the feature off deletes
-  its copies.
+  copying, the SSH agent and signing in with a passkey work, while editing is blocked until the
+  server is reachable again; VaultType then switches back on its own and syncs. Creating a new
+  passkey needs the server, so VaultType says so right away instead of letting the website fail.
+- When the server can't be reached at unlock and a copy exists, VaultType opens it instead; the
+  tray tooltip then reads "offline (read-only)". Each vault falls back and returns on its own, so
+  one can be open from its copy while another is live.
+- The copy is only deleted when you switch it off for that vault, choose another folder (it is
+  rewritten there) or remove the vault from VaultType. Locking, quitting, a restart, a missing
+  connection or an expired server session leave it in place.
+- *View vault (read-only)* in the tray menu (shown while at least one vault keeps an offline copy)
+  opens a small window to look things up: search, open an entry, reveal or copy a field. Every
+  vault has its own section saying whether it is up to date, open from its offline copy (with the
+  copy's date) or locked - click a locked one to unlock it. Revealed values hide again after
+  30 seconds, copies are cleared from the clipboard as usual, entries flagged "ask for master
+  password" ask for it first, and the window closes once every vault is locked.
+
+## Web vault
+
+*Open web vault* in the tray menu opens the account's web vault (your Vaultwarden server, or
+`vault.bitwarden.com` / `vault.bitwarden.eu`) in your browser. Enter your email there and choose
+**Log in with device**: VaultType picks up the request and asks you to approve it, showing the
+device, its location and the **fingerprint phrase**. Approve only if the browser shows exactly
+the same phrase - then the browser is signed in and unlocked without the master password ever
+being typed into it.
+
+- VaultType only looks for requests for five minutes after you clicked *Open web vault*, and every
+  request needs your explicit approval. The dialog's default button is *Deny*.
+- Approving sends your vault key to that browser, encrypted to the browser's one-time key (the same
+  mechanism the official Bitwarden apps use). Denying sends nothing but the denial.
+- The web vault only offers *Log in with device* in a browser that has signed in to the account
+  before, so the very first sign-in in a new browser needs the master password once.
+- Vaultwarden supports this since 1.29.2.
 
 ## Languages
 
