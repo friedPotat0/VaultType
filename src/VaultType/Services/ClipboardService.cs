@@ -1,4 +1,3 @@
-using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using System.Text;
 using System.Windows.Threading;
@@ -22,27 +21,40 @@ public static class ClipboardService
     // Copy one field of an entry. Putting a secret on the clipboard inevitably turns it into a
     // managed string - that is the price of "copy", and why the auto-clear below exists.
     public static void Copy(VaultItem item, ItemField field, SecretProtector p, int clearSeconds)
+        => Set(FieldText(item, field, p), clearSeconds);
+
+    // A protected value that isn't one of the fixed fields (a custom field).
+    public static void CopySecret(SecretBox? box, SecretProtector p, int clearSeconds)
+        => Set(Plain(box, p), clearSeconds);
+
+    public static void CopyText(string text, int clearSeconds) => Set(text, clearSeconds);
+
+    // The plaintext of one field, exactly as Copy would put it on the clipboard ("" when absent).
+    // The read-only vault view shows it on an explicit reveal; the TOTP field yields the current code.
+    public static string FieldText(VaultItem item, ItemField field, SecretProtector p)
     {
         var card = item.Card;
         var id = item.Identity;
-
-        switch (field)
+        return field switch
         {
-            case ItemField.Username: Set(item.Username, clearSeconds); break;
-            case ItemField.Password: Set(Plain(item.Password, p), clearSeconds); break;
-            case ItemField.Totp: CopyTotp(item, p, clearSeconds); break;
+            ItemField.Username => item.Username,
+            ItemField.Password => Plain(item.Password, p),
+            ItemField.Totp => Totp.FromBox(item.TotpSecret, p) ?? "",
 
-            case ItemField.CardNumber: Set(Plain(card?.Number, p), clearSeconds); break;
-            case ItemField.CardCode: Set(Plain(card?.Code, p), clearSeconds); break;
-            case ItemField.CardHolder: Set(card?.CardholderName ?? "", clearSeconds); break;
-            case ItemField.CardExpiry: Set(Expiry(card, p), clearSeconds); break;
+            ItemField.CardNumber => Plain(card?.Number, p),
+            ItemField.CardCode => Plain(card?.Code, p),
+            ItemField.CardHolder => card?.CardholderName ?? "",
+            ItemField.CardExpiry => Expiry(card, p),
 
-            case ItemField.IdName: Set(id?.FullName ?? "", clearSeconds); break;
-            case ItemField.IdEmail: Set(Plain(id?.Email, p), clearSeconds); break;
-            case ItemField.IdPhone: Set(Plain(id?.Phone, p), clearSeconds); break;
-            case ItemField.IdAddress: Set(Address(id, p), clearSeconds); break;
-        }
+            ItemField.IdName => id?.FullName ?? "",
+            ItemField.IdEmail => Plain(id?.Email, p),
+            ItemField.IdPhone => Plain(id?.Phone, p),
+            ItemField.IdAddress => Address(id, p),
+            _ => "",
+        };
     }
+
+    public static string SecretText(SecretBox? box, SecretProtector p) => Plain(box, p);
 
     // "MM/YY" from the two protected expiry parts, matching what the typing engine produces.
     private static string Expiry(CardData? card, SecretProtector p)
@@ -73,21 +85,6 @@ public static class ClipboardService
         if (box == null || !p.IsActive) return "";
         using var buf = p.Reveal(box);
         return Encoding.UTF8.GetString(buf.Span.Slice(0, box.Cipher.Length));
-    }
-
-    private static void CopyTotp(VaultItem item, SecretProtector p, int clearSeconds)
-    {
-        if (item.TotpSecret == null || !p.IsActive) return;
-        using var buf = p.Reveal(item.TotpSecret);
-        int byteLen = item.TotpSecret.Cipher.Length;
-
-        int charCount = Encoding.UTF8.GetCharCount(buf.Span.Slice(0, byteLen));
-        using var chars = new LockedBuffer(charCount * 2);   // seed stays in locked memory, not a managed string
-        var charSpan = MemoryMarshal.Cast<byte, char>(chars.Span);
-        int n = Encoding.UTF8.GetChars(buf.Span.Slice(0, byteLen), charSpan);
-
-        string? code = Totp.Compute(charSpan.Slice(0, n));
-        if (code != null) Set(code, clearSeconds);
     }
 
     // The clipboard and the auto-clear timer must live on the UI/STA dispatcher, otherwise

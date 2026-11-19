@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Windows.Data;
 using System.Windows.Media;
+using ColorConverter = System.Windows.Media.ColorConverter;
 
 namespace VaultType;
 
@@ -31,6 +32,13 @@ public static class AvatarPalette
         int h = 0;
         foreach (char ch in s) h = (h * 31 + ch) & 0x7fffffff;
         return Colours[h % Colours.Length];
+    }
+
+    // An account's own badge colour ("#RRGGBB"); a damaged value falls back to the default colour.
+    public static Brush FromHex(string hex)
+    {
+        try { return new SolidColorBrush((Color)ColorConverter.ConvertFromString(hex)); }
+        catch { return new SolidColorBrush((Color)ColorConverter.ConvertFromString(Config.AccountConfig.DefaultColor)); }
     }
 
     // A top-left-light to bottom-right-dark gradient, like the design avatars.

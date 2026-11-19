@@ -20,6 +20,7 @@ public partial class TrayMenuWindow : Window
     {
         public Action<VaultSession>? SelectAccount;
         public Action<VaultSession>? OpenWebVault;
+        public Action? OpenVaultView;   // null hides the entry (offline copy switched off)
         public Action? AutoType;
         public Action? Sync;
         public Action<VaultSession>? LockOne;
@@ -89,6 +90,8 @@ public partial class TrayMenuWindow : Window
                 string label = _sessions.Count == 1 ? Loc.T("tray.webVault") : Loc.T("tray.webVaultOf", s.Cfg.Name);
                 Root.Children.Add(ActionRow("IconGlobe", label, null, () => _actions.OpenWebVault?.Invoke(session)));
             }
+            if (_actions.OpenVaultView != null)
+                Root.Children.Add(ActionRow("IconEye", Loc.T("tray.vaultView"), null, () => _actions.OpenVaultView?.Invoke()));
         }
 
         if (AnyUnlocked)

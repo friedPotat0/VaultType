@@ -94,12 +94,12 @@ public sealed class AppConfig
 
     // ---- offline copy ----
 
-    // Keep an encrypted, read-only copy of every account's vault on this PC, so the vault can be
-    // opened (read-only) while the server is unreachable. The online vault stays the only source
-    // of truth: the copy is replaced after every successful sync and never written back.
+    // Whether a vault keeps an offline copy is set per account (AccountConfig.OfflineCopy). This
+    // was one switch for all vaults in development builds; Load hands it to every account once.
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public bool OfflineCopyEnabled { get; set; }
 
-    // Folder for the copies; empty = each account's own data folder under %AppData%.
+    // Folder for every vault's copy (one file per vault); empty = each account's own data folder.
     public string OfflineCopyFolder { get; set; } = "";
 
     // ---- integration (design "Integration" section) ----
@@ -160,6 +160,11 @@ public sealed class AppConfig
                         // A value from a newer or development build that this one doesn't know
                         // (the settings index their option list with it).
                         if (cfg.TrayClickAction is < 0 or > 2) cfg.TrayClickAction = 2;
+                        if (cfg.OfflineCopyEnabled)
+                        {
+                            foreach (var a in cfg.Accounts) a.OfflineCopy = true;
+                            cfg.OfflineCopyEnabled = false;
+                        }
                         foreach (var a in cfg.Accounts) { try { Directory.CreateDirectory(a.BwDataDir); } catch { } }
                         return cfg;
                     }

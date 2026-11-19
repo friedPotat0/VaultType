@@ -40,6 +40,9 @@ public sealed class AccountConfig
     // with PIN unlock: require the master password once after a restart (RAM-only envelope)
     public bool PinRequireMasterOnRestart { get; set; } = true;
 
+    // keep an encrypted, read-only offline copy of this vault (see Vault/OfflineCopy)
+    public bool OfflineCopy { get; set; }
+
     // when this account last completed a successful sync (login, unlock and manual sync all
     // sync); feeds the tray menu's "last synced" hint across restarts
     public DateTimeOffset? LastSyncUtc { get; set; }

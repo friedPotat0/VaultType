@@ -31,6 +31,7 @@ public sealed class AccountRow
     public string ServerLabel { get; set; } = "";
     public bool Unlocked { get; set; }
     public bool Removed { get; set; }
+    public bool OfflineCopy { get; set; }
 }
 
 public partial class SettingsWindow : Window
@@ -78,8 +79,8 @@ public partial class SettingsWindow : Window
         AutostartTgl.IsChecked = cfg.Autostart;
         SshAgentTgl.IsChecked = cfg.SshAgentEnabled;
         SshConfirmTgl.IsChecked = cfg.SshConfirmEachUse;
-        OfflineCopyTgl.IsChecked = cfg.OfflineCopyEnabled;
         _offlineFolder = cfg.OfflineCopyFolder;
+        BuildOfflineCopyRows();
         PkProviderTgl.IsChecked = cfg.PasskeyProviderEnabled;
         PkHelloTgl.IsChecked = cfg.PasskeyRequireHello;
 
@@ -145,7 +146,7 @@ public partial class SettingsWindow : Window
         LangLabel.Text = LangName(_lang);
         SshAgentRows.Visibility = SshAgentTgl.IsChecked == true ? Visibility.Visible : Visibility.Collapsed;
         PkHelloRow.Visibility = PkProviderTgl.IsChecked == true ? Visibility.Visible : Visibility.Collapsed;
-        OfflineFolderRow.Visibility = OfflineCopyTgl.IsChecked == true ? Visibility.Visible : Visibility.Collapsed;
+        OfflineFolderRow.Visibility = _rows.Any(r => !r.Removed && r.OfflineCopy) ? Visibility.Visible : Visibility.Collapsed;
         OfflineFolderText.Text = _offlineFolder.Length == 0 ? Loc.T("settings.offlineFolderDefaultHint") : _offlineFolder;
         OfflineFolderText.ToolTip = _offlineFolder.Length == 0 ? null : _offlineFolder;
         OfflineFolderResetBtn.Visibility = _offlineFolder.Length == 0 ? Visibility.Collapsed : Visibility.Visible;
@@ -188,7 +189,46 @@ public partial class SettingsWindow : Window
 
     private void SshAgent_Toggled(object sender, RoutedEventArgs e) { if (SshAgentRows != null) RefreshLabels(); }
     private void PkProvider_Toggled(object sender, RoutedEventArgs e) { if (PkHelloRow != null) RefreshLabels(); }
-    private void OfflineCopy_Toggled(object sender, RoutedEventArgs e) { if (OfflineFolderRow != null) RefreshLabels(); }
+
+    // One switch per vault under the "Offline copy" heading. The choice lands in AccountRow and is
+    // applied with the other account edits on Save.
+    private void BuildOfflineCopyRows()
+    {
+        OfflineCopyAccounts.Children.Clear();
+        foreach (var row in _rows.Where(r => !r.Removed))
+        {
+            var grid = new Grid { Margin = new Thickness(0, 6, 0, 0) };
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(10) });
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+
+            var dot = new Border
+            {
+                Width = 10, Height = 10, CornerRadius = new CornerRadius(3), VerticalAlignment = VerticalAlignment.Center,
+                Background = AvatarPalette.FromHex(row.ColorHex),
+            };
+            var name = new TextBlock
+            {
+                Text = row.Name, Foreground = (Brush)FindResource("TextBody"), FontSize = 13,
+                VerticalAlignment = VerticalAlignment.Center, TextTrimming = TextTrimming.CharacterEllipsis,
+            };
+            Grid.SetColumn(name, 2);
+            var toggle = new ToggleButton
+            {
+                Style = (Style)FindResource("ToggleSwitch"), VerticalAlignment = VerticalAlignment.Center,
+                IsChecked = row.OfflineCopy,
+            };
+            toggle.Checked += (_, _) => { row.OfflineCopy = true; RefreshLabels(); };
+            toggle.Unchecked += (_, _) => { row.OfflineCopy = false; RefreshLabels(); };
+            Grid.SetColumn(toggle, 3);
+
+            grid.Children.Add(dot);
+            grid.Children.Add(name);
+            grid.Children.Add(toggle);
+            OfflineCopyAccounts.Children.Add(grid);
+        }
+    }
 
     // Folder for the offline copies; empty = each account's data folder. Applied on Save.
     private string _offlineFolder = "";
@@ -543,7 +583,6 @@ public partial class SettingsWindow : Window
 
         _cfg.SshAgentEnabled = SshAgentTgl.IsChecked == true;
         _cfg.SshConfirmEachUse = SshConfirmTgl.IsChecked == true;
-        _cfg.OfflineCopyEnabled = OfflineCopyTgl.IsChecked == true;
         _cfg.OfflineCopyFolder = _offlineFolder;
         // A disabled toggle means "can't work here", not "off" - keep the stored value so the
         // setting survives a round trip through an unpackaged build (the config file is shared).

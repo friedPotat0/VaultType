@@ -219,7 +219,7 @@ public sealed partial class VaultBackend
     // Replace the offline copy with the vault as just received from the server.
     private void SaveOfflineCopy(string rawSync)
     {
-        if (!_app.OfflineCopyEnabled || _mockUnlocked || IsOffline || _crypto?.IsUnlocked != true) return;
+        if (!_acc.OfflineCopy || _mockUnlocked || IsOffline || _crypto?.IsUnlocked != true) return;
         try
         {
             var now = DateTimeOffset.UtcNow;
@@ -242,7 +242,7 @@ public sealed partial class VaultBackend
     // feature is off or there is no usable copy for this account.
     private bool TryOpenOfflineCopy(string? protectedPrivateKey)
     {
-        if (!_app.OfflineCopyEnabled || _crypto?.IsUnlocked != true) return false;
+        if (!_acc.OfflineCopy || _crypto?.IsUnlocked != true) return false;
         var doc = OfflineCopy.Read(OfflineCopyPath, _acc.Id);
         if (doc == null) return false;
         try

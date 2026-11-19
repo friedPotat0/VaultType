@@ -5,7 +5,7 @@ using VaultType.Views;
 
 namespace VaultType;
 
-// Web vault.
+// Web vault and the read-only vault view.
 //
 // "Open web vault" opens the account's own web vault in the browser and then, for a few minutes,
 // watches for a "log in with device" request from it. The request is shown with its fingerprint
@@ -23,6 +23,8 @@ public partial class App
     private readonly HashSet<string> _seenLoginRequests = new();
     private DispatcherTimer? _loginPoll;
     private bool _loginPolling, _loginDialogOpen;
+
+    private VaultViewWindow? _vaultView;
 
     public static string WebVaultUrl(VaultSession s)
         => string.IsNullOrWhiteSpace(s.Cfg.ServerUrl) ? Config.AccountConfig.UsCloud : s.Cfg.ServerUrl.TrimEnd('/');
@@ -117,4 +119,40 @@ public partial class App
         _loginPoll?.Stop();
     }
 
+    // ---- read-only vault view ----
+
+    private async void OpenVaultView()
+    {
+        if (_vaultView != null) { _vaultView.Activate(); return; }
+        if (_busy) return;
+        if (!AnyUnlocked)
+        {
+            if (_cfg.Accounts.Count == 0) return;
+            _busy = true;
+            try { if (!await UnlockSessionAsync(MostRecentlyUnlocked())) return; }
+            finally { _busy = false; }
+        }
+
+        _vaultView = new VaultViewWindow(_sessions, _cfg, VerifyMasterPassword, UnlockFromVaultView);
+        _vaultView.Closed += (_, _) => _vaultView = null;
+        _vaultView.Show();
+    }
+
+    // A locked vault's section in the view was clicked. UpdateTray refreshes the view afterwards.
+    private async Task UnlockFromVaultView(VaultSession s)
+    {
+        if (_busy || s.Unlocked) return;
+        _busy = true;
+        try { await UnlockSessionAsync(s); }
+        catch (Exception ex) { ShowError(ex.Message); }
+        finally { _busy = false; }
+    }
+
+    // Locking takes the view down with it; a sync or the switch back online refreshes it.
+    private void CloseVaultViewIfLocked()
+    {
+        if (_vaultView == null) return;
+        if (AnyUnlocked) _vaultView.Reload();
+        else _vaultView.Close();
+    }
 }

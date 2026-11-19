@@ -715,16 +715,21 @@ public partial class App : Application
         finally { _reconnecting = false; }
     }
 
-    // Settings saved: remove copies that are no longer wanted (feature off, or moved to another
-    // folder) and write fresh ones for unlocked vaults right away.
-    private void ApplyOfflineCopySettings(bool wasEnabled, string oldFolder)
+    // Settings saved: remove copies that are no longer wanted (switched off for that vault, or
+    // moved to another folder) and write fresh ones for unlocked vaults right away.
+    private void ApplyOfflineCopySettings(IReadOnlyDictionary<string, bool> wasEnabled, string oldFolder)
     {
         bool folderChanged = !string.Equals(oldFolder, _cfg.OfflineCopyFolder, StringComparison.OrdinalIgnoreCase);
-        if (wasEnabled && (!_cfg.OfflineCopyEnabled || folderChanged))
-            foreach (var s in _sessions)
+        bool needsCopy = false;
+        foreach (var s in _sessions)
+        {
+            bool was = wasEnabled.TryGetValue(s.Cfg.Id, out bool w) && w;
+            bool now = s.Cfg.OfflineCopy;
+            if (was && (!now || folderChanged))
                 OfflineCopy.Delete(OfflineCopy.PathFor(oldFolder, s.Cfg.Id, s.Cfg.DataDir));
-        if (_cfg.OfflineCopyEnabled && (!wasEnabled || folderChanged) && _sessions.Any(x => x.Unlocked && !x.Backend.IsOffline))
-            SyncNow();
+            if (now && (!was || folderChanged) && s.Unlocked && !s.Backend.IsOffline) needsCopy = true;
+        }
+        if (needsCopy) SyncNow();
     }
 
     // Ask for the master password when an entry carries the re-prompt flag. Skipped when the vault
@@ -807,7 +812,7 @@ public partial class App : Application
         _hotkey.Unregister();                 // don't let the global hotkey fire while it is being edited
         string prevLang = _cfg.Language;
         string prevHotkey = _cfg.Hotkey;
-        bool prevOfflineCopy = _cfg.OfflineCopyEnabled;
+        var prevOfflineCopy = _sessions.ToDictionary(s => s.Cfg.Id, s => s.Cfg.OfflineCopy);
         string prevOfflineFolder = _cfg.OfflineCopyFolder;
         bool langChanged = false;
         bool addAccount = false;
@@ -820,6 +825,7 @@ public partial class App : Application
             ColorHex = s.Cfg.ColorHex,
             ServerLabel = ServerLabel(s.Cfg),
             Unlocked = s.Unlocked,
+            OfflineCopy = s.Cfg.OfflineCopy,
         }).ToList();
 
         try
@@ -898,6 +904,7 @@ public partial class App : Application
             string name = row.Name.Trim();
             if (name.Length > 0) s.Cfg.Name = name;
             s.Cfg.ColorHex = row.ColorHex;
+            s.Cfg.OfflineCopy = row.OfflineCopy;
         }
         foreach (var id in removed) RemoveAccount(id);
         _cfg.Save();
@@ -1137,7 +1144,7 @@ public partial class App : Application
 
             var settingsRows = new List<AccountRow>
             {
-                new() { Id = "p", Name = "Private", ColorHex = "#57C98A", ServerLabel = "https://vault.example.com", Unlocked = true },
+                new() { Id = "p", Name = "Private", ColorHex = "#57C98A", ServerLabel = "https://vault.example.com", Unlocked = true, OfflineCopy = true },
                 new() { Id = "w", Name = "Work", ColorHex = "#3B82F6", ServerLabel = "Bitwarden.eu (EU)", Unlocked = false },
             };
             var settings = new SettingsWindow(_cfg, settingsRows, false);
@@ -1149,6 +1156,10 @@ public partial class App : Application
             var settingsSec = new SettingsWindow(_cfg, settingsRows, false);
             settingsSec.NavSecurity.IsChecked = true;
             CaptureWindow(settingsSec, System.IO.Path.Combine(outDir, "settings-security.png"));
+            var settingsOffline = new SettingsWindow(_cfg, settingsRows, false);
+            settingsOffline.NavSecurity.IsChecked = true;
+            CaptureWindow(settingsOffline, System.IO.Path.Combine(outDir, "settings-offline.png"),
+                beforeRender: () => settingsOffline.ContentScroll.ScrollToEnd());
             var settingsGen = new SettingsWindow(_cfg, settingsRows, false);
             settingsGen.NavGeneral.IsChecked = true;
             CaptureWindow(settingsGen, System.IO.Path.Combine(outDir, "settings-general.png"));
@@ -1173,15 +1184,22 @@ public partial class App : Application
             CaptureWindow(sshWin, System.IO.Path.Combine(outDir, "ssh-keys.png"));
 
             var tray = new TrayMenuWindow(new[] { sPriv, sWork }, "Ctrl + Alt + A", "2 min ago",
-                new TrayMenuWindow.Actions());
+                new TrayMenuWindow.Actions { OpenVaultView = () => { } });
             CaptureWindow(tray, System.IO.Path.Combine(outDir, "tray.png"));
 
+            var view = new VaultViewWindow(new[] { sPriv, sWork }, new AppConfig { ExcludeFromScreenCapture = false }, _ => true, _ => Task.CompletedTask);
+            CaptureWindow(view, System.IO.Path.Combine(outDir, "vault-view.png"));
+            var viewSearch = new VaultViewWindow(new[] { sPriv, sWork }, new AppConfig { ExcludeFromScreenCapture = false }, _ => true, _ => Task.CompletedTask);
+            CaptureWindow(viewSearch, System.IO.Path.Combine(outDir, "vault-view-search.png"), beforeRender: () => viewSearch.SearchBox.Text = "git");
+            var viewDetail = new VaultViewWindow(new[] { sPriv }, new AppConfig { ExcludeFromScreenCapture = false }, _ => true, _ => Task.CompletedTask);
+            CaptureWindow(viewDetail, System.IO.Path.Combine(outDir, "vault-view-detail.png"), beforeRender: () => viewDetail.OpenFirstEntry(ItemKind.Card));
 
             var approve = new ConfirmWindow(Loc.T("webVault.approveTitle"),
                 Loc.T("webVault.approveMsg", "Private", "alex@example.com", "Firefox", "Germany (203.0.113.7)", Loc.T("webVault.justNow")),
                 false, confirmText: Loc.T("webVault.approve"), cancelText: Loc.T("webVault.deny"),
                 highlight: "turban-deftly-anime-chatroom-unselfish", focusCancel: true);
             CaptureWindow(approve, System.IO.Path.Combine(outDir, "web-login-approval.png"));
+
             var confirm = new ConfirmWindow("Remember this entry?",
                 "Add 'https://github.com' to 'GitHub' so it is suggested for github.com next time?", false);
             CaptureWindow(confirm, System.IO.Path.Combine(outDir, "confirm.png"));
@@ -1355,6 +1373,7 @@ public partial class App : Application
         {
             SelectAccount = s => { if (!s.Unlocked) _ = UnlockSessionAsync(s); },
             OpenWebVault = OpenWebVault,
+            OpenVaultView = _sessions.Any(s => s.Cfg.OfflineCopy) ? OpenVaultView : null,
             AutoType = OnHotkey,
             Sync = SyncNow,
             LockOne = LockOne,
@@ -1409,6 +1428,7 @@ public partial class App : Application
             _tray.Text = text;
             ApplyTrayBadge();
         }
+        CloseVaultViewIfLocked();
         SyncPasskeyMetadata();
     }
 

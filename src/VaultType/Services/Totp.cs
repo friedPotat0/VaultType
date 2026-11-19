@@ -1,4 +1,7 @@
+using System.Runtime.InteropServices;
 using System.Security.Cryptography;
+using System.Text;
+using VaultType.Security;
 
 namespace VaultType.Services;
 
@@ -7,6 +10,20 @@ namespace VaultType.Services;
 // locked memory without it ever becoming a managed string on the heap.
 public static class Totp
 {
+    // The current code of a protected seed. The seed is decoded in locked memory and never becomes
+    // a managed string; only the six-to-eight digit code does.
+    public static string? FromBox(SecretBox? seed, SecretProtector p)
+    {
+        if (seed == null || !p.IsActive) return null;
+        using var buf = p.Reveal(seed);
+        int byteLen = seed.Cipher.Length;
+        int charCount = Encoding.UTF8.GetCharCount(buf.Span.Slice(0, byteLen));
+        using var chars = new LockedBuffer(Math.Max(2, charCount * 2));
+        var charSpan = MemoryMarshal.Cast<byte, char>(chars.Span);
+        int n = Encoding.UTF8.GetChars(buf.Span.Slice(0, byteLen), charSpan);
+        return Compute(charSpan.Slice(0, n));
+    }
+
     public static string? Compute(ReadOnlySpan<char> secretOrOtpauth)
     {
         try
