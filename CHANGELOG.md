@@ -1,6 +1,34 @@
 # Changelog
 
 All notable changes to this project are documented here.
+## [1.3.0] - 2026-11-19
+
+### Features
+
+- *(ssh)* Approve a key for one application or all until the vault is locked
+- *(offline)* Queue remembered websites and keep an encrypted read-only offline copy
+- *(web-vault)* Open the web vault and approve its log in with device requests
+- *(offline)* Switch the offline copy per vault and add a read-only vault view
+- *(passkey)* Refuse a new passkey right away while its vault is offline
+
+### Bug Fixes
+
+- *(i18n)* Translate German terms left in the other languages
+- *(unlock)* Open fresh connections after a network or VPN switch
+- *(vault)* Send encryptedFor and keep URI checksums on cipher writes (#6)
+- *(passkey)* Accept requests from any version of the VaultType package
+- *(settings)* Fall back to a known tray click action
+
+### Refactor
+
+- Trim redundant comments and tidy local names
+- *(notifications)* Show errors in a window and drop confirmation notifications
+
+### Documentation
+
+- Update changelog for v1.2.3 [skip ci]
+- Document the web vault, the per-vault offline copy and the vault view
+
 ## [1.2.3] - 2026-10-09
 
 ### Features
