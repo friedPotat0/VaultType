@@ -1,6 +1,17 @@
 # Changelog
 
 All notable changes to this project are documented here.
+## [1.3.1] - 2026-11-19
+
+### Bug Fixes
+
+- *(msix)* Start the Store edition with Windows through a startup task
+- *(deps)* Update System.Formats.Cbor to 10.0.15
+
+### Documentation
+
+- Update changelog for v1.3.0 [skip ci]
+
 ## [1.3.0] - 2026-11-19
 
 ### Features
