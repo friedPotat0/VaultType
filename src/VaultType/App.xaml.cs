@@ -139,7 +139,7 @@ public partial class App : Application
         // Don't let a stray UI exception silently kill the whole tray app: surface it and keep running.
         DispatcherUnhandledException += (_, ev) =>
         {
-            try { ShowBalloon(Loc.T("msg.error"), ev.Exception.Message); } catch { }
+            try { ShowError(ev.Exception.Message); } catch { }
             ev.Handled = true;
         };
         System.Threading.Tasks.TaskScheduler.UnobservedTaskException += (_, ev) => ev.SetObserved();
@@ -156,7 +156,7 @@ public partial class App : Application
         bool hotkeyOk = _hotkey.Register(_cfg.Hotkey, out _);
 
         _idle = new IdleLockService(_cfg.IdleTimeoutMinutes);
-        _idle.Lock += () => Dispatcher.Invoke(() => LockVault(true));
+        _idle.Lock += () => Dispatcher.Invoke(LockVault);
 
         if (_cfg.EnableTrayClick) _fgTracker = new ForegroundTracker();
         AutostartService.Set(_cfg.Autostart);   // keep the Run entry in sync with the preference
@@ -240,7 +240,7 @@ public partial class App : Application
                 await MaybeOfferRemember(picker.Result, picker.Matches, ctx);
             }
         }
-        catch (Exception ex) { ShowBalloon("Error", ex.Message); }
+        catch (Exception ex) { ShowError(ex.Message); }
         finally { _busy = false; }
     }
 
@@ -253,7 +253,7 @@ public partial class App : Application
         {
             await AddAccountAsync();
         }
-        catch (Exception ex) { ShowBalloon("Error", ex.Message); }
+        catch (Exception ex) { ShowError(ex.Message); }
         finally { _busy = false; }
     }
 
@@ -285,16 +285,9 @@ public partial class App : Application
                 Matcher.FillHostDomain(iu);
                 item.Uris.Add(iu);
             }
-            if (result == UriSaveResult.Queued)
-            {
-                ShowBalloon(Loc.T("msg.queuedTitle"), Loc.T("msg.queuedMsg", item.Name, label));
-                EnsureReconnectTimer();
-            }
-            else
-                ShowBalloon(Loc.T("msg.savedTitle"), Loc.T("msg.savedMsg", item.Name, label));
+            if (result == UriSaveResult.Queued) EnsureReconnectTimer();
         }
-
-        catch (Exception ex) { ShowBalloon(Loc.T("msg.error"), ex.Message); }
+        catch (Exception ex) { ShowError(ex.Message); }
     }
 
     private static string? BuildRememberUri(ForegroundInfo ctx)
@@ -323,7 +316,6 @@ public partial class App : Application
         {
             int secs = _cfg.ClipboardClearSeconds;
             ClipboardService.Copy(r.Item, r.Field, protector, secs);
-            ShowBalloon(Loc.T("msg.copiedTitle"), Loc.T("msg.copiedField", FieldLabels.Text(r.Field), secs));
             return;
         }
 
@@ -341,11 +333,11 @@ public partial class App : Application
         switch (outcome.Result)
         {
             case TypeResult.FieldNotFound:
-                ShowBalloon(Loc.T("msg.fieldMissingTitle"),
+                ShowError(heading: Loc.T("msg.fieldMissingTitle"), message:
                             Loc.T("msg.fieldMissingMsg", FieldLabels.ForLookup(outcome.MissingField)));
                 break;
             case TypeResult.NoFieldsDetected:
-                ShowBalloon(Loc.T("msg.noFieldsTitle"), Loc.T("msg.noFieldsMsg"));
+                ShowError(Loc.T("msg.noFieldsMsg"), Loc.T("msg.noFieldsTitle"));
                 break;
         }
     }
@@ -466,7 +458,7 @@ public partial class App : Application
             if (pinBytes != null)
             {
                 try { PinUnlock.Enroll(s, pinBytes); }
-                catch (Exception ex) { ShowBalloon(Loc.T("msg.error"), ex.Message); }
+                catch (Exception ex) { ShowError(ex.Message); }
             }
 
             if (isNew)
@@ -626,12 +618,7 @@ public partial class App : Application
     // surface a failure to write the offline copy instead of letting it go stale unnoticed.
     private void ReportUnlockState(VaultSession s)
     {
-        if (s.Backend.IsOffline)
-        {
-            string when = s.Backend.OfflineCopySavedUtc?.ToLocalTime().ToString("g") ?? "?";
-            ShowBalloon(Loc.T("msg.offlineTitle"), Loc.T("msg.offlineMsg", when));
-            EnsureReconnectTimer();
-        }
+        if (s.Backend.IsOffline) EnsureReconnectTimer();
         ReportOfflineCopyError(s);
         if (s.Backend.PendingCount > 0) EnsureReconnectTimer();
     }
@@ -644,7 +631,7 @@ public partial class App : Application
         if (err == null) { _shownCopyErrors.Remove(s.Cfg.Id); return; }
         if (_shownCopyErrors.TryGetValue(s.Cfg.Id, out var shown) && shown == err) return;
         _shownCopyErrors[s.Cfg.Id] = err;
-        ShowBalloon(Loc.T("msg.offlineCopyErrTitle"), Loc.T("msg.offlineCopyErr", err));
+        ShowError(Loc.T("msg.offlineCopyErr", err), Loc.T("msg.offlineCopyErrTitle"));
     }
 
     // ---- reconnecting: offline copy -> server, queued website/app bindings ----
@@ -722,8 +709,6 @@ public partial class App : Application
             {
                 if (cameOnline) _cfg.Save();   // LastSyncUtc moved
                 UpdateTray();
-                if (cameOnline) ShowBalloon(Loc.T("msg.onlineTitle"), sent > 0 ? Loc.T("msg.onlineSent", sent) : Loc.T("msg.onlineMsg"));
-                else ShowBalloon(Loc.T("msg.pendingSentTitle"), Loc.T("msg.onlineSent", sent));
             }
             if (!NeedsReconnect) _reconnectTimer?.Stop();
         }
@@ -763,20 +748,28 @@ public partial class App : Application
     }
 
     // Lock every account: wipe all session keys and forget all items.
-    private void LockVault(bool notify)
+    private void LockVault()
     {
         ClipboardService.ClearNow();
         foreach (var s in _sessions) s.Lock();
         _idle.Disarm();
         UpdateTray();
-        if (notify) ShowBalloon(Loc.T("msg.lockedTitle"), Loc.T("msg.lockedMsg"));
     }
 
     // Sync every unlocked account and reload its entries.
     private async void SyncNow()
     {
-        if (!AnyUnlocked) { ShowBalloon(Loc.T("msg.note"), Loc.T("msg.unlockFirst")); return; }
         if (_busy) return;
+        if (!AnyUnlocked)
+        {
+            // A sync of a locked vault is an unlock: unlocking fetches the vault anyway.
+            if (_cfg.Accounts.Count == 0) return;
+            _busy = true;
+            try { await UnlockSessionAsync(MostRecentlyUnlocked()); }
+            catch (Exception ex) { ShowError(ex.Message); }
+            finally { _busy = false; }
+            return;
+        }
         _busy = true;
         _idle.Disarm();   // don't let the idle-lock dispose a session while the sync runs off-thread
         try
@@ -791,10 +784,9 @@ public partial class App : Application
             }
             _cfg.Save();   // persist the accounts' fresh LastSyncUtc stamps
             UpdateTray();
-            if (firstErr == null) ShowBalloon(Loc.T("msg.syncedTitle"), Loc.T("msg.syncedMsg", TotalItems));
-            else ShowBalloon(Loc.T("msg.syncErr"), firstErr);
+            if (firstErr != null) ShowError(firstErr, Loc.T("msg.syncErr"));
         }
-        catch (Exception ex) { ShowBalloon(Loc.T("msg.syncErr"), ex.Message); }
+        catch (Exception ex) { ShowError(ex.Message, Loc.T("msg.syncErr")); }
         finally { _busy = false; if (AnyUnlocked) _idle.Arm(_cfg.IdleTimeoutMinutes); }
     }
 
@@ -890,7 +882,7 @@ public partial class App : Application
             row.ServerLabel = ServerLabel(s.Cfg);
             row.Unlocked = s.Unlocked;
         }
-        catch (Exception ex) { ShowBalloon(Loc.T("msg.error"), ex.Message); }
+        catch (Exception ex) { ShowError(ex.Message); }
         finally { _busy = false; }
     }
 
@@ -936,7 +928,7 @@ public partial class App : Application
         if (_busy) return;
         _busy = true;
         try { await AddAccountAsync(); }
-        catch (Exception ex) { ShowBalloon(Loc.T("msg.error"), ex.Message); }
+        catch (Exception ex) { ShowError(ex.Message); }
         finally { _busy = false; }
     }
 
@@ -1013,12 +1005,8 @@ public partial class App : Application
         if (info == null) return;   // offline or rate-limited: no timestamp, so the next tick retries
         _cfg.LastUpdateCheckUtc = DateTimeOffset.UtcNow;
 
-        // Announce a version once; from then on the tray icon and menu carry it.
-        bool firstSighting = info.IsNewer
-            && !string.Equals(info.LatestVersion, _cfg.KnownUpdateVersion, StringComparison.Ordinal);
+        // The tray icon's badge and the menu entry announce a new version.
         RememberUpdate(info);
-        if (firstSighting && _update is { } found)
-            ShowBalloon(Loc.T("msg.updateTitle"), Loc.T("msg.updateAvailable", found.LatestVersion), found.Url);
     }
 
     // Manual check from the tray menu. The result is a window, not a notification: with
@@ -1061,6 +1049,23 @@ public partial class App : Application
         var w = new ConfirmWindow(Loc.T("msg.updateTitle"), Loc.T("msg.updateQuestion", info.LatestVersion),
                                   _cfg.ExcludeFromScreenCapture, Loc.T("msg.updateOpen"));
         if (w.ShowDialog() == true) OpenUrl(info.Url);
+    }
+
+    // Errors get a window, not a notification. Shown on the next dispatcher turn so it never opens
+    // in the middle of another window's teardown, and an identical error that is already on screen
+    // isn't stacked a second time.
+    private readonly HashSet<string> _errorsShown = new();
+
+    private void ShowError(string message, string? heading = null)
+    {
+        heading ??= Loc.T("msg.error");
+        string key = heading + "\n" + message;
+        Dispatcher.BeginInvoke((Action)(() =>
+        {
+            if (!_errorsShown.Add(key)) return;
+            try { Notice(heading, message); }
+            finally { _errorsShown.Remove(key); }
+        }));
     }
 
     // One-button dialog for a result that needs no decision.
@@ -1338,7 +1343,7 @@ public partial class App : Application
         // Next dispatcher turn plus a catch-all, so a tray action can never take the whole app down.
         void Safe(Action a) => Dispatcher.BeginInvoke((Action)(() =>
         {
-            try { a(); } catch (Exception ex) { ShowBalloon(Loc.T("msg.error"), ex.Message); }
+            try { a(); } catch (Exception ex) { ShowError(ex.Message); }
         }));
         var menu = new TrayMenuWindow(_sessions, _cfg.Hotkey, SyncHint(), new TrayMenuWindow.Actions
         {
@@ -1346,7 +1351,7 @@ public partial class App : Application
             AutoType = OnHotkey,
             Sync = SyncNow,
             LockOne = LockOne,
-            LockAll = () => LockVault(true),
+            LockAll = LockVault,
             CheckUpdates = CheckForUpdates,
             OpenSettings = OpenSettings,
             Exit = ExitApp,
@@ -1383,7 +1388,6 @@ public partial class App : Application
         s.Lock();
         if (!AnyUnlocked) { ClipboardService.ClearNow(); _idle.Disarm(); }
         UpdateTray();
-        ShowBalloon(Loc.T("msg.lockedTitle"), Loc.T("msg.lockedMsg"));
     }
 
     private void UpdateTray()
@@ -1566,7 +1570,7 @@ public partial class App : Application
         {
             // The built-in Windows ssh-agent service owns the same pipe; warn instead of failing silently.
             if (_sshAgent == null && SshAgentService.PipeAlreadyOwned())
-                ShowBalloon(Loc.T("msg.sshPipeBusyTitle"), Loc.T("msg.sshPipeBusy"));
+                ShowError(Loc.T("msg.sshPipeBusy"), Loc.T("msg.sshPipeBusyTitle"));
             _sshAgent ??= new SshAgentService(ListAgentKeys, AuthorizeSshSign);
             _sshAgent.Start();
         }
@@ -1846,7 +1850,7 @@ public partial class App : Application
 
     private void ExitApp()
     {
-        LockVault(false);
+        LockVault();
         _sshAgent?.Dispose();
         _passkeyIpc?.Dispose();
         _updateTimer?.Stop();
