@@ -118,8 +118,9 @@ public sealed class LoginModel
 
 public sealed class UriModel
 {
-    public string? Uri { get; set; }   // EncString
+    public string? Uri { get; set; }           // EncString
     public int? Match { get; set; }
+    public string? UriChecksum { get; set; }   // EncString of base64(SHA-256(uri))
 }
 
 public sealed class SshKeyModel

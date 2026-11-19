@@ -27,8 +27,10 @@ public sealed class Fido2CredentialEnc
 public static class CipherJson
 {
     // Append an encrypted URI to a login cipher and produce the full PUT body. Preserves the
-    // per-item key, all existing encrypted fields, custom fields and fido2 credentials.
-    public static string BuildAddUriBody(CipherModel c, string encryptedUri)
+    // per-item key, all existing encrypted fields, custom fields and fido2 credentials. Every URI
+    // keeps (or, for the new one, gets) its checksum: clients drop a URI without a valid one once
+    // the cipher has an item key.
+    public static string BuildAddUriBody(CipherModel c, string encryptedUri, string encryptedChecksum, string? userId)
     {
         var login = new JsonObject
         {
@@ -40,8 +42,8 @@ public static class CipherJson
         var uris = new JsonArray();
         if (c.Login != null)
             foreach (var u in c.Login.Uris)
-                uris.Add(new JsonObject { ["uri"] = u.Uri, ["match"] = u.Match });
-        uris.Add(new JsonObject { ["uri"] = encryptedUri, ["match"] = null });
+                uris.Add(new JsonObject { ["uri"] = u.Uri, ["match"] = u.Match, ["uriChecksum"] = u.UriChecksum });
+        uris.Add(new JsonObject { ["uri"] = encryptedUri, ["match"] = null, ["uriChecksum"] = encryptedChecksum });
         login["uris"] = uris;
 
         if (TryGetArray(c.Raw, "login", "fido2Credentials", out var fido)) login["fido2Credentials"] = fido;
@@ -56,6 +58,7 @@ public static class CipherJson
             ["organizationId"] = c.OrganizationId,
             ["folderId"] = c.FolderId,
             ["key"] = c.Key,
+            ["encryptedFor"] = userId,
             ["login"] = login,
             ["lastKnownRevisionDate"] = c.RevisionDate?.UtcDateTime.ToString("o"),
         };
@@ -66,13 +69,14 @@ public static class CipherJson
 
     // A minimal new personal login (encrypted fields supplied by the caller). Used by the dev test.
     public static string BuildCreateLogin(string encName, string? encUsername, string? encPassword,
-        string? encTotp, IEnumerable<string> encUris)
+        string? encTotp, IEnumerable<string> encUris, string? userId)
     {
         var uris = new JsonArray();
         foreach (var u in encUris) uris.Add(new JsonObject { ["uri"] = u, ["match"] = null });
         var body = new JsonObject
         {
             ["type"] = 1,
+            ["encryptedFor"] = userId,
             ["name"] = encName,
             ["notes"] = null,
             ["favorite"] = false,
@@ -93,11 +97,12 @@ public static class CipherJson
     // A new personal login carrying one passkey (all values already encrypted). Created when a
     // relying party registers a passkey through the Windows plugin authenticator.
     public static string BuildCreateFido2Login(string encName, string? encUsername, string encUri,
-        Fido2CredentialEnc cred)
+        Fido2CredentialEnc cred, string? userId)
     {
         var body = new JsonObject
         {
             ["type"] = 1,
+            ["encryptedFor"] = userId,
             ["name"] = encName,
             ["notes"] = null,
             ["favorite"] = false,

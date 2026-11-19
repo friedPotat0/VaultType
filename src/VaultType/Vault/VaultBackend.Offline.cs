@@ -81,7 +81,8 @@ public sealed partial class VaultBackend
     private async Task PutUriAsync(CipherModel cipher, string uri, CancellationToken ct)
     {
         await EnsureAccessTokenAsync(ct).ConfigureAwait(false);
-        string body = CipherJson.BuildAddUriBody(cipher, _crypto!.EncryptForCipher(cipher, uri));
+        string body = CipherJson.BuildAddUriBody(cipher, _crypto!.EncryptForCipher(cipher, uri),
+            _crypto.EncryptForCipher(cipher, AccountCrypto.UriChecksum(uri)), _userId);
         await Api().PutCipherAsync(_accessToken!, cipher.Id!, body, ct).ConfigureAwait(false);
     }
 

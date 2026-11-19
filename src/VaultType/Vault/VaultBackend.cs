@@ -35,6 +35,10 @@ public sealed partial class VaultBackend : IDisposable
     private AccountCrypto? _crypto;
     private List<CipherModel> _ciphers = new();
 
+    // The account's user id from the last sync profile. Cipher writes carry it as encryptedFor, which
+    // Vaultwarden requires on every cipher body since web-v2025.6.0.
+    private string? _userId;
+
     // Serialises the sync/decrypt state swap. CreatePasskeyAsync fires a background sync, which must
     // not overlap another DecryptAll while it replaces the Protector and item lists together.
     private readonly object _decryptGate = new();
@@ -502,7 +506,7 @@ public sealed partial class VaultBackend : IDisposable
 
             string name = string.IsNullOrEmpty(rpName) ? rpId : rpName!;
             string body = CipherJson.BuildCreateFido2Login(
-                E(name), EOpt(userName), E("https://" + rpId), cred);
+                E(name), EOpt(userName), E("https://" + rpId), cred, _userId);
 
             await EnsureAccessTokenAsync(ct).ConfigureAwait(false);
             await Api().PostCipherAsync(_accessToken!, body, ct).ConfigureAwait(false);
@@ -551,6 +555,7 @@ public sealed partial class VaultBackend : IDisposable
         SshKeys = new List<SshKeyEntry>();
         Passkeys = new List<Fido2Entry>();
         _ciphers = new List<CipherModel>();
+        _userId = null;
         _accessToken = null;
         IsOffline = false;
         lock (_pendingGate) _pending = null;   // the queue file stays; it's sealed with the user key
@@ -582,6 +587,7 @@ public sealed partial class VaultBackend : IDisposable
             // is the one spot that stamps the account's last-sync time. Persisting is the caller's job.
             if (fromServer) _acc.LastSyncUtc = DateTimeOffset.UtcNow;
             _ciphers = sync.Ciphers;
+            _userId = sync.Profile?.Id ?? _userId;
             Protector?.Dispose();
             Protector = new SecretProtector();
             var items = new List<VaultItem>();

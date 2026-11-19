@@ -126,7 +126,7 @@ public static class VaultLiveTest
         string createBody = CipherJson.BuildCreateLogin(
             crypto.EncryptWithUserKey(name), crypto.EncryptWithUserKey(user),
             crypto.EncryptWithUserKey(secret), crypto.EncryptWithUserKey(totpSeed),
-            new[] { crypto.EncryptWithUserKey(uri1) });
+            new[] { crypto.EncryptWithUserKey(uri1) }, sync0.Profile?.Id);
         string createResp = await api.PostCipherAsync(access, createBody);
         string? newId = System.Text.Json.JsonDocument.Parse(createResp).RootElement.TryGetProperty("id", out var idEl) ? idEl.GetString()
                        : System.Text.Json.JsonDocument.Parse(createResp).RootElement.TryGetProperty("Id", out var idEl2) ? idEl2.GetString() : null;
@@ -154,7 +154,8 @@ public static class VaultLiveTest
             sb.AppendLine($"    (current TOTP code: {code})");
 
             // add-uri edit
-            string putBody = CipherJson.BuildAddUriBody(c, crypto.EncryptWithUserKey(uri2));
+            string putBody = CipherJson.BuildAddUriBody(c, crypto.EncryptWithUserKey(uri2),
+                crypto.EncryptWithUserKey(AccountCrypto.UriChecksum(uri2)), sync0.Profile?.Id);
             await api.PutCipherAsync(access, newId, putBody);
             var (sync2, _) = await api.SyncAsync(access);
             var c2 = sync2.Ciphers.First(x => x.Id == newId);

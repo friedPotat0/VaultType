@@ -95,6 +95,10 @@ public sealed class AccountCrypto : IDisposable
     public string DecryptWithUserKey(string encString)
         => EncString.Parse(encString).DecryptToString(_userKey ?? throw new InvalidOperationException("Account is locked."));
 
+    // base64(SHA-256(uri)), the plaintext the Bitwarden clients compare a URI's checksum against.
+    public static string UriChecksum(string uri)
+        => Convert.ToBase64String(SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(uri)));
+
     // Encrypt a value with a cipher's effective content key (per-item key if present, else wrapping key).
     public string EncryptForCipher(CipherModel c, string plaintext)
     {
