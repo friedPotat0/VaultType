@@ -290,5 +290,7 @@
   "viewer.sectionOnline": "up to date, synced {0}",
   "viewer.sectionOnlineNow": "up to date",
   "viewer.sectionOffline": "offline copy from {0}",
-  "viewer.sectionLocked": "locked · click to unlock"
+  "viewer.sectionLocked": "locked · click to unlock",
+  "settings.autostartManage": "Manage in Windows",
+  "settings.autostartStoreHint": "Started with Windows by default. Turn it on or off under Windows Settings > Apps > Startup."
 }

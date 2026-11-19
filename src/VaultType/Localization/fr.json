@@ -290,5 +290,7 @@
   "viewer.sectionOnline": "à jour, synchronisé le {0}",
   "viewer.sectionOnlineNow": "à jour",
   "viewer.sectionOffline": "copie hors ligne du {0}",
-  "viewer.sectionLocked": "verrouillé · cliquez pour déverrouiller"
+  "viewer.sectionLocked": "verrouillé · cliquez pour déverrouiller",
+  "settings.autostartManage": "Gérer dans Windows",
+  "settings.autostartStoreHint": "Démarre avec Windows par défaut. Activez-le ou désactivez-le dans Paramètres Windows > Applications > Démarrage."
 }

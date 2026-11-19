@@ -289,7 +289,7 @@ Everything below is adjustable in the Settings window; the file itself lives in
 | `PasskeyRequireHello` | `true` | Gate passkey use behind Windows Hello |
 | `EnableTrayClick` | `true` | React to a left-click on the tray icon (needs a lightweight foreground hook); `false` = hotkey only |
 | `TrayClickAction` | `2` | Tray left-click: `0` = menu, `1` = auto-type, `2` = settings |
-| `Autostart` | `true` | Start with Windows (per-user) |
+| `Autostart` | `true` | Start with Windows (per-user). The Store edition ignores it: its startup task is switched in Windows Settings -> Apps -> Startup |
 
 ## Usage
 

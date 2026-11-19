@@ -290,5 +290,7 @@
   "viewer.sectionOnline": "最新 ({0} に同期)",
   "viewer.sectionOnlineNow": "最新",
   "viewer.sectionOffline": "{0} のオフラインコピー",
-  "viewer.sectionLocked": "ロック中 · クリックしてロック解除"
+  "viewer.sectionLocked": "ロック中 · クリックしてロック解除",
+  "settings.autostartManage": "Windows で管理",
+  "settings.autostartStoreHint": "既定で Windows と同時に起動します。Windows の設定 > アプリ > スタートアップでオン/オフを切り替えます。"
 }

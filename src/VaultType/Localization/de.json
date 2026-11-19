@@ -290,5 +290,7 @@
   "viewer.sectionOnline": "aktuell, Stand {0}",
   "viewer.sectionOnlineNow": "aktuell",
   "viewer.sectionOffline": "Offline-Kopie vom {0}",
-  "viewer.sectionLocked": "gesperrt · zum Entsperren klicken"
+  "viewer.sectionLocked": "gesperrt · zum Entsperren klicken",
+  "settings.autostartManage": "In Windows verwalten",
+  "settings.autostartStoreHint": "Startet standardmäßig mit Windows. Ein- und ausschalten unter Windows-Einstellungen > Apps > Autostart."
 }

@@ -159,7 +159,7 @@ public partial class App : Application
         _idle.Lock += () => Dispatcher.Invoke(LockVault);
 
         if (_cfg.EnableTrayClick) _fgTracker = new ForegroundTracker();
-        AutostartService.Set(_cfg.Autostart);   // keep the Run entry in sync with the preference
+        AutostartService.Set(_cfg.Autostart);   // keep the Run entry in sync (the Store edition uses its startup task)
 
         RestoreKnownUpdate();
         SetupTray();

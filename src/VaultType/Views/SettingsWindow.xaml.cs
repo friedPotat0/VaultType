@@ -110,6 +110,10 @@ public partial class SettingsWindow : Window
             UpdStatus.Text = Loc.T("settings.updatesStore", AppInfo.Version);
             UpdBtnLabel.Text = Loc.T("settings.updatesOpenStore");
             AutoUpdateRow.Visibility = Visibility.Collapsed;
+            // Store edition: Windows owns the startup task, so the row points there instead.
+            AutostartTgl.Visibility = Visibility.Collapsed;
+            AutostartManageBtn.Visibility = Visibility.Visible;
+            AutostartHint.Text = Loc.T("settings.autostartStoreHint");
         }
         else
         {
@@ -487,6 +491,8 @@ public partial class SettingsWindow : Window
     // The release the button would download, once one is known.
     private string? _updUrl;
 
+    private void AutostartManage_Click(object sender, RoutedEventArgs e) => OpenUpdateUrl(AutostartService.WindowsStartupSettings);
+
     private async void CheckUpdates_Click(object sender, RoutedEventArgs e)
     {
         if (AppInfo.IsPackaged) { OpenUpdateUrl(AppInfo.StoreUri); return; }
@@ -576,7 +582,8 @@ public partial class SettingsWindow : Window
         _cfg.FillRequiredFieldsOnly = RequiredOnlyTgl.IsChecked == true;
         _cfg.ExcludeFromScreenCapture = HideCaptureTgl.IsChecked == true;
         _cfg.AntiDebugger = AntiDbgTgl.IsChecked == true;
-        _cfg.Autostart = AutostartTgl.IsChecked == true;
+        // Hidden in the Store edition, where Windows keeps the setting - keep the stored value.
+        if (!AppInfo.IsPackaged) _cfg.Autostart = AutostartTgl.IsChecked == true;
         AutostartService.Set(_cfg.Autostart);
         // Hidden in the Store edition, where the row was never filled in - keep the stored value.
         if (!AppInfo.IsPackaged) _cfg.BackgroundUpdateCheck = AutoUpdateTgl.IsChecked == true;

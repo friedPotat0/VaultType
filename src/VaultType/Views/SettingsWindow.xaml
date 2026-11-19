@@ -438,9 +438,11 @@
                                     </Grid.ColumnDefinitions>
                                     <StackPanel VerticalAlignment="Center">
                                         <TextBlock Style="{StaticResource RowTitle}" Text="{local:Tr settings.autostart}" />
-                                        <TextBlock Style="{StaticResource RowSub}" Text="{local:Tr settings.autostartHint}" />
+                                        <TextBlock x:Name="AutostartHint" Style="{StaticResource RowSub}" Text="{local:Tr settings.autostartHint}" TextWrapping="Wrap" />
                                     </StackPanel>
                                     <ToggleButton Grid.Column="2" x:Name="AutostartTgl" Style="{StaticResource ToggleSwitch}" VerticalAlignment="Center" />
+                                    <Button Grid.Column="2" x:Name="AutostartManageBtn" Style="{StaticResource OutlineButton}" VerticalAlignment="Center"
+                                            Content="{local:Tr settings.autostartManage}" Click="AutostartManage_Click" Visibility="Collapsed" />
                                 </Grid>
                                 <Grid x:Name="AutoUpdateRow" Margin="0,0,0,14">
                                     <Grid.ColumnDefinitions>

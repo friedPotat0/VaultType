@@ -290,5 +290,7 @@
   "viewer.sectionOnline": "актуально, синхронизировано {0}",
   "viewer.sectionOnlineNow": "актуально",
   "viewer.sectionOffline": "офлайн-копия от {0}",
-  "viewer.sectionLocked": "заблокировано · нажмите, чтобы разблокировать"
+  "viewer.sectionLocked": "заблокировано · нажмите, чтобы разблокировать",
+  "settings.autostartManage": "Управлять в Windows",
+  "settings.autostartStoreHint": "По умолчанию запускается вместе с Windows. Включается и отключается в Параметрах Windows > Приложения > Автозагрузка."
 }

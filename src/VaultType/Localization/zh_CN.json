@@ -290,5 +290,7 @@
   "viewer.sectionOnline": "最新，同步于 {0}",
   "viewer.sectionOnlineNow": "最新",
   "viewer.sectionOffline": "{0} 的离线副本",
-  "viewer.sectionLocked": "已锁定 · 点击解锁"
+  "viewer.sectionLocked": "已锁定 · 点击解锁",
+  "settings.autostartManage": "在 Windows 中管理",
+  "settings.autostartStoreHint": "默认随 Windows 启动。可在 Windows 设置 > 应用 > 启动 中打开或关闭。"
 }

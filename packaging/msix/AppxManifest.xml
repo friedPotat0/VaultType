@@ -10,8 +10,9 @@
   xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10"
   xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities"
   xmlns:com="http://schemas.microsoft.com/appx/manifest/com/windows10"
+  xmlns:uap5="http://schemas.microsoft.com/appx/manifest/uap/windows10/5"
   xmlns:uap10="http://schemas.microsoft.com/appx/manifest/uap/windows10/10"
-  IgnorableNamespaces="uap rescap com uap10">
+  IgnorableNamespaces="uap rescap com uap5 uap10">
 
   <Identity
     Name="VaultType.PasskeyProvider"
@@ -53,6 +54,14 @@
         <uap:DefaultTile Square71x71Logo="Assets\Square71x71Logo.png" Square310x310Logo="Assets\Square310x310Logo.png" Wide310x150Logo="Assets\Wide310x150Logo.png" />
       </uap:VisualElements>
       <Extensions>
+        <!--
+          Start with Windows. A packaged app can't use the Run key (its registry writes stay inside
+          the package), so the package declares a startup task instead. Enabled by default; the user
+          turns it off in Windows Settings > Apps > Startup or in Task Manager.
+        -->
+        <uap5:Extension Category="windows.startupTask" Executable="VaultType.exe" EntryPoint="Windows.FullTrustApplication">
+          <uap5:StartupTask TaskId="VaultTypeStartup" Enabled="true" DisplayName="VaultType" />
+        </uap5:Extension>
         <com:Extension Category="windows.comServer">
           <com:ComServer>
             <com:ExeServer Executable="VaultType.exe" Arguments="-PluginActivated" DisplayName="VaultType Passkey Provider">

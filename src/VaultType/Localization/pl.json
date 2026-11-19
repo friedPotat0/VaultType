@@ -290,5 +290,7 @@
   "viewer.sectionOnline": "aktualny, synchronizacja {0}",
   "viewer.sectionOnlineNow": "aktualny",
   "viewer.sectionOffline": "kopia offline z {0}",
-  "viewer.sectionLocked": "zablokowany · kliknij, aby odblokować"
+  "viewer.sectionLocked": "zablokowany · kliknij, aby odblokować",
+  "settings.autostartManage": "Zarządzaj w systemie Windows",
+  "settings.autostartStoreHint": "Domyślnie uruchamia się z systemem Windows. Włącz lub wyłącz w Ustawieniach systemu Windows > Aplikacje > Uruchamianie."
 }

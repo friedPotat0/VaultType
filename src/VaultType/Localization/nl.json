@@ -290,5 +290,7 @@
   "viewer.sectionOnline": "actueel, gesynchroniseerd {0}",
   "viewer.sectionOnlineNow": "actueel",
   "viewer.sectionOffline": "offline kopie van {0}",
-  "viewer.sectionLocked": "vergrendeld · klik om te ontgrendelen"
+  "viewer.sectionLocked": "vergrendeld · klik om te ontgrendelen",
+  "settings.autostartManage": "Beheren in Windows",
+  "settings.autostartStoreHint": "Start standaard met Windows. Zet het aan of uit onder Windows-instellingen > Apps > Opstarten."
 }

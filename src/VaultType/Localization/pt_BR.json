@@ -290,5 +290,7 @@
   "viewer.sectionOnline": "atualizado, sincronizado {0}",
   "viewer.sectionOnlineNow": "atualizado",
   "viewer.sectionOffline": "cópia offline de {0}",
-  "viewer.sectionLocked": "bloqueado · clique para desbloquear"
+  "viewer.sectionLocked": "bloqueado · clique para desbloquear",
+  "settings.autostartManage": "Gerenciar no Windows",
+  "settings.autostartStoreHint": "Inicia com o Windows por padrão. Ative ou desative em Configurações do Windows > Aplicativos > Inicialização."
 }
