@@ -184,9 +184,12 @@ internal sealed class PasskeyIpcServer : IDisposable
         return sec;
     }
 
-    // Windows launches the "-PluginActivated" plugin from the very same executable image as the
-    // tray, so we authenticate the connecting peer by comparing its process image path against our
-    // own. Fail closed: if the peer can't be resolved or differs, the request is dropped.
+    // Only the plugin process may talk to this pipe. Windows always starts it ("-PluginActivated")
+    // from the installed MSIX package, while the tray answering here may be another build: the
+    // installer or portable edition, a development build, or an older package version still running
+    // after the Store updated VaultType. So the peer is accepted when it is either this very
+    // executable or any process of VaultType's own package. Package identity is assigned by Windows
+    // at launch and can't be taken on by an ordinary process. Fail closed otherwise.
     private static bool IsTrustedClient(NamedPipeServerStream pipe)
     {
         try
@@ -198,14 +201,76 @@ internal sealed class PasskeyIpcServer : IDisposable
             string? client = null;
             try { using var p = Process.GetProcessById((int)pid); client = p.MainModule?.FileName; }
             catch { }
+            if (self != null && client != null && string.Equals(self, client, StringComparison.OrdinalIgnoreCase))
+                return true;
 
-            return self != null && client != null && string.Equals(self, client, StringComparison.OrdinalIgnoreCase);
+            string? family = PackageFamilyOf(pid);
+            return family != null && TrustedPackageFamilies.Value.Contains(family);
         }
         catch
         {
             return false;
         }
     }
+
+    private static readonly Lazy<HashSet<string>> TrustedPackageFamilies = new(() =>
+        PasskeyIds.PackageIdentities
+            .Select(id => FamilyNameFromId(id.Name, id.Publisher))
+            .Where(f => f != null)
+            .Select(f => f!)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase));
+
+    // Null for a process without package identity (APPMODEL_ERROR_NO_PACKAGE) or one we can't open.
+    private static string? PackageFamilyOf(uint pid)
+    {
+        IntPtr process = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, false, pid);
+        if (process == IntPtr.Zero) return null;
+        try
+        {
+            uint length = 256;
+            var name = new System.Text.StringBuilder((int)length);
+            return GetPackageFamilyName(process, ref length, name) == 0 ? name.ToString() : null;
+        }
+        finally { CloseHandle(process); }
+    }
+
+    // Name + publisher -> "Name_publisherId", computed by Windows itself.
+    private static string? FamilyNameFromId(string name, string publisher)
+    {
+        var id = new PackageId { Name = name, Publisher = publisher };
+        uint length = 256;
+        var family = new System.Text.StringBuilder((int)length);
+        return PackageFamilyNameFromId(ref id, ref length, family) == 0 ? family.ToString() : null;
+    }
+
+    private const uint PROCESS_QUERY_LIMITED_INFORMATION = 0x1000;
+
+    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
+    private struct PackageId
+    {
+        public uint Reserved;
+        public uint ProcessorArchitecture;
+        public ulong Version;
+        public string Name;
+        public string Publisher;
+        public string? ResourceId;
+        public string? PublisherId;
+    }
+
+    [DllImport("kernel32.dll", CharSet = CharSet.Unicode)]
+    private static extern int PackageFamilyNameFromId(ref PackageId packageId, ref uint packageFamilyNameLength,
+        System.Text.StringBuilder packageFamilyName);
+
+    [DllImport("kernel32.dll", CharSet = CharSet.Unicode)]
+    private static extern int GetPackageFamilyName(IntPtr hProcess, ref uint packageFamilyNameLength,
+        System.Text.StringBuilder packageFamilyName);
+
+    [DllImport("kernel32.dll", SetLastError = true)]
+    private static extern IntPtr OpenProcess(uint desiredAccess, bool inheritHandle, uint processId);
+
+    [DllImport("kernel32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool CloseHandle(IntPtr handle);
 
     public void Dispose() => Stop();
 }

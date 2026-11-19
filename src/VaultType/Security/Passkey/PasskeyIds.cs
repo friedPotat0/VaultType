@@ -29,4 +29,12 @@ public static class PasskeyIds
 
     // Windows Hello key name used for the plugin's user-verification prompts.
     public const string UserVerificationKeyName = "VaultTypePasskeyUV";
+
+    // Package identities of the MSIX builds that host the plugin (see packaging/msix/build-msix.ps1):
+    // the Microsoft Store product and the self-signed development package.
+    public static readonly (string Name, string Publisher)[] PackageIdentities =
+    {
+        ("friedPotat0.VaultType", "CN=4B8578C4-7424-4939-B9D2-9E164B6F10A5"),
+        ("VaultType.PasskeyProvider", "CN=VaultType Dev"),
+    };
 }
