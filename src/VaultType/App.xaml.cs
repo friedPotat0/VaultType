@@ -1824,11 +1824,21 @@ public partial class App : Application
         VaultSession? owner = null;
         var denied = Dispatcher.Invoke(() =>
         {
-            owner = _sessions.FirstOrDefault(s => s.Unlocked);
+            // A vault open from its offline copy can't take a new entry, so a live one is preferred.
+            owner = _sessions.FirstOrDefault(s => s.Unlocked && !s.Backend.IsOffline)
+                    ?? _sessions.FirstOrDefault(s => s.Unlocked);
             if (owner == null)
                 foreach (var s in _sessions)
                     if (UnlockForAgent(s, out _, "passkey.unlockForKey")) { owner = s; break; }
             if (owner == null) return PasskeyIpcResponse.Fail(CtapStatus.OperationDenied);
+
+            // Say so before asking anything: confirming first and failing afterwards would leave the
+            // website with nothing but a generic error.
+            if (owner.Backend.IsOffline)
+            {
+                ShowError(Loc.T("offline.readOnly"));
+                return PasskeyIpcResponse.Fail(CtapStatus.OperationDenied);
+            }
 
             if (exclude.Count > 0 && _sessions.Where(s => s.Unlocked)
                     .SelectMany(s => s.Backend.Passkeys)
@@ -1842,10 +1852,25 @@ public partial class App : Application
         });
         if (denied != null) return denied;
 
-        var created = Task.Run(() => owner!.Backend.CreatePasskeyAsync(
-            r.RpId, r.RpName,
-            r.UserId != null ? Convert.FromBase64String(r.UserId) : Array.Empty<byte>(),
-            r.UserName, r.UserDisplayName, r.Discoverable)).GetAwaiter().GetResult();
+        (byte[] CredentialId, System.Security.Cryptography.ECParameters PublicKey)? created;
+        try
+        {
+            created = Task.Run(() => owner!.Backend.CreatePasskeyAsync(
+                r.RpId, r.RpName,
+                r.UserId != null ? Convert.FromBase64String(r.UserId) : Array.Empty<byte>(),
+                r.UserName, r.UserDisplayName, r.Discoverable)).GetAwaiter().GetResult();
+        }
+        catch (ServerUnreachableException)
+        {
+            // Unlocked while online, but the server dropped away since.
+            ShowError(Loc.T("unlock.errUnreachable"));
+            return PasskeyIpcResponse.Fail(CtapStatus.OtherError);
+        }
+        catch (VaultOfflineException ex)
+        {
+            ShowError(ex.Message);
+            return PasskeyIpcResponse.Fail(CtapStatus.OperationDenied);
+        }
         if (created == null) return PasskeyIpcResponse.Fail(CtapStatus.OtherError);
 
         // The vault re-sync runs in the background, so the fresh passkey is not in Backend.Passkeys
